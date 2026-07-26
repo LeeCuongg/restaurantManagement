@@ -19,7 +19,8 @@ export function ImageUpload({
   name?: string;
   currentUrl?: string | null;
   label?: string;
-  shape?: "rect" | "circle";
+  /** "cover" = preview ngang 16:9 cho ảnh bìa (khung vuông không phản ánh đúng khung hiển thị). */
+  shape?: "rect" | "circle" | "cover";
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(currentUrl);
@@ -47,10 +48,12 @@ export function ImageUpload({
     setPreview(URL.createObjectURL(file));
   }
 
-  const previewClass =
+  const box =
     shape === "circle"
-      ? "h-16 w-16 rounded-full object-cover"
-      : "h-20 w-20 rounded-md object-cover";
+      ? "h-16 w-16 rounded-full"
+      : shape === "cover"
+        ? "h-20 w-36 rounded-md"
+        : "h-20 w-20 rounded-md";
 
   return (
     <div className="flex flex-col gap-xxs text-sm text-slate">
@@ -61,13 +64,11 @@ export function ImageUpload({
           <img
             src={preview}
             alt="Xem trước"
-            className={`${previewClass} border border-hairline-soft`}
+            className={`${box} shrink-0 border border-hairline-soft object-cover`}
           />
         ) : (
           <span
-            className={`grid ${
-              shape === "circle" ? "h-16 w-16 rounded-full" : "h-20 w-20 rounded-md"
-            } place-items-center border border-dashed border-hairline-strong text-xs text-muted`}
+            className={`grid ${box} shrink-0 place-items-center border border-dashed border-hairline-strong text-xs text-muted`}
           >
             Chưa có
           </span>

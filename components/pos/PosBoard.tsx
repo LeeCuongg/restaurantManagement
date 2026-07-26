@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, BellRing, Check, CalendarClock, Search, ShoppingBag, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 import type { CustomerMenu, CustomerMenuItem } from "@/lib/orders/customer-menu";
 import type { PosSnapshot } from "@/lib/orders/pos";
 import type { CartLine } from "@/lib/orders/types";
@@ -429,22 +430,74 @@ export function PosBoard({
             <ShoppingBag className="h-4 w-4" />
             Đơn online
           </Link>
+          {/* Có đơn chờ duyệt = việc GẤP NHẤT ở POS → nút đổi sang nền primary + chuông rung,
+              không để cùng một sắc độ với các nút phụ (dễ miss đơn khách). */}
           <button
             type="button"
             onClick={() => setPendingOpen(true)}
             aria-label={`Order chờ duyệt${initial.pending.length > 0 ? `, ${initial.pending.length} đơn` : ""}`}
-            className="relative inline-flex h-11 items-center gap-sm rounded-md border border-hairline-strong bg-canvas px-md text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            className={cn(
+              "relative inline-flex h-11 items-center gap-sm rounded-md px-md text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              initial.pending.length > 0
+                ? "border-2 border-primary-deep bg-primary text-primary-fg shadow-card hover:bg-primary-deep"
+                : "border border-hairline-strong bg-canvas font-medium text-ink hover:bg-surface"
+            )}
           >
-            <Bell className="h-4 w-4" />
+            {initial.pending.length > 0 ? (
+              <BellRing className="h-4 w-4 animate-pulse" />
+            ) : (
+              <Bell className="h-4 w-4" />
+            )}
             Chờ duyệt
             {initial.pending.length > 0 && (
-              <span className="grid h-6 min-w-[24px] place-items-center rounded-full bg-status-new px-1 text-xs font-bold text-status-new-fg">
+              <span className="grid h-6 min-w-[24px] place-items-center rounded-full bg-canvas px-1 text-xs font-bold text-primary">
                 {initial.pending.length}
               </span>
             )}
           </button>
         </div>
       </div>
+
+      {/* Banner ĐƠN KHÁCH CHỜ DUYỆT — ưu tiên cao nhất nên đặt trên banner gọi nhân viên.
+          Bấm chip mở drawer để XEM món rồi mới duyệt (D8: duyệt để chặn order giỡn/nhầm bàn),
+          không duyệt tắt từ banner. */}
+      {initial.pending.length > 0 && (
+        // Nền kem + chữ mực (như banner "Bàn đang gọi"): chữ trắng trên nền cam đặc chỉ đạt
+        // tương phản 3.3:1, dưới AA cho chữ 14px. Nổi bật bằng viền primary dày + chuông rung.
+        <div className="flex flex-wrap items-center gap-sm border-b-2 border-primary bg-cream-deeper px-lg py-sm">
+          <span className="inline-flex items-center gap-xs text-sm font-bold text-ink">
+            <BellRing className="h-4 w-4 animate-pulse text-primary" />
+            Đơn khách chờ duyệt ({initial.pending.length})
+          </span>
+          {initial.pending.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setPendingOpen(true)}
+              title={`${p.tableName} · ${p.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}`}
+              className="inline-flex min-h-[44px] items-center gap-xs rounded-2xl border border-primary/30 bg-canvas px-md py-xs text-left text-sm font-semibold text-ink shadow-card transition-transform hover:bg-primary/5 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              <span className="shrink-0">{p.tableName}</span>
+              <span className="font-normal tabular-nums text-steel">
+                {new Date(p.created_at).toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              <span className="font-normal text-slate">
+                {p.items.reduce((n, i) => n + i.qty, 0)} món
+              </span>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setPendingOpen(true)}
+            className="ml-auto inline-flex min-h-[44px] items-center gap-xs rounded-md bg-primary px-lg text-sm font-semibold text-primary-fg shadow-card hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            Xem &amp; duyệt
+          </button>
+        </div>
+      )}
 
       {/* Banner "Gọi nhân viên" (CALL-01) — bàn đang gọi, bấm để đánh dấu đã xử lý */}
       {initial.calls.length > 0 && (

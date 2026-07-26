@@ -27,7 +27,7 @@ export default async function SettingsPage({
   const supabase = await createClient();
   const { data: tenant } = await supabase
     .from("tenants")
-    .select("name, logo_url, settings")
+    .select("name, logo_url, cover_url, settings")
     .eq("id", session.tenant.id)
     .maybeSingle();
 
@@ -37,7 +37,7 @@ export default async function SettingsPage({
     <div className="w-full max-w-4xl">
       <h1 className="font-display text-2xl text-ink">Cài đặt</h1>
       <p className="mt-xxs text-sm text-steel">
-        Nhận diện nhà hàng (tên, logo) và cấu hình vận hành (phí phục vụ, VAT, footer hóa đơn, duyệt order QR).
+        Nhận diện nhà hàng (tên, logo/avatar, ảnh bìa) và cấu hình vận hành (phí phục vụ, VAT, footer hóa đơn, duyệt order QR).
       </p>
 
       <div className="mt-lg grid gap-lg">
@@ -53,7 +53,13 @@ export default async function SettingsPage({
             <ImageUpload
               currentUrl={tenant?.logo_url ?? null}
               shape="circle"
-              label="Logo nhà hàng (≤2MB, PNG/JPEG/WebP)"
+              label="Logo / avatar (≤2MB, PNG/JPEG/WebP) — hiện tròn trên trang chào bàn"
+            />
+            <ImageUpload
+              name="cover"
+              currentUrl={tenant?.cover_url ?? null}
+              shape="cover"
+              label="Ảnh bìa (≤2MB, PNG/JPEG/WebP) — ảnh ngang, để trống thì dùng dải gradient mặc định"
             />
             <div>
               <SubmitButton size="sm" pendingLabel="Đang lưu…">

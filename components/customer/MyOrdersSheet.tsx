@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Drawer } from "vaul";
 import { ChevronRight, Loader2, ReceiptText } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { formatVnd } from "@/lib/orders/cart";
-import { ORDER_STATUS_LABEL } from "@/lib/orders/status";
+import { ORDER_STATUS_LABEL, isTerminalOrderStatus } from "@/lib/orders/status";
 import type { OrderStatus } from "@/lib/orders/types";
-import { listMyOrders } from "@/lib/orders/my-orders";
+import { forgetOrder, listMyOrders } from "@/lib/orders/my-orders";
 import { cn } from "@/lib/utils";
 
 type FetchedItem = {
@@ -40,6 +41,11 @@ const STATUS_CLASS: Record<OrderStatus, string> = {
  * MyOrdersSheet — panel "Đơn của bạn" mở từ nút chat nổi ở trang chào bàn. Đọc orderId đã lưu
  * ở sessionStorage (lib/orders/my-orders) rồi GET /api/order/{id} từng đơn để lấy trạng thái +
  * món + tạm tính. Chỉ thấy đơn gửi từ CHÍNH máy này (khách ẩn danh, không có phiên).
+ *
+ * REALTIME khi panel đang mở: subscribe Broadcast `order:{id}` cho từng đơn CHƯA kết thúc
+ * (giống trang theo dõi đơn — postgres_changes qua RLS không tới được khách anon), kèm polling
+ * 15s dự phòng khi kênh lỗi/mất mạng. Không có phần này thì POS bấm "Duyệt" mà panel vẫn
+ * đứng ở "Chờ xác nhận" tới khi khách đóng/mở lại.
  */
 export function MyOrdersSheet({
   slug,
@@ -53,32 +59,133 @@ export function MyOrdersSheet({
   onOpenChange: (v: boolean) => void;
 }) {
   const [orders, setOrders] = useState<FetchedOrder[] | null>(null);
+  // Danh sách id đang theo dõi — lấy từ sessionStorage, cố định trong lượt mở sheet.
+  const [trackedIds, setTrackedIds] = useState<string[]>([]);
+  // Kênh Broadcast đang chết? Chỉ khi đó mới bật polling dự phòng.
+  const [channelDown, setChannelDown] = useState(false);
+  const mountedRef = useRef(false);
+
+  const fetchOne = useCallback(
+    async (id: string): Promise<FetchedOrder | null> => {
+      try {
+        const res = await fetch(`/r/${slug}/api/order/${id}`, { cache: "no-store" });
+        // 404 = đơn không còn trong DB → bỏ khỏi sổ để không fetch lại mãi.
+        if (res.status === 404) {
+          forgetOrder(slug, qrToken, id);
+          return null;
+        }
+        if (!res.ok) return null;
+        return (await res.json()) as FetchedOrder;
+      } catch {
+        return null; // lỗi mạng: GIỮ id, lần sau thử lại
+      }
+    },
+    [slug, qrToken]
+  );
 
   const load = useCallback(async () => {
-    const refs = listMyOrders(slug, qrToken);
-    if (refs.length === 0) {
+    const ids = listMyOrders(slug, qrToken).map((r) => r.id);
+    if (ids.length === 0) {
+      setTrackedIds((prev) => (prev.length === 0 ? prev : []));
       setOrders([]);
       return;
     }
-    const results = await Promise.all(
-      refs.map(async (r) => {
-        try {
-          const res = await fetch(`/r/${slug}/api/order/${r.id}`, { cache: "no-store" });
-          if (!res.ok) return null;
-          return (await res.json()) as FetchedOrder;
-        } catch {
-          return null;
-        }
-      })
-    );
-    setOrders(results.filter((o): o is FetchedOrder => !!o));
-  }, [slug, qrToken]);
+    const results = await Promise.all(ids.map(fetchOne));
+    if (!mountedRef.current) return;
+    const found = results.filter((o): o is FetchedOrder => !!o);
+    setOrders(found);
+    // Chỉ theo dõi realtime các đơn CÒN tồn tại (id đã 404 thì kênh cũng vô nghĩa).
+    // GIỮ NGUYÊN tham chiếu khi tập id không đổi: nếu trả array mới mỗi lần load, effect
+    // realtime bên dưới sẽ huỷ + subscribe lại toàn bộ kênh, tạo khoảng trống mất message.
+    setTrackedIds((prev) => {
+      const next = found.map((o) => o.id);
+      const same = prev.length === next.length && prev.every((v, i) => v === next[i]);
+      return same ? prev : next;
+    });
+  }, [slug, qrToken, fetchOne]);
 
   // Nạp lại mỗi lần mở (trạng thái có thể đã đổi ở POS/KDS trong lúc sheet đóng).
   useEffect(() => {
     if (!open) return;
+    mountedRef.current = true;
     setOrders(null);
     load();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [open, load]);
+
+  /**
+   * Realtime khi sheet mở: 1 kênh Broadcast cho mỗi đơn còn theo dõi (Supabase ghép chung
+   * MỘT WebSocket nên N kênh không mở N kết nối). Payload đủ để đổi chip ngay; refetch đơn
+   * đó để lấy giá (payload không có unit_price).
+   *
+   * Dep là `idsKey` (chuỗi) chứ không phải mảng: chỉ dựng lại kênh khi TẬP id thật sự đổi.
+   */
+  const idsKey = trackedIds.join(",");
+  useEffect(() => {
+    if (!open || idsKey === "") return;
+    const ids = idsKey.split(",");
+    const supabase = createClient();
+    // Cờ theo từng lần chạy effect: sau khi dọn, MỌI báo trạng thái của kênh cũ phải bị bỏ
+    // qua. removeChannel() tự bắn 'CLOSED' — nếu coi đó là lỗi thì (React StrictMode ở dev
+    // mount→cleanup→mount) 'CLOSED' của lần dọn có thể về SAU 'SUBSCRIBED' của lần mới,
+    // làm channelDown mắc ở true và polling chạy mãi.
+    let disposed = false;
+
+    const channels = ids.map((id) => {
+      const ch = supabase.channel(`order:${id}`);
+      ch.on("broadcast", { event: "status" }, ({ payload }) => {
+        if (disposed) return;
+        setOrders((prev) =>
+          prev ? prev.map((o) => (o.id === id ? { ...o, status: payload.status } : o)) : prev
+        );
+        // Lấy lại bản đầy đủ (giá món) — không chặn việc đổi chip ở trên.
+        void fetchOne(id).then((fresh) => {
+          if (!fresh || !mountedRef.current) return;
+          setOrders((prev) => (prev ? prev.map((o) => (o.id === id ? fresh : o)) : prev));
+        });
+      });
+      ch.subscribe((status) => {
+        if (disposed) return; // báo trạng thái của kênh đã dọn → không tin
+        // CHỈ 'CHANNEL_ERROR'/'TIMED_OUT' là lỗi thật. 'CLOSED' là trạng thái bình thường
+        // khi chính mình gỡ kênh, không được coi là mất realtime.
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setChannelDown(true);
+        else if (status === "SUBSCRIBED") setChannelDown(false);
+      });
+      return ch;
+    });
+
+    return () => {
+      disposed = true;
+      for (const ch of channels) supabase.removeChannel(ch);
+    };
+  }, [open, idsKey, fetchOne]);
+
+  /**
+   * Polling CHỈ khi kênh Broadcast đang chết — không poll khi realtime hoạt động (đỡ tải
+   * server và pin máy khách). Dừng khi mọi đơn đã ở trạng thái cuối.
+   */
+  // Dep là BOOLEAN, không phải mảng `orders`: mỗi lần load tạo mảng mới, nếu để mảng làm dep
+  // thì interval bị huỷ + dựng lại liên tục và thời điểm poll trôi không kiểm soát được.
+  const hasLiveOrder = !!orders && orders.some((o) => !isTerminalOrderStatus(o.status));
+  useEffect(() => {
+    if (!open || !channelDown || !hasLiveOrder) return;
+    const timer = setInterval(load, 15000);
+    return () => clearInterval(timer);
+  }, [open, channelDown, hasLiveOrder, load]);
+
+  /**
+   * Máy khách khoá màn / đổi tab lâu → WebSocket có thể đã bỏ lỡ message trước khi kịp báo
+   * lỗi. Quay lại thì refetch MỘT lần cho chắc, thay vì poll liên tục.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [open, load]);
 
   const orderTotal = (o: FetchedOrder) =>

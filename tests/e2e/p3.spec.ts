@@ -22,7 +22,11 @@ async function loginStaff(page: Page, surface: "pos" | "kds") {
     await page.locator('input[name="email"]').fill(OWNER_EMAIL);
     await page.locator('input[name="secret"]').fill(OWNER_PASS);
     await page.getByRole("button", { name: /Đăng nhập/ }).click();
-    await page.waitForURL(`**/r/${SLUG}/${surface}`, { timeout: 20000 });
+    // Chờ ra khỏi /login (server action redirect); timeout rộng vì dev server có thể đang
+    // compile lần đầu bề mặt POS/KDS.
+    await page.waitForFunction(() => !location.pathname.includes("/login"), null, {
+      timeout: 60000,
+    });
   }
 }
 
@@ -98,12 +102,16 @@ test("P3 chuỗi order đầu-cuối + realtime", async ({ browser }) => {
 
   await test.step("3. POS duyệt → KDS nhận vé REALTIME (không reload)", async () => {
     await pos.getByRole("button", { name: /chờ duyệt/i }).click();
-    await expect(pos.getByText("Bàn B1").first()).toBeVisible();
+    // Neo vào ĐÚNG đơn vừa gửi: drawer có thể đang liệt kê nhiều đơn chờ khác.
+    const pendingRow = pos.locator(`li[data-order-id="${orderId}"]`);
+    await expect(pendingRow).toBeVisible({ timeout: 20000 });
+    await expect(pendingRow.getByText("Bàn B1")).toBeVisible();
+    await expect(pendingRow.getByText(GUEST_NAME)).toBeVisible();
     // Chốt hiện trạng KDS TRƯỚC khi duyệt: DB dev có thể còn vé cũ chưa phục vụ → mọi
     // assertion sau đây phải neo vào vé MỚI, không giả định KDS sạch.
     kdsB1Before = await kdsB1.count();
     const t0 = Date.now();
-    await pos.getByRole("button", { name: "Duyệt", exact: true }).click();
+    await pendingRow.getByRole("button", { name: "Duyệt", exact: true }).click();
     // KDS: vé CỦA ĐƠN NÀY xuất hiện KHÔNG reload
     await expect(kdsTicket()).toHaveCount(1, { timeout: 20000 });
     console.log(`  [realtime] KDS nhận vé sau ~${Date.now() - t0}ms (không reload)`);
@@ -131,7 +139,9 @@ test("P3 chuỗi order đầu-cuối + realtime", async ({ browser }) => {
 
   await test.step("6. POS: đơn hiện trong phiên bàn; khách vẫn dừng ở 'Đã xác nhận'", async () => {
     await pos.goto(`/r/${SLUG}/pos`);
-    await pos.locator("button", { hasText: "B1" }).first().click();
+    // Khoanh vào SƠ ĐỒ BÀN (aside): banner "Đơn khách chờ duyệt" cũng có chip mang tên bàn,
+    // nếu không khoanh sẽ bấm trúng chip banner và mở drawer thay vì chọn bàn.
+    await pos.locator("aside").getByRole("button", { name: /^B1/ }).first().click();
     await expect(pos.getByText(/Đơn #/).first()).toBeVisible({ timeout: 20000 });
     // Khách dine-in KHÔNG có bước "Đã phục vụ" (stepper 2 bước) — vẫn dừng ở "Đã xác nhận"
     await expect(cust.getByRole("heading", { name: "Đã xác nhận" })).toBeVisible();

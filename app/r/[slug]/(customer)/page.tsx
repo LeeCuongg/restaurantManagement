@@ -25,7 +25,7 @@ export default async function CustomerHome({
 
   const admin = createAdminClient();
   const [{ data: tenant }, resolved] = await Promise.all([
-    admin.from("tenants").select("name, logo_url").eq("slug", slug).maybeSingle(),
+    admin.from("tenants").select("name, logo_url, cover_url").eq("slug", slug).maybeSingle(),
     qrToken ? resolveTable(slug, qrToken) : Promise.resolve(null),
   ]);
 
@@ -34,6 +34,7 @@ export default async function CustomerHome({
       slug={slug}
       tenantName={tenant?.name ?? slug}
       logoUrl={tenant?.logo_url ?? null}
+      coverUrl={tenant?.cover_url ?? null}
       tableName={resolved?.table.name ?? null}
       qrToken={resolved ? qrToken : null}
     />
