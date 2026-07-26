@@ -3,66 +3,74 @@
  * Khai báo dưới dạng CSS variables ở :root. Tailwind (tailwind.config.ts) đọc lại
  * các biến này; shadcn/ui component cũng dùng chung nguồn này.
  * V1: theme sản phẩm cố định, không override theo tenant (QD-006 F2).
+ *
+ * ĐỊNH DẠNG MÀU — token màu lưu KÊNH RGB rời ("250 82 15"), KHÔNG phải hex.
+ * Lý do: Tailwind chỉ chèn được độ mờ (`bg-ink/40`, `ring-primary/20`) khi giá trị màu
+ * có chỗ cắm alpha. Với hex bọc trong var() Tailwind lặng lẽ BỎ HẲN utility đó — trước
+ * 26/07 có 55 chỗ trong dự án bị mất tác dụng (overlay dialog không tối, viền focus vô
+ * hình, header dính bị nội dung cuộn xuyên qua).
+ * → tailwind.config.ts bọc lại thành `rgb(var(--color-x) / <alpha-value>)`.
+ * → Dùng trực tiếp trong CSS thuần thì PHẢI bọc: `color: rgb(var(--color-ink))`.
  */
 
 :root {
   /* ---- Màu thương hiệu & CTA ---- */
-  --color-primary: #fa520f;
-  --color-primary-deep: #cc3a05;
-  --color-on-primary: #ffffff;
+  --color-primary: 250 82 15;          /* #fa520f */
+  --color-primary-deep: 204 58 5;      /* #cc3a05 */
+  --color-on-primary: 255 255 255;     /* #ffffff */
 
   /* Lớp tenant (V2): mặc định = primary. V1 luôn giữ mặc định (QD-006 F2). */
   --tenant-primary: var(--color-primary);
 
   /* ---- Sunset (chỉ landing/khách) ---- */
-  --color-sunshine-300: #ffd06a;
-  --color-sunshine-500: #ffb83e;
-  --color-sunshine-700: #ffa110;
-  --color-sunshine-900: #ff8a00;
-  --color-yellow-saturated: #ffd900;
+  --color-sunshine-300: 255 208 106;   /* #ffd06a */
+  --color-sunshine-500: 255 184 62;    /* #ffb83e */
+  --color-sunshine-700: 255 161 16;    /* #ffa110 */
+  --color-sunshine-900: 255 138 0;     /* #ff8a00 */
+  --color-yellow-saturated: 255 217 0; /* #ffd900 */
 
   /* ---- Bề mặt ---- */
-  --color-canvas: #ffffff;
-  --color-surface: #fafafa;
-  --color-cream: #fff8e0;
-  --color-cream-soft: #fffaeb;
-  --color-cream-deeper: #fff0c2;
-  --color-surface-code: #1c1c1e;
+  --color-canvas: 255 255 255;         /* #ffffff */
+  --color-surface: 250 250 250;        /* #fafafa */
+  --color-cream: 255 248 224;          /* #fff8e0 */
+  --color-cream-soft: 255 250 235;     /* #fffaeb */
+  --color-cream-deeper: 255 240 194;   /* #fff0c2 */
+  --color-surface-code: 28 28 30;      /* #1c1c1e */
 
   /* ---- Mực / chữ ---- */
-  --color-ink: #1f1f1f;
-  --color-ink-tint: #3d3d3d;
-  --color-charcoal: #2c2c2c;
-  --color-slate: #4a4a4a;
-  --color-steel: #6a6a6a;
-  --color-stone: #8a8a8a;
-  --color-muted: #a8a8a8;
-  --color-on-dark: #ffffff;
-  --color-on-dark-muted: #a8a8a8;
+  --color-ink: 31 31 31;               /* #1f1f1f */
+  --color-ink-tint: 61 61 61;          /* #3d3d3d */
+  --color-charcoal: 44 44 44;          /* #2c2c2c */
+  --color-slate: 74 74 74;             /* #4a4a4a */
+  --color-steel: 106 106 106;          /* #6a6a6a */
+  --color-stone: 138 138 138;          /* #8a8a8a */
+  --color-muted: 168 168 168;          /* #a8a8a8 */
+  --color-on-dark: 255 255 255;        /* #ffffff */
+  --color-on-dark-muted: 168 168 168;  /* #a8a8a8 */
 
   /* ---- Đường kẻ / viền ---- */
-  --color-hairline: #e5e5e5;
-  --color-hairline-soft: #ededed;
-  --color-hairline-strong: #c7c7c7;
-  --color-beige-deep: #e6d5a8;
+  --color-hairline: 229 229 229;       /* #e5e5e5 */
+  --color-hairline-soft: 237 237 237;  /* #ededed */
+  --color-hairline-strong: 199 199 199;/* #c7c7c7 */
+  --color-beige-deep: 230 213 168;     /* #e6d5a8 */
 
   /* ---- Màu trạng thái — MỞ RỘNG (QD-006 F5) ---- */
-  --status-new: #fff0c2;          /* nền chip chờ duyệt; chữ = ink */
-  --status-new-fg: #1f1f1f;
-  --status-active: #fa520f;       /* đang làm / bàn đang phục vụ */
-  --status-active-fg: #ffffff;
-  --status-ready: #1a7f4b;        /* sẵn sàng */
-  --status-ready-bg: #e7f6ee;
-  --status-late: #c0341d;         /* quá hạn / hủy */
-  --status-late-fg: #ffffff;
-  --status-done: #6a6a6a;         /* đã hoàn tất */
+  --status-new: 255 240 194;           /* #fff0c2 — nền chip chờ duyệt; chữ = ink */
+  --status-new-fg: 31 31 31;           /* #1f1f1f */
+  --status-active: 250 82 15;          /* #fa520f — đang làm / bàn đang phục vụ */
+  --status-active-fg: 255 255 255;     /* #ffffff */
+  --status-ready: 26 127 75;           /* #1a7f4b — sẵn sàng */
+  --status-ready-bg: 231 246 238;      /* #e7f6ee */
+  --status-late: 192 52 29;            /* #c0341d — quá hạn / hủy */
+  --status-late-fg: 255 255 255;       /* #ffffff */
+  --status-done: 106 106 106;          /* #6a6a6a — đã hoàn tất */
 
-  /* Trạng thái bàn (POS) */
-  --table-available-border: var(--color-hairline);
-  --table-occupied-bg: var(--color-cream);
-  --table-occupied-border: var(--color-beige-deep);
-  --table-reserved-border: var(--color-primary);
-  --table-cleaning-bg: var(--color-surface);
+  /* Trạng thái bàn (POS) — dùng trong CSS thuần nên bọc rgb() sẵn */
+  --table-available-border: rgb(var(--color-hairline));
+  --table-occupied-bg: rgb(var(--color-cream));
+  --table-occupied-border: rgb(var(--color-beige-deep));
+  --table-reserved-border: rgb(var(--color-primary));
+  --table-cleaning-bg: rgb(var(--color-surface));
 
   /* ---- Spacing (4px base) ---- */
   --space-xxs: 4px;
@@ -94,9 +102,9 @@
   /* ---- Sunset stripe gradient (signature) ---- */
   --gradient-sunset: linear-gradient(
     90deg,
-    var(--color-primary) 0%,
-    var(--color-sunshine-700) 40%,
-    var(--color-yellow-saturated) 75%,
-    var(--color-cream) 100%
+    rgb(var(--color-primary)) 0%,
+    rgb(var(--color-sunshine-700)) 40%,
+    rgb(var(--color-yellow-saturated)) 75%,
+    rgb(var(--color-cream)) 100%
   );
 }

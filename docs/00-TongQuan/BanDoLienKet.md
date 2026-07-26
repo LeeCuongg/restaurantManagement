@@ -66,7 +66,7 @@ middleware — guard quyền nằm ở layout/page.
 ### Khách hàng — `/r/pho-viet/...` (không cần đăng nhập)
 | URL | Mô tả | Truy cập |
 |---|---|---|
-| `/r/pho-viet` | Trang landing nhà hàng | Công khai |
+| `/r/pho-viet?t=...` | **Đích của QR bàn** — trang chào bàn: nhận diện NH + bàn, gọi nhân viên / gọi thanh toán, panel "Đơn của bạn", CTA vào thực đơn. Không có `t` hợp lệ → chỉ-xem | Công khai |
 | `/r/pho-viet/menu?...` | Menu gọi món qua QR bàn | Công khai (cần token bàn để đặt) |
 | `/r/pho-viet/online` | Đặt món mang về / giao | Công khai, ẩn danh |
 | `/r/pho-viet/reserve` | Đặt bàn online | Công khai |

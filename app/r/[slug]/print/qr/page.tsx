@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getSessionMembership } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { menuUrlForToken, qrSvg, qrPngDataUrl } from "@/lib/tables/qr";
+import { tableUrlForToken, qrSvg, qrPngDataUrl } from "@/lib/tables/qr";
 import { PrintButton } from "@/components/tables/PrintButton";
 import { QrDownload } from "@/components/tables/QrDownload";
 import type { Area, Table } from "@/lib/tables/types";
@@ -45,7 +45,7 @@ export default async function PrintQrPage({
 
   const cards = await Promise.all(
     ((tables ?? []) as Table[]).map(async (t) => {
-      const url = menuUrlForToken(host, slug, t.qr_token, proto);
+      const url = tableUrlForToken(host, slug, t.qr_token, proto);
       const [svg, png] = await Promise.all([qrSvg(url), qrPngDataUrl(url)]);
       return {
         id: t.id,

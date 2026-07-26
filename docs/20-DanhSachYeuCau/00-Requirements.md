@@ -51,6 +51,11 @@
 | ORDER-04 | KDS realtime | Món `confirmed` hiện trên KDS ≤ 3s (đo 10 lần); bếp đổi trạng thái làm/xong ở mức món | P3 | ☐ |
 | ORDER-05 | Hủy/sửa món có kiểm soát | Chỉ manager/cashier hủy món đã gửi, bắt buộc ghi lý do; có log | P3 | ☐ |
 | ORDER-06 | Gọi nhân viên từ bàn | Khách quét QR bấm "Gọi nhân viên", có thể kèm yêu cầu (chip gợi ý nhanh hoặc tự ghi) → POS hiện banner "bàn đang gọi" + nội dung yêu cầu realtime; nhân viên bấm để đánh dấu đã xử lý. Dedupe 45s theo từng nội dung | P5 | ◐ code xong; chờ đo realtime |
+| ORDER-07 | Trang chào bàn (A0) | QR trỏ `/r/{slug}?t={token}` → thẻ nhận diện (tên NH, bàn, tên khách sửa được) + 2 lối hỗ trợ + CTA vào thực đơn; token sai/thiếu → chỉ-xem (ẩn hành động cần bàn). Tên khách nhập ở đây prefill sẵn ô bắt buộc trong giỏ | P5 | ◐ code xong; chờ checkpoint |
+| ORDER-08 | Gọi thanh toán từ bàn | Nút "Gọi thanh toán" trên trang chào → chọn hình thức (tiền mặt/chuyển khoản/thẻ) → ghi `staff_calls` với note mở đầu "Thanh toán · …" nên POS thấy ngay cùng danh sách gọi; không cần loại call riêng | P5 | ◐ code xong; chờ checkpoint |
+| ORDER-09 | Panel "Đơn của bạn" | Nút chat nổi mở panel liệt kê các đơn đã gửi TỪ THIẾT BỊ NÀY (orderId lưu sessionStorage theo bàn) kèm trạng thái + món + tạm tính; chạm để mở trang theo dõi realtime | P5 | ◐ code xong; chờ checkpoint |
+| ORDER-10 | Hỏi tên khách khi vào bàn | Modal GIỮA màn hình mở ngay khi vào bàn (nền che `bg-ink/75` + blur): **tên bắt buộc**, SĐT tùy chọn (có nhập thì phải đúng định dạng VN, tự đổi +84→0). Không đóng được (Esc/bấm nền/X đều không) tới khi có tên. Chặn cả `/menu?t=` (QR cũ) để không lách. Đã điền → không hỏi lại trong phiên. **Giỏ hàng KHÔNG có ô nhập lại** — chỉ hiện "Khách: tên · SĐT" kèm nút "Sửa" mở lại modal. Dùng chung `contact:{slug}:{bàn}` | P5 | ◐ code xong; chờ checkpoint |
+| ORDER-11 | Bottom sheet không vỡ khi mở bàn phím | Chạm ô text trong sheet (giỏ, ghi chú món, gọi nhân viên, lý do hủy) → sheet KHÔNG trôi lên/mất phần trên, ô nhập vẫn chạm được. Tắt `repositionInputs` của vaul (nó set height/bottom px sai trên iOS Safari) + `interactiveWidget: resizes-content` | P5 | ◐ code xong; **chờ kiểm trên iPhone thật** |
 
 ## BILL — Bill & thanh toán
 | Mã | Yêu cầu | Tiêu chí chấp nhận | GĐ | TT |

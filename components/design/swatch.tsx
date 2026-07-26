@@ -14,7 +14,8 @@ export function Swatch({
     <div className="overflow-hidden rounded-md border border-hairline-soft">
       <div
         className="flex h-16 items-end p-xs"
-        style={{ backgroundColor: `var(${varName})` }}
+        // Token màu lưu kênh RGB rời → phải bọc rgb() khi dùng ngoài Tailwind (xem tokens.css).
+        style={{ backgroundColor: `rgb(var(${varName}))` }}
       >
         <span
           className={`text-xs font-medium ${textDark ? "text-ink" : "text-on-dark"}`}
