@@ -25,6 +25,28 @@ function settingsPath(slug: string) {
   return `/r/${slug}/admin/settings`;
 }
 
+/**
+ * Update bảng tenants + KIỂM đã ghi thật chưa. Supabase/PostgREST coi "khớp 0 dòng" là thành
+ * công (error = null) nên nếu RLS/quyền cột chặn, action sẽ báo "Đã lưu" mà chẳng ghi gì —
+ * chính lỗi đã làm logo/ảnh bìa mất im lặng trước 0020. `.select("id")` để đếm dòng đã đổi.
+ */
+async function updateTenant(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  patch: Record<string, unknown>
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("tenants")
+    .update(patch)
+    .eq("id", tenantId)
+    .select("id");
+  if (error) return error.message;
+  if (!data || data.length === 0) {
+    return "Không lưu được: thiếu quyền ghi trên nhà hàng này (kiểm RLS/quyền cột bảng tenants).";
+  }
+  return null;
+}
+
 /** Đích redirect sau khi lưu: `redirect_to` (vd onboarding) hoặc trang settings. */
 function backFor(slug: string, formData: FormData) {
   const to = String(formData.get("redirect_to") ?? "").trim();
@@ -41,19 +63,19 @@ export async function updateProfile(formData: FormData) {
   if (!name) redirect(`${back}${sep}error=${encodeURIComponent("Thiếu tên nhà hàng.")}`);
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("tenants")
-    .update({ name, updated_at: new Date().toISOString() })
-    .eq("id", session.tenant.id);
-  if (error) redirect(`${back}${sep}error=${encodeURIComponent(error.message)}`);
+  const failed = await updateTenant(supabase, session.tenant.id, {
+    name,
+    updated_at: new Date().toISOString(),
+  });
+  if (failed) redirect(`${back}${sep}error=${encodeURIComponent(failed)}`);
 
   revalidatePath(back, "layout");
   redirect(`${back}${sep}ok=${encodeURIComponent("Đã lưu tên nhà hàng")}`);
 }
 
 /**
- * Lưu nhận diện nhà hàng trong 1 lần: tên (bắt buộc) + logo (tùy chọn, chỉ upload
- * khi có tệp mới). Cập nhật TẠI CHỖ (useActionState) — không đổi link.
+ * Lưu nhận diện nhà hàng trong 1 lần: tên (bắt buộc) + logo/avatar + ảnh bìa (tùy chọn,
+ * chỉ upload khi có tệp mới). Cập nhật TẠI CHỖ (useActionState) — không đổi link.
  */
 export async function updateIdentity(formData: FormData) {
   const slug = String(formData.get("slug") ?? "");
@@ -62,37 +84,54 @@ export async function updateIdentity(formData: FormData) {
   if (!name) return setFlash("error", "Thiếu tên nhà hàng.");
 
   const supabase = await createClient();
-  const update: { name: string; logo_url?: string; updated_at: string } = {
-    name,
-    updated_at: new Date().toISOString(),
-  };
+  const update: {
+    name: string;
+    logo_url?: string;
+    cover_url?: string;
+    updated_at: string;
+  } = { name, updated_at: new Date().toISOString() };
 
-  // Logo tùy chọn: chỉ xử lý khi người dùng thực sự chọn tệp mới.
-  const file = formData.get("image");
+  // Chỉ đọc URL cũ khi thực sự có tệp mới (để dọn ảnh cũ khỏi Storage sau đó).
+  const logoFile = formData.get("image");
+  const coverFile = formData.get("cover");
+  const hasLogo = logoFile instanceof File && logoFile.size > 0;
+  const hasCover = coverFile instanceof File && coverFile.size > 0;
+
   let oldLogo: string | null = null;
-  if (file instanceof File && file.size > 0) {
+  let oldCover: string | null = null;
+  if (hasLogo || hasCover) {
     const { data: tenant } = await supabase
       .from("tenants")
-      .select("logo_url")
+      .select("logo_url, cover_url")
       .eq("id", session.tenant.id)
       .maybeSingle();
     oldLogo = tenant?.logo_url ?? null;
+    oldCover = tenant?.cover_url ?? null;
+  }
+
+  if (hasLogo) {
     try {
-      const { publicUrl } = await uploadImage(file, session.tenant.id, "logo");
+      const { publicUrl } = await uploadImage(logoFile as File, session.tenant.id, "logo");
       update.logo_url = publicUrl;
     } catch (e) {
       return setFlash("error", e instanceof Error ? e.message : "Upload logo lỗi.");
     }
   }
+  if (hasCover) {
+    try {
+      const { publicUrl } = await uploadImage(coverFile as File, session.tenant.id, "cover");
+      update.cover_url = publicUrl;
+    } catch (e) {
+      return setFlash("error", e instanceof Error ? e.message : "Upload ảnh bìa lỗi.");
+    }
+  }
 
-  const { error } = await supabase
-    .from("tenants")
-    .update(update)
-    .eq("id", session.tenant.id);
-  if (error) return setFlash("error", error.message);
+  const failed = await updateTenant(supabase, session.tenant.id, update);
+  if (failed) return setFlash("error", failed);
 
-  // Dọn logo cũ sau khi ghi DB thành công (không chặn luồng nếu xóa lỗi).
+  // Dọn ảnh cũ sau khi ghi DB thành công (không chặn luồng nếu xóa lỗi).
   if (update.logo_url) await deleteMenuImage(pathFromPublicUrl(oldLogo));
+  if (update.cover_url) await deleteMenuImage(pathFromPublicUrl(oldCover));
 
   revalidatePath(settingsPath(slug), "layout");
   await setFlash("ok", "Đã lưu nhận diện nhà hàng.");
@@ -120,11 +159,11 @@ export async function updateSettings(formData: FormData) {
     allow_discount: formData.get("allow_discount") === "on",
   });
 
-  const { error } = await supabase
-    .from("tenants")
-    .update({ settings: next, updated_at: new Date().toISOString() })
-    .eq("id", session.tenant.id);
-  if (error) return setFlash("error", error.message);
+  const failed = await updateTenant(supabase, session.tenant.id, {
+    settings: next,
+    updated_at: new Date().toISOString(),
+  });
+  if (failed) return setFlash("error", failed);
 
   revalidatePath(settingsPath(slug));
   await setFlash("ok", "Đã lưu cấu hình.");
@@ -151,11 +190,11 @@ export async function uploadLogo(formData: FormData) {
 
   try {
     const { publicUrl } = await uploadImage(file as File, session.tenant.id, "logo");
-    const { error } = await supabase
-      .from("tenants")
-      .update({ logo_url: publicUrl, updated_at: new Date().toISOString() })
-      .eq("id", session.tenant.id);
-    if (error) throw new Error(error.message);
+    const failed = await updateTenant(supabase, session.tenant.id, {
+      logo_url: publicUrl,
+      updated_at: new Date().toISOString(),
+    });
+    if (failed) throw new Error(failed);
     await deleteMenuImage(pathFromPublicUrl(tenant?.logo_url ?? null));
   } catch (e) {
     redirect(`${back}${sep}error=${encodeURIComponent(e instanceof Error ? e.message : "Upload logo lỗi.")}`);

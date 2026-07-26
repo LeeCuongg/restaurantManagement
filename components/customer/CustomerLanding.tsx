@@ -42,12 +42,16 @@ export function CustomerLanding({
   slug,
   tenantName,
   logoUrl,
+  coverUrl,
   tableName,
   qrToken,
 }: {
   slug: string;
   tenantName: string;
+  /** Logo hiển thị dạng AVATAR tròn đè lên ảnh bìa. */
   logoUrl: string | null;
+  /** Ảnh bìa nhà hàng; null → dùng dải gradient sunset mặc định. */
+  coverUrl: string | null;
   tableName: string | null;
   /** null khi thiếu/sai token → chỉ-xem. */
   qrToken: string | null;
@@ -92,42 +96,61 @@ export function CustomerLanding({
   return (
     <MotionConfig reducedMotion="user">
       <div className="relative mx-auto min-h-screen max-w-md bg-surface pb-hero">
-        {/* Dải nhận diện — gradient sunset dành riêng bề mặt khách (tokens.css) */}
-        <div className="relative h-36 bg-sunset">
-          <div
-            aria-hidden
-            className="absolute inset-0 bg-[radial-gradient(120%_100%_at_50%_0%,rgba(255,255,255,0.35),transparent_60%)]"
-          />
+        {/* Ảnh bìa nhà hàng; chưa đặt thì dùng dải gradient sunset (tokens.css) như trước. */}
+        <div className="relative h-44 bg-sunset">
+          {coverUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              {/* Lớp tối nhẹ ở đáy: avatar + thẻ trắng vẫn tách khỏi ảnh dù ảnh sáng. */}
+              <div
+                aria-hidden
+                className="absolute inset-0 bg-gradient-to-t from-ink/35 via-ink/5 to-transparent"
+              />
+            </>
+          ) : (
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-[radial-gradient(120%_100%_at_50%_0%,rgba(255,255,255,0.35),transparent_60%)]"
+            />
+          )}
         </div>
 
-        {/* Thẻ nhận diện — đè lên dải gradient */}
+        {/* Thẻ nhận diện — đè lên ảnh bìa; avatar tròn nhô lên nửa trên viền thẻ */}
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="relative -mt-xxl px-lg"
         >
-          <div className="rounded-xl border border-hairline-soft bg-canvas p-lg shadow-modal">
-            <div className="flex items-center gap-md">
+          {/* pt-16 = 64px: chừa chỗ cho phần avatar (80px, nhô lên 32px → nằm trong thẻ 48px) */}
+          <div className="relative rounded-xl border border-hairline-soft bg-canvas px-lg pb-lg pt-16 shadow-modal">
+            {/* Avatar: vòng trắng để tách khỏi ảnh bìa dù ảnh sáng hay tối */}
+            <div className="absolute -top-xxl left-lg">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={logoUrl}
                   alt=""
-                  className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                  className="h-20 w-20 rounded-full border-4 border-canvas object-cover shadow-card"
                 />
               ) : (
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-primary font-display text-xl text-primary-fg">
+                <span className="grid h-20 w-20 place-items-center rounded-full border-4 border-canvas bg-primary font-display text-3xl text-primary-fg shadow-card">
                   {tenantName.charAt(0).toUpperCase()}
                 </span>
               )}
-              <h1
-                data-tenant-slug={slug}
-                className="min-w-0 font-display text-2xl leading-tight text-ink [text-wrap:balance]"
-              >
-                {tenantName}
-              </h1>
             </div>
+
+            <h1
+              data-tenant-slug={slug}
+              className="font-display text-2xl leading-tight text-ink [text-wrap:balance]"
+            >
+              {tenantName}
+            </h1>
 
             <dl className="mt-md flex flex-col gap-sm border-t border-hairline-soft pt-md">
               <div className="flex items-center gap-sm">
