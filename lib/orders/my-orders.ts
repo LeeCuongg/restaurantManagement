@@ -40,3 +40,17 @@ export function rememberOrder(slug: string, scope: string | null, id: string, at
     /* quota */
   }
 }
+
+/**
+ * Bỏ một đơn khỏi sổ. Gọi khi API trả 404 — đơn không còn trong DB (bị dọn dữ liệu, hết hạn
+ * lưu trữ…). Không dọn thì id rác nằm lại hết phiên và panel fetch 404 mỗi lần mở.
+ */
+export function forgetOrder(slug: string, scope: string | null, id: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    const next = listMyOrders(slug, scope).filter((o) => o.id !== id);
+    sessionStorage.setItem(myOrdersKey(slug, scope), JSON.stringify(next));
+  } catch {
+    /* quota */
+  }
+}

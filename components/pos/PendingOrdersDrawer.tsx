@@ -97,7 +97,12 @@ export function PendingOrdersDrawer({
                 {pending.map((o) => {
                   const total = o.items.reduce((s, it) => s + it.unit_price * it.qty, 0);
                   return (
-                    <li key={o.id} className="rounded-lg border border-hairline-soft p-md">
+                    // data-order-id: mốc để E2E neo đúng đơn cần duyệt (danh sách có nhiều đơn).
+                    <li
+                      key={o.id}
+                      data-order-id={o.id}
+                      className="rounded-lg border border-hairline-soft p-md"
+                    >
                       <div className="flex items-center justify-between">
                         <span className="font-semibold text-ink">Bàn {o.tableName}</span>
                         <span className="text-xs text-steel">{time(o.created_at)}</span>
