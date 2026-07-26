@@ -2,13 +2,22 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
-import { Bell, Plus, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Bell, Plus, ShoppingBag } from "lucide-react";
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import type { CustomerMenu, CustomerMenuItem } from "@/lib/orders/customer-menu";
 import type { CartLine } from "@/lib/orders/types";
 import { formatVnd } from "@/lib/orders/cart";
 import { cn } from "@/lib/utils";
+import { rememberOrder } from "@/lib/orders/my-orders";
+import {
+  EMPTY_CONTACT,
+  isContactComplete,
+  readContact,
+  writeContact,
+} from "@/lib/orders/guest-contact";
+import { GuestInfoModal } from "./GuestInfoModal";
 import { ModifierSheet, type PendingLine } from "./ModifierSheet";
 import { CartSheet } from "./CartSheet";
 import { CallStaffSheet } from "./CallStaffSheet";
@@ -51,6 +60,12 @@ export function MenuBrowser({
   const [badgePulse, setBadgePulse] = useState(0);
   // Gọi nhân viên (CALL-01): chỉ khi ăn tại bàn (có qrToken). Mở sheet để nhập yêu cầu kèm.
   const [callOpen, setCallOpen] = useState(false);
+  // Đã nạp xong giỏ/liên hệ từ sessionStorage chưa. PHẢI là state (không phải ref): effect lưu
+  // chạy cùng commit với effect nạp và còn thấy state cũ (rỗng) → nếu không chặn, nó ghi rỗng đè
+  // lên dữ liệu đã lưu (mất giỏ + mất tên đã nhập ở trang chào khi React remount effect).
+  const [hydrated, setHydrated] = useState(false);
+  // Mở lại modal tên/SĐT từ nút "Sửa" trong giỏ (giỏ không còn ô nhập lại).
+  const [infoEditOpen, setInfoEditOpen] = useState(false);
 
   // Online: đặt được không cần token bàn. QR: cần token hợp lệ (canOrder từ server).
   const canOrderEff = online || canOrder;
@@ -59,11 +74,9 @@ export function MenuBrowser({
     : qrToken
       ? `cart:${slug}:${qrToken}`
       : null;
-  const contactKey = online
-    ? `contact:${slug}:online`
-    : qrToken
-      ? `contact:${slug}:${qrToken}`
-      : null;
+  // Phạm vi lưu liên hệ/sổ đơn: bàn (qr_token) hoặc "online" (lib/orders/guest-contact).
+  const contactScope = online ? null : qrToken;
+  const hasContactStore = online || !!qrToken;
 
   const itemMap = useMemo(() => {
     const m = new Map<string, CustomerMenuItem>();
@@ -71,50 +84,44 @@ export function MenuBrowser({
     return m;
   }, [menu]);
 
-  // Nạp giỏ từ sessionStorage.
+  // Nạp giỏ + tên/SĐT khách từ sessionStorage (tên có thể đã nhập ở trang chào bàn).
   useEffect(() => {
-    if (!storageKey) return;
-    try {
-      const raw = sessionStorage.getItem(storageKey);
-      if (raw) setCart(JSON.parse(raw));
-    } catch {
-      /* bỏ qua giỏ hỏng */
+    if (storageKey) {
+      try {
+        const raw = sessionStorage.getItem(storageKey);
+        if (raw) setCart(JSON.parse(raw));
+      } catch {
+        /* bỏ qua giỏ hỏng */
+      }
     }
-  }, [storageKey]);
+    if (hasContactStore) {
+      const c = readContact(slug, contactScope);
+      setCustomerName(c.name);
+      setCustomerPhone(c.phone);
+    }
+    setHydrated(true);
+  }, [storageKey, hasContactStore, slug, contactScope]);
 
-  // Lưu giỏ khi đổi.
+  // Lưu giỏ khi đổi — chỉ sau khi đã nạp, tránh ghi rỗng đè lên giỏ đã lưu.
   useEffect(() => {
-    if (!storageKey) return;
+    if (!storageKey || !hydrated) return;
     try {
       sessionStorage.setItem(storageKey, JSON.stringify(cart));
     } catch {
       /* quota */
     }
-  }, [cart, storageKey]);
+  }, [cart, storageKey, hydrated]);
 
-  // Nạp + lưu tên/SĐT khách (prefill khi gọi thêm cùng bàn).
+  // Lưu tên/SĐT (prefill khi gọi thêm cùng bàn) — cũng chỉ sau khi đã nạp.
   useEffect(() => {
-    if (!contactKey) return;
-    try {
-      const raw = sessionStorage.getItem(contactKey);
-      if (raw) {
-        const c = JSON.parse(raw);
-        setCustomerName(typeof c.name === "string" ? c.name : "");
-        setCustomerPhone(typeof c.phone === "string" ? c.phone : "");
-      }
-    } catch {
-      /* bỏ qua */
-    }
-  }, [contactKey]);
+    if (!hasContactStore || !hydrated) return;
+    writeContact(slug, contactScope, { name: customerName, phone: customerPhone });
+  }, [customerName, customerPhone, hasContactStore, hydrated, slug, contactScope]);
 
-  useEffect(() => {
-    if (!contactKey) return;
-    try {
-      sessionStorage.setItem(contactKey, JSON.stringify({ name: customerName, phone: customerPhone }));
-    } catch {
-      /* quota */
-    }
-  }, [customerName, customerPhone, contactKey]);
+  // Bắt buộc tên trước khi gọi món tại bàn (ORDER-10; SĐT tùy chọn). Chặn cả khi khách vào
+  // thẳng /menu?t= bằng QR cũ (bỏ qua trang chào) — nếu không sẽ là lối lách.
+  const contactMissing =
+    !online && canOrder && hydrated && !isContactComplete({ name: customerName, phone: customerPhone });
 
   // Scroll-spy: chip danh mục = section cuối cùng đã cuộn qua vạch dưới header (đáng tin hơn
   // IntersectionObserver, cập nhật đúng cả khi cuộn về đầu).
@@ -222,8 +229,9 @@ export function MenuBrowser({
         setSubmitting(false);
         return;
       }
-      // Xóa giỏ + chuyển trang theo dõi.
+      // Xóa giỏ + ghi vào sổ đơn của máy (panel "Đơn của bạn") + chuyển trang theo dõi.
       if (storageKey) sessionStorage.removeItem(storageKey);
+      rememberOrder(slug, online ? null : qrToken, data.orderId, new Date().toISOString());
       setCart([]);
       router.push(online ? `/r/${slug}/order/${data.orderId}` : `/r/${slug}/order/${data.orderId}?t=${qrToken}`);
     } catch {
@@ -237,6 +245,15 @@ export function MenuBrowser({
       <div className="mx-auto min-h-screen max-w-md bg-canvas pb-24">
         {/* Header dính */}
         <header className="sticky top-0 z-30 flex items-center gap-sm border-b border-hairline-soft bg-canvas/95 px-lg py-sm backdrop-blur">
+          {!online && (
+            <Link
+              href={qrToken ? `/r/${slug}?t=${qrToken}` : `/r/${slug}`}
+              aria-label="Quay lại trang chào"
+              className="-ml-xs grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          )}
           {menu.tenant.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -462,10 +479,26 @@ export function MenuBrowser({
           onChannelChange={setChannel}
           address={address}
           onAddressChange={setAddress}
+          onEditContact={online ? undefined : () => setInfoEditOpen(true)}
         />
 
         {!online && canOrder && qrToken && (
-          <CallStaffSheet slug={slug} qrToken={qrToken} open={callOpen} onOpenChange={setCallOpen} />
+          <>
+            <CallStaffSheet slug={slug} qrToken={qrToken} open={callOpen} onOpenChange={setCallOpen} />
+            <GuestInfoModal
+              open={contactMissing || infoEditOpen}
+              mode={contactMissing ? "required" : "edit"}
+              initial={{ name: customerName, phone: customerPhone }}
+              tableName={tableName}
+              onSubmit={(c) => {
+                setCustomerName(c.name);
+                setCustomerPhone(c.phone);
+                writeContact(slug, contactScope, c);
+                setInfoEditOpen(false);
+              }}
+              onCancel={() => setInfoEditOpen(false)}
+            />
+          </>
         )}
       </div>
     </MotionConfig>

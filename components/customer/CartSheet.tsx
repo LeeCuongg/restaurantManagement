@@ -1,12 +1,13 @@
 "use client";
 
 import { Drawer } from "vaul";
-import { Trash2, Loader2 } from "lucide-react";
+import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { CustomerMenuItem } from "@/lib/orders/customer-menu";
 import type { CartLine } from "@/lib/orders/types";
 import type { OnlineChannel } from "@/lib/orders/online";
 import { formatVnd, unitPrice } from "@/lib/orders/cart";
+import { isPhoneAcceptable, isValidName, isValidPhone } from "@/lib/orders/guest-contact";
 import { cn } from "@/lib/utils";
 import { QtyStepper } from "./QtyStepper";
 
@@ -36,6 +37,7 @@ export function CartSheet({
   onChannelChange,
   address = "",
   onAddressChange,
+  onEditContact,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -59,11 +61,14 @@ export function CartSheet({
   onChannelChange?: (c: OnlineChannel) => void;
   address?: string;
   onAddressChange?: (v: string) => void;
+  /** Dine-in: mở lại modal tên/SĐT để sửa (không nhập lại trong giỏ). */
+  onEditContact?: () => void;
 }) {
-  // Điều kiện gửi: luôn cần tên; online cần SĐT; giao cần địa chỉ.
+  // Điều kiện gửi: luôn cần tên; SĐT chỉ bắt buộc với đơn online (dine-in tùy chọn nhưng nhập
+  // thì phải đúng định dạng); giao cần địa chỉ.
   const contactReady =
-    !!customerName.trim() &&
-    (!online || !!customerPhone.trim()) &&
+    isValidName(customerName) &&
+    (online ? isValidPhone(customerPhone) : isPhoneAcceptable(customerPhone)) &&
     (!online || channel !== "delivery" || !!address.trim());
   const total = lines.reduce((sum, l) => {
     const item = itemMap.get(l.itemId);
@@ -79,7 +84,11 @@ export function CartSheet({
   };
 
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+    // repositionInputs={false}: vaul tự set height/bottom bằng px theo visualViewport, trên
+    // iOS Safari giá trị này vượt chiều cao bàn phím → sheet trôi lên, phần trên ra ngoài
+    // màn hình và không chạm được ô nhập. Để trình duyệt tự cuộn ô vào tầm nhìn
+    // (kèm interactiveWidget=resizes-content ở app/layout.tsx).
+    <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-ink/40" />
         <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[88vh] max-w-md flex-col rounded-t-xl bg-canvas shadow-modal outline-none">
@@ -173,30 +182,61 @@ export function CartSheet({
 
             {lines.length > 0 && (
               <div className="mt-md">
-                <label htmlFor="cust-name" className="text-sm font-medium text-ink">
-                  Tên của bạn <span className="text-status-late">*</span>
-                </label>
-                <input
-                  id="cust-name"
-                  value={customerName}
-                  onChange={(e) => onCustomerNameChange(e.target.value)}
-                  maxLength={50}
-                  placeholder="VD: Anh Nam"
-                  className="mt-xs h-11 w-full rounded-md border border-hairline px-md text-base text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm"
-                />
-                <label htmlFor="cust-phone" className="mt-md block text-sm font-medium text-ink">
-                  Số điện thoại {online && <span className="text-status-late">*</span>}
-                </label>
-                <input
-                  id="cust-phone"
-                  type="tel"
-                  inputMode="tel"
-                  value={customerPhone}
-                  onChange={(e) => onCustomerPhoneChange(e.target.value)}
-                  maxLength={20}
-                  placeholder="VD: 0901 234 567"
-                  className="mt-xs h-11 w-full rounded-md border border-hairline px-md text-base text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm"
-                />
+                {/* Ăn tại bàn: tên/SĐT đã lấy ở modal khi vào bàn (ORDER-10) → KHÔNG bắt nhập
+                    lại, chỉ hiện lại kèm nút sửa. Đơn online không có bước đó nên vẫn nhập. */}
+                {online ? (
+                  <>
+                    <label htmlFor="cust-name" className="text-sm font-medium text-ink">
+                      Tên của bạn <span className="text-status-late">*</span>
+                    </label>
+                    <input
+                      id="cust-name"
+                      value={customerName}
+                      onChange={(e) => onCustomerNameChange(e.target.value)}
+                      maxLength={50}
+                      placeholder="VD: Anh Nam"
+                      className="mt-xs h-11 w-full rounded-md border border-hairline px-md text-base text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm"
+                    />
+                    <label htmlFor="cust-phone" className="mt-md block text-sm font-medium text-ink">
+                      Số điện thoại <span className="text-status-late">*</span>
+                    </label>
+                    <input
+                      id="cust-phone"
+                      type="tel"
+                      inputMode="tel"
+                      value={customerPhone}
+                      onChange={(e) => onCustomerPhoneChange(e.target.value)}
+                      maxLength={20}
+                      placeholder="VD: 0901 234 567"
+                      className="mt-xs h-11 w-full rounded-md border border-hairline px-md text-base text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm"
+                    />
+                  </>
+                ) : (
+                  <div className="flex items-center justify-between gap-sm rounded-md bg-surface px-md py-sm">
+                    <div className="min-w-0">
+                      <p className="text-xs text-steel">Khách</p>
+                      <p className="truncate text-sm font-medium text-ink">
+                        {customerName || "Chưa có tên"}
+                        {customerPhone && (
+                          <span className="font-normal tabular-nums text-steel">
+                            {" · "}
+                            {customerPhone}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {onEditContact && (
+                      <button
+                        type="button"
+                        onClick={onEditContact}
+                        className="inline-flex h-9 shrink-0 items-center gap-xxs rounded-md px-sm text-sm font-medium text-primary hover:bg-cream-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Sửa
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {online && channel === "delivery" && (
                   <>

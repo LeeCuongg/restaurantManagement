@@ -81,8 +81,9 @@ export function KdsBoard({
           <p className="mt-hero text-center text-steel">Chưa có vé nào.</p>
         ) : (
           <ul className="grid grid-cols-1 gap-md sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {/* data-order-id: mốc để E2E neo đúng vé của đơn đang test (DB dev còn vé cũ). */}
             {initial.map((t) => (
-              <li key={t.orderId}>
+              <li key={t.orderId} data-order-id={t.orderId}>
                 <KdsTicket ticket={t} delta={deltas[t.orderId]} />
               </li>
             ))}

@@ -87,7 +87,8 @@ export function CancelItemDialog({
   if (!item) return null;
 
   return (
-    <Drawer.Root open={open} onOpenChange={close}>
+    // repositionInputs={false}: xem chú thích ở CartSheet (ô "lý do hủy" trên tablet).
+    <Drawer.Root open={open} onOpenChange={close} repositionInputs={false}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-[60] bg-ink/40" />
         <Drawer.Content className="fixed inset-x-0 bottom-0 z-[61] mx-auto flex max-h-[92vh] max-w-md flex-col rounded-t-xl bg-canvas shadow-modal outline-none">

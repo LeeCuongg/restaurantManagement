@@ -10,8 +10,9 @@
   }
 
   body {
-    background-color: var(--color-canvas);
-    color: var(--color-ink);
+    /* Token màu lưu kênh RGB rời → dùng trong CSS thuần phải bọc rgb() (xem tokens.css). */
+    background-color: rgb(var(--color-canvas));
+    color: rgb(var(--color-ink));
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -20,7 +21,7 @@
   *,
   ::before,
   ::after {
-    border-color: var(--color-hairline);
+    border-color: rgb(var(--color-hairline));
   }
 
   /* Viền ảnh mảnh để cạnh ảnh không hòa vào nền (make-interfaces-feel-better). */

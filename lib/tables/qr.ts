@@ -1,20 +1,23 @@
 import QRCode from "qrcode";
 
 /**
- * Tiện ích QR bàn. Mã hoá URL TUYỆT ĐỐI tới menu khách theo qr_token.
+ * Tiện ích QR bàn. Mã hoá URL TUYỆT ĐỐI tới trang chào bàn theo qr_token.
  * host + proto lấy từ header request lúc render (chạy đúng local/dev/prod) —
  * không phụ thuộc env domain. 00-TongQuan P2 (Mặc định kỹ thuật · QR).
  */
 
-/** Dựng URL tuyệt đối: {proto}://{host}/r/{slug}/menu?t={token}. */
-export function menuUrlForToken(
+/**
+ * Dựng URL tuyệt đối: {proto}://{host}/r/{slug}?t={token} — trang chào bàn (A0), từ đó khách
+ * mới vào thực đơn. QR cũ trỏ thẳng /menu?t= vẫn chạy (bỏ qua trang chào).
+ */
+export function tableUrlForToken(
   host: string,
   slug: string,
   token: string,
   proto = "https"
 ): string {
   const scheme = host.startsWith("localhost") || host.startsWith("127.") ? "http" : proto;
-  return `${scheme}://${host}/r/${slug}/menu?t=${token}`;
+  return `${scheme}://${host}/r/${slug}?t=${token}`;
 }
 
 /** Chuỗi SVG QR (in nét, không rasterize). */

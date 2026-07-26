@@ -247,7 +247,8 @@ export function ModifierSheet({
 
   // ---- Khách/mobile: bottom sheet ----
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+    // repositionInputs={false}: xem chú thích ở CartSheet (ô "ghi chú món" cũng bị lỗi này).
+    <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-40 bg-ink/40" />
         <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[88vh] max-w-md flex-col rounded-t-xl bg-canvas shadow-modal outline-none">

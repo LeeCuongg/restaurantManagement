@@ -13,6 +13,7 @@
 | F5 | **Màu trạng thái (mở rộng)** | Thêm token semantic status (success/warning/danger + trạng thái KDS/bàn) — Mistral không có sẵn (Known Gap) | Cần cho KDS (queued/preparing/ready/late) & sơ đồ bàn; giữ tông ấm, dùng tiết chế |
 | F6 | **UI kit** | shadcn/ui (Radix + Tailwind) map sang token Mistral qua CSS vars; tiếng Việt | Đồng bộ với stack; a11y sẵn |
 | F7 | **Bề mặt in** | Route in riêng, **không theme** — CSS `@media print` khổ 58/80mm, JetBrains Mono, đen trắng | Tách khỏi theme app; đúng máy in nhiệt |
+| F8 | **Định dạng token màu** (chốt 26/07/2026) | Token màu lưu **kênh RGB rời** (`--color-primary: 250 82 15`), `tailwind.config.ts` bọc `rgb(var(--x) / <alpha-value>)` | Trước đó token là hex trong `var()` → Tailwind **lặng lẽ bỏ hẳn** mọi utility có `/độ-mờ`; 55 chỗ trong dự án mất tác dụng: overlay dialog không tối, `ring-primary/20` (viền focus) vô hình, header dính `bg-canvas/95` để nội dung cuộn xuyên qua | Dùng token trong CSS thuần / inline style PHẢI bọc `rgb(var(--x))`. Đã áp cho `globals.css`, `--table-*`, `--gradient-sunset`, `components/design/swatch.tsx` |
 
 ## Nguyên tắc áp dụng
 1. **1 design system, 4 profile bề mặt**: Customer (editorial), POS (dày đặc/tablet), KDS (dày đặc/màn lớn), Admin+Super (product/desktop). Cùng token, khác mật độ & thành phần trang trí.
@@ -20,3 +21,4 @@
 3. **Touch target ≥ 44px** ở mọi bề mặt chạm (khách mobile, POS, KDS).
 4. **Logo tenant** hiện ở: header app khách, đầu hóa đơn/phiếu bếp, header admin. Không đổi màu chrome.
 5. **Không thêm màu accent** ngoài palette cam/vàng/kem + bộ status mở rộng (F5).
+6. **Thêm token màu mới** phải viết dạng kênh RGB rời (F8), không hex — nếu không, mọi class `/độ-mờ` dùng token đó sẽ bị Tailwind bỏ mà không báo lỗi.
