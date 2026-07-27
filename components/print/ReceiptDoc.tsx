@@ -98,13 +98,12 @@ export function ReceiptDoc({
             {receipt.lines.map((it, idx) => (
               <div key={idx} className="rc-item">
                 <div className="rc-item-head">
+                  <span className="rc-qty">{it.qty}</span>
                   <span className="rc-item-name">{it.name}</span>
                   <span className="rc-amt">{formatVnd(it.amount)}</span>
                 </div>
-                <div className="rc-item-sub">
-                  {it.qty} × {formatVnd(it.unitPrice)}
-                  {it.modifiers.length > 0 ? ` · ${it.modifiers.join(", ")}` : ""}
-                </div>
+                {it.modifiers.length > 0 && <div className="rc-item-sub">{it.modifiers.join(", ")}</div>}
+                {it.note && <div className="rc-item-sub rc-note">{it.note}</div>}
               </div>
             ))}
           </div>
@@ -160,10 +159,14 @@ export function ReceiptDoc({
         .rc-row { display: flex; justify-content: space-between; gap: 8px; }
         .rc-items { margin: 2px 0; }
         .rc-item { margin-bottom: ${Math.round(s.base / 2)}px; }
-        .rc-item-head { display: flex; justify-content: space-between; gap: 8px; font-weight: 700; font-size: ${s.name}px; }
-        .rc-item-name { word-break: break-word; }
-        .rc-amt { white-space: nowrap; }
-        .rc-item-sub { color: #222; padding-left: 2px; }
+        .rc-item-head { display: flex; gap: 6px; font-weight: 700; font-size: ${s.name}px; }
+        /* Cột SL cố định 2ch: mọi dòng thẳng cột, tên món tự dãn, tiền bám mép phải. */
+        .rc-qty { flex: 0 0 2ch; text-align: right; }
+        .rc-item-name { flex: 1 1 auto; word-break: break-word; }
+        .rc-amt { flex: 0 0 auto; white-space: nowrap; margin-left: auto; }
+        /* Dòng phụ thụt vào ngang cột tên (bề rộng cột SL + khoảng cách). */
+        .rc-item-sub { color: #222; padding-left: calc(2ch + 6px); }
+        .rc-note { font-weight: 700; }
         .rc-child { text-align: center; font-weight: 700; margin: 6px 0; }
         .rc-total-row { display: flex; justify-content: space-between; font-weight: 800; font-size: ${s.total}px; margin-top: 4px; }
         .rc-foot { margin-top: 4px; }

@@ -48,8 +48,10 @@ export function KdsTicket({
             </span>
           )}
           {ticket.channel === "dine_in" ? (
-            <span className="font-display text-2xl leading-none text-ink">Bàn {ticket.tableName}</span>
+            <span className="font-display text-2xl leading-none text-ink">{ticket.place}</span>
           ) : (
+            // Nhãn do server tính (place-label.ts) — quán chế độ quầy hiện "Tại quán", không phải
+            // "Mang về"; chỉ đơn khách tự đặt online mới là mang về/giao.
             <span
               className={cn(
                 "rounded-md px-sm py-xxs font-display text-xl leading-none",
@@ -58,7 +60,7 @@ export function KdsTicket({
                   : "bg-status-ready-bg text-status-ready"
               )}
             >
-              {ticket.channel === "takeaway" ? "Mang về" : "Giao"}
+              {ticket.place}
             </span>
           )}
         </div>

@@ -4,11 +4,15 @@ import { useState } from "react";
 import { X, Loader2, Printer, Banknote, Landmark, Check } from "lucide-react";
 import type { BillView, PaymentMethod } from "@/lib/billing/types";
 import { formatVnd } from "@/lib/orders/cart";
+import { MoneyInput } from "@/components/ui/money-input";
 
 /**
  * PaymentDialog (04-04, BILL-04) — thu tiền + đóng bill. Tiền mặt: nhập khách đưa + nút mệnh giá
  * nhanh → tiền thối. Chuyển khoản: xác nhận đã nhận đủ (QD D-P4-1, không QR). Sau đóng → in hóa
  * đơn + Xong. Center modal, bám QD-006.
+ *
+ * `onPrint` in CÙNG một route hóa đơn ở cả hai thời điểm — trước khi thu ra PHIẾU TẠM TÍNH cho
+ * khách soát, sau khi thu ra HÓA ĐƠN có dòng tiền khách đưa/trả lại.
  */
 export function PaymentDialog({
   bill,
@@ -85,13 +89,14 @@ export function PaymentDialog({
 
               {method === "cash" ? (
                 <div className="mt-md">
-                  <label className="text-sm font-medium text-ink">Khách đưa</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={received || ""}
-                    onChange={(e) => setReceived(Math.max(0, Number(e.target.value) || 0))}
-                    className="mt-xs h-11 w-full rounded-md border border-hairline px-md text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  <label className="text-sm font-medium text-ink" htmlFor="pay-received">
+                    Khách đưa
+                  </label>
+                  <MoneyInput
+                    id="pay-received"
+                    value={received}
+                    onChange={setReceived}
+                    className="mt-xs"
                   />
                   <div className="mt-sm flex flex-wrap gap-xs">
                     {quicks.map((q) => (
@@ -138,14 +143,25 @@ export function PaymentDialog({
               </button>
             </div>
           ) : (
-            <button
-              type="button"
-              disabled={busy || (method === "cash" && received < total)}
-              onClick={confirm}
-              className="flex h-12 w-full items-center justify-center rounded-md bg-primary text-base font-medium text-primary-fg hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:bg-hairline disabled:text-muted"
-            >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận thu · đóng bill"}
-            </button>
+            // Tạm tính đưa khách xem TRƯỚC khi thu — bill chưa thanh toán nên route in ra
+            // "PHIẾU TẠM TÍNH" (ReceiptDoc tự đổi tiêu đề khi bill chưa có payment).
+            <div className="flex gap-sm">
+              <button
+                type="button"
+                onClick={onPrint}
+                className="inline-flex h-12 flex-1 items-center justify-center gap-xxs rounded-md border border-hairline-strong text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <Printer className="h-4 w-4" /> In tạm tính
+              </button>
+              <button
+                type="button"
+                disabled={busy || (method === "cash" && received < total)}
+                onClick={confirm}
+                className="flex h-12 flex-[2] items-center justify-center rounded-md bg-primary text-base font-medium text-primary-fg hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:bg-hairline disabled:text-muted"
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Xác nhận thu · đóng bill"}
+              </button>
+            </div>
           )}
         </div>
       </div>

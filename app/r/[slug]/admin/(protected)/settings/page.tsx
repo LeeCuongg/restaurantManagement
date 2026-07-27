@@ -82,10 +82,11 @@ export default async function SettingsPage({
                 className="rounded-md border border-hairline-strong bg-canvas px-md py-sm text-sm text-ink focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <option value="table">Theo bàn — có sơ đồ bàn, đặt bàn, QR bàn</option>
-                <option value="counter">Bán tại quầy — không dùng bàn (gọi món & thu tiền tại quầy)</option>
+                <option value="counter">Gọi món tại quầy — không gắn bàn (gọi món &amp; thu tiền tại quầy)</option>
               </select>
               <span className="text-xs text-steel">
-                Quán không dùng bàn (mang đi, cà phê, kiosk) chọn “Bán tại quầy”: POS mở thẳng màn bán quầy, ẩn sơ đồ bàn.
+                Quán không gắn bàn cho khách (khách tự chọn chỗ ngồi, cà phê, kiosk, mang đi) chọn “Gọi món tại quầy”:
+                POS mở thẳng màn gọi món, ẩn sơ đồ bàn.
               </span>
             </label>
 

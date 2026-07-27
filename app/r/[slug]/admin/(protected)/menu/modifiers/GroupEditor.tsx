@@ -4,6 +4,7 @@ import { useOptimistic, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
+import { MoneyField } from "@/components/ui/money-input";
 import { Card } from "@/components/ui/card";
 import type { ModifierGroupWithOptions } from "@/lib/menu/types";
 import {
@@ -90,10 +91,9 @@ export function GroupEditor({
               <input type="hidden" name="slug" value={slug} />
               <input type="hidden" name="id" value={o.id} />
               <Input name="name" defaultValue={o.name} required className="h-9 w-36" />
-              <Input
+              <MoneyField
                 name="price_delta"
-                inputMode="numeric"
-                defaultValue={String(o.price_delta)}
+                defaultValue={o.price_delta}
                 className="h-9 w-24"
                 aria-label="Phụ thu (VND)"
               />
@@ -129,7 +129,7 @@ export function GroupEditor({
           </label>
           <label className="flex flex-col gap-xxs text-sm text-slate">
             Phụ thu (VND)
-            <Input name="price_delta" inputMode="numeric" placeholder="10000" className="h-9 w-24" />
+            <MoneyField name="price_delta" placeholder="10.000" className="h-9 w-24" />
           </label>
           <SubmitButton size="sm" pendingLabel="…">Thêm</SubmitButton>
         </form>

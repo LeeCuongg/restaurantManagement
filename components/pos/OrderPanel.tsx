@@ -159,7 +159,7 @@ export function OrderPanel({
                       </p>
                     )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-xs">
+                  <div className="flex shrink-0 items-start gap-xs">
                     <TicketPrintButtons
                       slug={slug}
                       orderId={order.id}
@@ -249,10 +249,10 @@ export function OrderPanel({
                       <button
                         type="button"
                         onClick={() => onCartRemove(l.lineId)}
-                        aria-label="Bỏ khỏi giỏ"
+                        aria-label="Xoá khỏi giỏ"
                         className="text-xs text-status-late hover:underline"
                       >
-                        Bỏ
+                        Xoá
                       </button>
                     </div>
                   </li>

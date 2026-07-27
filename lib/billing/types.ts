@@ -55,6 +55,7 @@ export type BillLineView = {
   unitPrice: number;
   amount: number;
   modifiers: string[];
+  note: string | null; // ghi chú khách dặn — in trên phiếu tạm tính/hóa đơn để khách đối chiếu
 };
 
 /** Kết quả tính tổng (integer VND). */

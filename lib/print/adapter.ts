@@ -1,8 +1,9 @@
 /**
  * Lớp in trừu tượng (D1, §7). POS/KDS CHỈ gọi PrintAdapter — đổi cầu in sau không sửa nghiệp vụ.
  * V1: BrowserPrintAdapter (mở route in, route tự window.print + ghi log). V1.x: BridgePrintAdapter
- * (ghi print_jobs pending để cầu in ESC/POS poll) — CHỪA CHỖ, chưa implement.
+ * (ghi print_jobs pending cho cầu in ESC/POS cục bộ poll) — bật bằng NEXT_PUBLIC_PRINT_MODE=bridge.
  */
+import { queueKitchenTicketPrint } from "@/app/r/[slug]/print/kitchen/actions";
 
 export type KitchenTicketView = {
   orderId: string;
@@ -31,6 +32,17 @@ export type CustomerTicketView = {
   ticketNo: string;
   items: { name: string; qty: number; modifiers: string[]; note: string | null; unitPrice: number }[];
   total: number;
+};
+
+/**
+ * Trạng thái in phiếu bếp của MỘT đơn — lấy từ print_jobs mới nhất, để POS hiện thường trực
+ * (nhân viên không phải nhớ đã in chưa; toast bay mất là bỏ sót).
+ * none = chưa in lần nào · pending = đã gửi, chờ cầu in · printed/failed = kết quả thật từ máy in.
+ */
+export type KitchenPrintState = {
+  status: "none" | "pending" | "printed" | "failed";
+  /** printed_at nếu đã in, ngược lại created_at. */
+  at: string | null;
 };
 
 /** Khổ phiếu bếp: 58/80mm (máy in nhiệt) hoặc A5 (máy in thường, chữ to đọc xa). */
@@ -95,13 +107,43 @@ class BrowserPrintAdapter implements PrintAdapter {
   }
 }
 
-// V1.x — BridgePrintAdapter: ghi print_jobs status=pending để cầu in ESC/POS poll. CHƯA implement.
-// class BridgePrintAdapter implements PrintAdapter { ... }
+/**
+ * V1.x — PHIẾU BẾP đi qua cầu in ESC/POS: ghi print_jobs status=pending, cầu in cục bộ tại quán
+ * (scripts/print-bridge.mjs) poll rồi in thẳng ra máy in bếp LAN — không hộp thoại, không cần
+ * máy tính ở bếp. Hóa đơn/phiếu khách VẪN in trình duyệt (máy in ở quầy, ngay trước mặt thu ngân).
+ * Hàng đợi lỗi (mất mạng/chưa đăng nhập) → in trình duyệt để không mất phiếu.
+ */
+class BridgePrintAdapter implements PrintAdapter {
+  private browser = new BrowserPrintAdapter();
+
+  printKitchenTicket(args: PrintKitchenArgs): void {
+    const fallback = () => this.browser.printKitchenTicket(args);
+    queueKitchenTicketPrint(args.slug, args.orderId)
+      .then((res) => {
+        if (!res?.ok) fallback();
+      })
+      .catch(fallback);
+  }
+  printCustomerTicket(args: PrintCustomerArgs): void {
+    this.browser.printCustomerTicket(args);
+  }
+  printReceipt(args: PrintReceiptArgs): void {
+    this.browser.printReceipt(args);
+  }
+}
 
 let instance: PrintAdapter | null = null;
 
-/** Adapter mặc định V1. Đổi sang Bridge ở V1.x không cần sửa nơi gọi. */
+/**
+ * Adapter theo cấu hình: NEXT_PUBLIC_PRINT_MODE=bridge → cầu in ESC/POS; mặc định = trình duyệt.
+ * Nơi gọi (POS/KDS) không đổi.
+ */
 export function getPrintAdapter(): PrintAdapter {
-  if (!instance) instance = new BrowserPrintAdapter();
+  if (!instance) {
+    instance =
+      process.env.NEXT_PUBLIC_PRINT_MODE === "bridge"
+        ? new BridgePrintAdapter()
+        : new BrowserPrintAdapter();
+  }
   return instance;
 }

@@ -5,7 +5,9 @@
  */
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { OrderStatus, OrderItemStatus } from "./types";
+import { parseSettings } from "@/lib/tenant/settings";
+import { orderPlaceLabel } from "./place-label";
+import type { OrderStatus, OrderItemStatus, OrderChannel, OrderSource } from "./types";
 
 export type KdsItem = {
   id: string;
@@ -20,23 +22,29 @@ export type KdsTicket = {
   orderId: string;
   kitchenNo: number | null;
   status: OrderStatus;
-  channel: "dine_in" | "takeaway" | "delivery";
+  channel: OrderChannel;
   confirmedAt: string | null;
   tableName: string;
+  /** Nhãn chỗ đã tính sẵn ("Bàn B1" / "Tại quán" / "Mang về" / "Giao tận nơi") — khớp phiếu in. */
+  place: string;
   items: KdsItem[];
 };
 
 export async function getKdsTickets(tenantId: string): Promise<KdsTicket[]> {
   const supabase = await createClient();
 
-  const { data: orders } = await supabase
-    .from("orders")
-    .select(
-      "id, kitchen_no, status, channel, confirmed_at, table_sessions(tables(name)), order_items(id, name_snapshot, qty, note, status, created_at, order_item_modifiers(name_snapshot))"
-    )
-    .eq("tenant_id", tenantId)
-    .in("status", ["confirmed", "preparing", "ready"])
-    .order("confirmed_at", { ascending: true });
+  const [{ data: orders }, { data: tenant }] = await Promise.all([
+    supabase
+      .from("orders")
+      .select(
+        "id, kitchen_no, status, channel, source, confirmed_at, table_sessions(tables(name)), order_items(id, name_snapshot, qty, note, status, created_at, order_item_modifiers(name_snapshot))"
+      )
+      .eq("tenant_id", tenantId)
+      .in("status", ["confirmed", "preparing", "ready"])
+      .order("confirmed_at", { ascending: true }),
+    supabase.from("tenants").select("settings").eq("id", tenantId).maybeSingle(),
+  ]);
+  const serviceMode = parseSettings(tenant?.settings).service_mode;
 
   const tickets: KdsTicket[] = [];
   for (const o of orders ?? []) {
@@ -65,9 +73,15 @@ export async function getKdsTickets(tenantId: string): Promise<KdsTicket[]> {
       orderId: o.id,
       kitchenNo: (o.kitchen_no as number) ?? null,
       status: o.status as OrderStatus,
-      channel: (o.channel as KdsTicket["channel"]) ?? "dine_in",
+      channel: (o.channel as OrderChannel) ?? "dine_in",
       confirmedAt: o.confirmed_at,
       tableName,
+      place: orderPlaceLabel({
+        serviceMode,
+        tableName: ts?.tables?.name ?? null,
+        channel: (o.channel as OrderChannel) ?? "dine_in",
+        source: o.source as OrderSource,
+      }),
       items,
     });
   }
