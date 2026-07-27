@@ -5,6 +5,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { parseSettings } from "@/lib/tenant/settings";
+import { orderPlaceLabel } from "@/lib/orders/place-label";
+import type { OrderChannel, OrderSource } from "@/lib/orders/types";
 import { getBillView } from "./bill";
 import type { PaymentMethod } from "./types";
 
@@ -17,7 +19,14 @@ export type ReceiptView = {
   dateTime: string | null;
   isChild: boolean;
   childNote: string | null;
-  lines: { name: string; qty: number; unitPrice: number; amount: number; modifiers: string[] }[];
+  lines: {
+    name: string;
+    qty: number;
+    unitPrice: number;
+    amount: number;
+    modifiers: string[];
+    note: string | null;
+  }[];
   subtotal: number;
   discountAmount: number;
   serviceChargePct: number;
@@ -72,12 +81,16 @@ export async function buildReceiptView(billId: string, tenantId: string): Promis
   if (billMeta?.online_order_id) {
     const { data: order } = await client
       .from("orders")
-      .select("channel, customer_contact")
+      .select("channel, source, customer_contact")
       .eq("id", billMeta.online_order_id as string)
       .eq("tenant_id", tenantId)
       .maybeSingle();
     const ch = order?.channel as string | undefined;
-    tableLabel = ch === "delivery" ? "Giao tận nơi" : "Mang về";
+    tableLabel = orderPlaceLabel({
+      serviceMode: parseSettings(tenantSettings?.settings).service_mode,
+      channel: (ch as OrderChannel) ?? "takeaway",
+      source: order?.source as OrderSource,
+    });
     const c = (order?.customer_contact ?? {}) as { name?: string; phone?: string; address?: string };
     const parts = [c.name, c.phone].filter(Boolean) as string[];
     if (ch === "delivery" && c.address) parts.push(c.address);
@@ -104,6 +117,7 @@ export async function buildReceiptView(billId: string, tenantId: string): Promis
       unitPrice: l.unitPrice,
       amount: l.amount,
       modifiers: l.modifiers,
+      note: l.note,
     })),
     subtotal: bill.totals.subtotal,
     discountAmount: bill.totals.discountAmount,

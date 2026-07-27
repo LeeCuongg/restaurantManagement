@@ -74,6 +74,22 @@ export default async function SettingsPage({
           <CardTitle>Cấu hình vận hành</CardTitle>
           <form action={updateSettings} className="mt-md flex flex-col gap-md">
             <input type="hidden" name="slug" value={slug} />
+            <label className="flex max-w-sm flex-col gap-xxs text-sm text-slate">
+              Chế độ phục vụ
+              <select
+                name="service_mode"
+                defaultValue={settings.service_mode}
+                className="rounded-md border border-hairline-strong bg-canvas px-md py-sm text-sm text-ink focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              >
+                <option value="table">Theo bàn — có sơ đồ bàn, đặt bàn, QR bàn</option>
+                <option value="counter">Gọi món tại quầy — không gắn bàn (gọi món &amp; thu tiền tại quầy)</option>
+              </select>
+              <span className="text-xs text-steel">
+                Quán không gắn bàn cho khách (khách tự chọn chỗ ngồi, cà phê, kiosk, mang đi) chọn “Gọi món tại quầy”:
+                POS mở thẳng màn gọi món, ẩn sơ đồ bàn.
+              </span>
+            </label>
+
             <div className="grid gap-md sm:grid-cols-2">
               <label className="flex flex-col gap-xxs text-sm text-slate">
                 Phí phục vụ (%)

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
+import { MoneyField } from "@/components/ui/money-input";
 import { ImageUpload } from "@/components/menu/ImageUpload";
 import { createItem, updateItem } from "./actions";
 import type { Category, Item } from "@/lib/menu/types";
@@ -117,12 +118,11 @@ export function ItemDialog({
 
               <label className="flex flex-col gap-xxs text-sm text-slate">
                 Giá (VND)
-                <Input
+                <MoneyField
                   name="base_price"
-                  inputMode="numeric"
                   required
-                  defaultValue={item ? String(item.base_price) : ""}
-                  placeholder="45000"
+                  defaultValue={item ? item.base_price : ""}
+                  placeholder="45.000"
                 />
               </label>
 

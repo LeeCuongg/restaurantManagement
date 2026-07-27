@@ -4,6 +4,9 @@
  * parseSettings luôn trả object đủ field (merge default) + clamp pct trong [0,100].
  */
 
+/** Chế độ phục vụ: 'table' = theo bàn (sơ đồ bàn), 'counter' = bán tại quầy (không bàn). */
+export type ServiceMode = "table" | "counter";
+
 export type TenantSettings = {
   currency: "VND";
   service_charge_pct: number; // [0,100]
@@ -11,6 +14,7 @@ export type TenantSettings = {
   allow_discount: boolean;
   qr_order_auto_send: boolean;
   receipt_footer: string;
+  service_mode: ServiceMode;
   onboarding_done: boolean;
 };
 
@@ -21,6 +25,7 @@ export const DEFAULT_SETTINGS: TenantSettings = {
   allow_discount: true,
   qr_order_auto_send: false,
   receipt_footer: "",
+  service_mode: "table",
   onboarding_done: false,
 };
 
@@ -51,6 +56,7 @@ export function parseSettings(raw: unknown): TenantSettings {
       typeof o.receipt_footer === "string"
         ? o.receipt_footer.slice(0, 500)
         : DEFAULT_SETTINGS.receipt_footer,
+    service_mode: o.service_mode === "counter" ? "counter" : "table",
     onboarding_done: asBool(o.onboarding_done, DEFAULT_SETTINGS.onboarding_done),
   };
 }

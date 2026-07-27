@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Loader2, ShoppingBag, Printer, Receipt } from "lucide-react";
+import { X, Loader2, ShoppingBag, Receipt } from "lucide-react";
 import type { CustomerMenuItem } from "@/lib/orders/customer-menu";
 import type { PosTable, PosSession } from "@/lib/orders/pos";
 import type { CartLine, OrderItemStatus } from "@/lib/orders/types";
 import { formatVnd, unitPrice } from "@/lib/orders/cart";
-import { getPrintAdapter } from "@/lib/print/adapter";
 import { closeSession } from "@/app/r/[slug]/pos/actions";
 import { QtyStepper } from "@/components/customer/QtyStepper";
 import { ModifierSheet, type PendingLine } from "@/components/customer/ModifierSheet";
 import { CancelItemDialog, type CancelStaff } from "./CancelItemDialog";
+import { TicketPrintButtons } from "./TicketPrintButtons";
 
 /**
  * OrderPanel (POS cột giữa) — đơn của bàn đang chọn: món đã gọi (phục vụ/hủy) + giỏ "đang thêm"
@@ -159,21 +159,12 @@ export function OrderPanel({
                       </p>
                     )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-xs">
-                    <button
-                      type="button"
-                      onClick={() => getPrintAdapter().printKitchenTicket({ slug, orderId: order.id })}
-                      className="inline-flex h-8 items-center gap-xxs rounded-md border border-hairline-strong px-sm text-xs font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                    >
-                      <Printer className="h-3.5 w-3.5" /> Phiếu bếp
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => getPrintAdapter().printCustomerTicket({ slug, orderId: order.id })}
-                      className="inline-flex h-8 items-center gap-xxs rounded-md border border-hairline-strong px-sm text-xs font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                    >
-                      <Receipt className="h-3.5 w-3.5" /> Phiếu khách
-                    </button>
+                  <div className="flex shrink-0 items-start gap-xs">
+                    <TicketPrintButtons
+                      slug={slug}
+                      orderId={order.id}
+                      kitchenLabel={order.kitchen_no != null ? `#${order.kitchen_no}` : undefined}
+                    />
                   </div>
                 </div>
                 <ul className="mt-xs flex flex-col divide-y divide-hairline-soft">
@@ -258,10 +249,10 @@ export function OrderPanel({
                       <button
                         type="button"
                         onClick={() => onCartRemove(l.lineId)}
-                        aria-label="Bỏ khỏi giỏ"
+                        aria-label="Xoá khỏi giỏ"
                         className="text-xs text-status-late hover:underline"
                       >
-                        Bỏ
+                        Xoá
                       </button>
                     </div>
                   </li>

@@ -420,7 +420,7 @@ export async function getBillView(tenantId: string, billId: string): Promise<Bil
   const { data: billItems } = await client
     .from("bill_items")
     .select(
-      "id, order_item_id, qty_allocated, unit_price_snapshot, amount, order_items(name_snapshot, order_id, orders(kitchen_no), order_item_modifiers(name_snapshot))"
+      "id, order_item_id, qty_allocated, unit_price_snapshot, amount, order_items(name_snapshot, note, order_id, orders(kitchen_no), order_item_modifiers(name_snapshot))"
     )
     .eq("bill_id", billId)
     .eq("tenant_id", tenantId);
@@ -428,6 +428,7 @@ export async function getBillView(tenantId: string, billId: string): Promise<Bil
   const lines: BillLineView[] = (billItems ?? []).map((bi) => {
     const oi = bi.order_items as {
       name_snapshot?: string;
+      note?: string | null;
       order_id?: string;
       orders?: { kitchen_no?: number } | null;
       order_item_modifiers?: { name_snapshot: string }[];
@@ -442,6 +443,7 @@ export async function getBillView(tenantId: string, billId: string): Promise<Bil
       unitPrice: bi.unit_price_snapshot as number,
       amount: bi.amount as number,
       modifiers: (oi?.order_item_modifiers ?? []).map((m) => m.name_snapshot),
+      note: oi?.note ?? null,
     };
   });
 

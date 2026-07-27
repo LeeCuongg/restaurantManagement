@@ -24,12 +24,17 @@ export type TableSession = {
   opened_by: string | null;
 };
 
+/** Kênh phục vụ của đơn (0008/0015). */
+export type OrderChannel = "dine_in" | "takeaway" | "delivery";
+/** Nơi đơn được nhập: khách quét QR, nhân viên gõ POS, hoặc khách tự đặt online (0015). */
+export type OrderSource = "qr" | "staff" | "online";
+
 export type Order = {
   id: string;
   tenant_id: string;
   table_session_id: string | null;
-  channel: "dine_in" | "takeaway" | "delivery";
-  source: "qr" | "staff";
+  channel: OrderChannel;
+  source: OrderSource;
   status: OrderStatus;
   customer_contact: Record<string, unknown> | null;
   note: string | null;

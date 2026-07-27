@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Loader2, ShoppingBag, Printer, Receipt } from "lucide-react";
+import { X, Loader2, ShoppingBag } from "lucide-react";
 import type { CustomerMenuItem } from "@/lib/orders/customer-menu";
 import type { CartLine } from "@/lib/orders/types";
 import type { BillView, PaymentMethod } from "@/lib/billing/types";
@@ -14,6 +14,7 @@ import { ModifierSheet, type PendingLine } from "@/components/customer/ModifierS
 import { Input } from "@/components/ui/input";
 import { PaymentDialog } from "./PaymentDialog";
 import { CancelItemDialog, type CancelStaff } from "./CancelItemDialog";
+import { TicketPrintButtons } from "./TicketPrintButtons";
 import {
   createTakeawayOrderAction,
   openOnlineBillAction,
@@ -24,9 +25,9 @@ const hhmm = (iso: string) =>
   new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
 
 /**
- * TakeawayPanel (POS — bán mang về tại quầy). Xử lý TRỌN trên /pos, chịu nhiều khách liên tục:
- *  - Trên cùng: gõ đơn mới (giỏ + tên/SĐT) → "Tạo đơn mang về" (source=staff, confirmed → xuống bếp).
- *  - Dưới: danh sách đơn mang về ĐANG CHỜ — mỗi đơn hiện món + tổng (như panel bàn), có "In phiếu
+ * TakeawayPanel (POS — đơn KHÔNG gắn bàn). Xử lý TRỌN trên /pos, chịu nhiều khách liên tục:
+ *  - Trên cùng: gõ đơn mới (giỏ + tên/SĐT) → tạo đơn (source=staff, confirmed → xuống bếp).
+ *  - Dưới: danh sách đơn ĐANG CHỜ — mỗi đơn hiện món + tổng (như panel bàn), có "In phiếu
  *    bếp" + "Thu tiền & hoàn tất". Tạo xong đơn tự vào danh sách, builder sạch cho khách kế.
  */
 export function TakeawayPanel({
@@ -41,6 +42,7 @@ export function TakeawayPanel({
   onClose,
   cancelStaff,
   canCancelWithoutPin,
+  counter = false,
 }: {
   slug: string;
   cart: CartLine[];
@@ -53,7 +55,17 @@ export function TakeawayPanel({
   onClose: () => void;
   cancelStaff: CancelStaff[];
   canCancelWithoutPin: boolean;
+  /**
+   * Quán chế độ QUẦY (service_mode='counter'): nhân viên gõ đơn cho khách tại quầy, khách ngồi ăn
+   * tại quán nhưng không gắn bàn → chữ nói theo "gọi món cho khách", KHÔNG phải "mang về". Chế độ
+   * bàn thì panel này đúng nghĩa bán mang về. Cũng ẩn nút đóng vì chế độ quầy không có bàn để về.
+   */
+  counter?: boolean;
 }) {
+  const title = counter ? "Gọi món cho khách" : "Bán mang về";
+  const createLabel = counter ? "Tạo đơn" : "Tạo đơn mang về";
+  const hideClose = counter; // chế độ quầy không có bàn để quay về
+
   const router = useRouter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -119,16 +131,18 @@ export function TakeawayPanel({
     <div className="flex h-full min-h-0 flex-col bg-canvas">
       <div className="flex items-center justify-between border-b border-hairline-soft px-lg py-md">
         <h2 className="inline-flex items-center gap-sm font-display text-xl text-ink">
-          <ShoppingBag className="h-5 w-5 text-primary" /> Bán mang về
+          <ShoppingBag className="h-5 w-5 text-primary" /> {title}
         </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Đóng bán mang về"
-          className="grid h-9 w-9 place-items-center rounded-md text-steel hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        {!hideClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={`Đóng ${title.toLowerCase()}`}
+            className="grid h-9 w-9 place-items-center rounded-md text-steel hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {error && (
@@ -141,10 +155,24 @@ export function TakeawayPanel({
         {/* ---- Đơn mới (builder) ---- */}
         <div className="rounded-lg border border-hairline-soft p-md">
           <p className="text-sm font-medium text-ink">Đơn mới</p>
+
+          {/* Tên/SĐT trước, danh sách món ngay trên nút tạo đơn: nhân viên soát lại món + tổng
+              tiền ở cùng một chỗ trước khi bấm. */}
+          <div className="mt-sm flex flex-col gap-sm">
+            <label className="flex flex-col gap-xxs text-sm text-slate">
+              Tên khách (tùy chọn)
+              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={50} placeholder="VD: Anh Nam" />
+            </label>
+            <label className="flex flex-col gap-xxs text-sm text-slate">
+              SĐT (tùy chọn)
+              <Input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" maxLength={20} placeholder="09xx xxx xxx" />
+            </label>
+          </div>
+
           {cart.length === 0 ? (
             <p className="py-md text-center text-sm text-steel">Chạm món ở thực đơn để thêm.</p>
           ) : (
-            <ul className="mt-sm flex flex-col gap-sm">
+            <ul className="mt-md flex flex-col gap-sm">
               {cart.map((l) => {
                 const it = itemMap.get(l.itemId);
                 if (!it) return null;
@@ -152,7 +180,8 @@ export function TakeawayPanel({
                 return (
                   <li key={l.lineId} className="flex items-start justify-between gap-sm border-b border-hairline-soft pb-sm last:border-b-0">
                     <div className="min-w-0">
-                      <p className="text-sm text-ink">{it.name}</p>
+                      {/* Tên món to hơn phần còn lại: nhân viên liếc qua là soát được món đã gõ. */}
+                      <p className="text-base font-medium text-ink">{it.name}</p>
                       {names.length > 0 && <p className="text-xs text-steel">{names.join(" · ")}</p>}
                       {l.note && <p className="text-xs italic text-stone">“{l.note}”</p>}
                     </div>
@@ -174,10 +203,10 @@ export function TakeawayPanel({
                       <button
                         type="button"
                         onClick={() => onCartRemove(l.lineId)}
-                        aria-label="Bỏ khỏi giỏ"
+                        aria-label="Xoá khỏi giỏ"
                         className="text-xs text-status-late hover:underline"
                       >
-                        Bỏ
+                        Xoá
                       </button>
                     </div>
                   </li>
@@ -185,17 +214,6 @@ export function TakeawayPanel({
               })}
             </ul>
           )}
-
-          <div className="mt-md flex flex-col gap-sm">
-            <label className="flex flex-col gap-xxs text-sm text-slate">
-              Tên khách (tùy chọn)
-              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={50} placeholder="VD: Anh Nam" />
-            </label>
-            <label className="flex flex-col gap-xxs text-sm text-slate">
-              SĐT (tùy chọn)
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" inputMode="tel" maxLength={20} placeholder="09xx xxx xxx" />
-            </label>
-          </div>
 
           <button
             type="button"
@@ -206,12 +224,12 @@ export function TakeawayPanel({
             {creating ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              `Tạo đơn mang về${cart.length > 0 ? ` · ${formatVnd(cartTotal)}` : ""}`
+              `${createLabel}${cart.length > 0 ? ` · ${formatVnd(cartTotal)}` : ""}`
             )}
           </button>
         </div>
 
-        {/* ---- Đơn mang về đang chờ ---- */}
+        {/* ---- Đơn đang chờ (chưa thu tiền) ---- */}
         {orders.length > 0 && (
           <div className="mt-lg">
             <p className="text-sm font-medium text-ink">Đơn đang chờ ({orders.length})</p>
@@ -231,21 +249,12 @@ export function TakeawayPanel({
                         </p>
                       )}
                     </div>
-                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-xs">
-                      <button
-                        type="button"
-                        onClick={() => getPrintAdapter().printKitchenTicket({ slug, orderId: o.id })}
-                        className="inline-flex h-8 items-center gap-xxs rounded-md border border-hairline-strong px-sm text-xs font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                      >
-                        <Printer className="h-3.5 w-3.5" /> Phiếu bếp
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => getPrintAdapter().printCustomerTicket({ slug, orderId: o.id })}
-                        className="inline-flex h-8 items-center gap-xxs rounded-md border border-hairline-strong px-sm text-xs font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                      >
-                        <Receipt className="h-3.5 w-3.5" /> Phiếu khách
-                      </button>
+                    <div className="flex shrink-0 flex-wrap items-start justify-end gap-xs">
+                      <TicketPrintButtons
+                        slug={slug}
+                        orderId={o.id}
+                        kitchenLabel={o.kitchenNo != null ? `#${o.kitchenNo}` : undefined}
+                      />
                       <button
                         type="button"
                         onClick={() =>

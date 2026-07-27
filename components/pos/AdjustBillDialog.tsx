@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import type { BillView, DiscountType } from "@/lib/billing/types";
 import { computeBillTotals } from "@/lib/billing/compute";
 import { formatVnd } from "@/lib/orders/cart";
+import { MoneyInput } from "@/components/ui/money-input";
 import { PinPrompt } from "./PinPrompt";
 import type { CancelStaff } from "./CancelItemDialog";
 
@@ -110,16 +111,27 @@ export function AdjustBillDialog({
               </div>
               {discountType !== "none" && (
                 <div className="mt-sm">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={discountType === "percent" ? 100 : undefined}
-                    value={discountValue || ""}
-                    onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value) || 0))}
-                    placeholder={discountType === "percent" ? "VD: 10 (%)" : "VD: 50000 (đ)"}
-                    className="h-11 w-full rounded-md border border-hairline px-md text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  />
+                  {/* Số tiền → ô có dấu chấm ngăn nghìn; phần trăm là số nhỏ nên để nguyên. */}
+                  {discountType === "amount" ? (
+                    <MoneyInput
+                      value={discountValue}
+                      onChange={setDiscountValue}
+                      placeholder="VD: 50.000 (đ)"
+                      aria-label="Số tiền giảm"
+                    />
+                  ) : (
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={100}
+                      value={discountValue || ""}
+                      onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value) || 0))}
+                      placeholder="VD: 10 (%)"
+                      aria-label="Phần trăm giảm"
+                      className="h-11 w-full rounded-md border border-hairline px-md text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                  )}
                 </div>
               )}
             </fieldset>

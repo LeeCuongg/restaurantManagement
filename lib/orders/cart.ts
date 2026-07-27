@@ -6,6 +6,19 @@ import type { CustomerMenuItem } from "./customer-menu";
 
 export const formatVnd = (n: number) => n.toLocaleString("vi-VN") + "₫";
 
+/** Số chữ số tối đa cho một ô nhập tiền (999 tỷ) — chặn dán nhầm chuỗi dài. */
+const MAX_MONEY_DIGITS = 12;
+
+/** Lọc chuỗi người dùng gõ về chữ số: bỏ chấm/ký tự lạ, bỏ số 0 thừa đầu, cắt độ dài. */
+export function moneyDigits(raw: string): string {
+  return raw.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, MAX_MONEY_DIGITS);
+}
+
+/** "45000" → "45.000" để hiện trong ô nhập tiền. Rỗng giữ rỗng (placeholder còn hiện). */
+export function groupMoney(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
 /** Đơn giá 1 phần = base_price + Σ price_delta của option đã chọn. */
 export function unitPrice(item: CustomerMenuItem, optionIds: string[]): number {
   const selected = new Set(optionIds);
