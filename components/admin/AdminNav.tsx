@@ -3,20 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { canManage, type ManageSection } from "@/lib/auth/rbac";
+import type { Role } from "@/lib/auth/session";
 
-type NavItem = { key: string; label: string; href?: string };
+type NavItem = { key: string; label: string; href?: string; section?: ManageSection };
 
-/** Sidebar nav (client) — tự tô đậm mục đang mở theo pathname. */
-export function AdminNav({ base }: { base: string }) {
+/**
+ * Sidebar nav (client) — tự tô đậm mục đang mở theo pathname.
+ * Mục không có quyền bị ẨN HẲN (AUTH-05), và quyền lấy TỪ `canManage` — không chép tay danh
+ * sách vai trò ở đây, để nav và guard trang không bao giờ lệch nhau.
+ */
+export function AdminNav({ base, role }: { base: string; role: Role }) {
   const pathname = usePathname();
-  const items: NavItem[] = [
+  const allItems: NavItem[] = [
     { key: "dashboard", label: "Tổng quan", href: base },
-    { key: "staff", label: "Nhân viên", href: `${base}/staff` },
-    { key: "menu", label: "Thực đơn", href: `${base}/menu` },
-    { key: "tables", label: "Bàn & QR", href: `${base}/tables` },
-    { key: "reports", label: "Báo cáo", href: `${base}/reports` },
-    { key: "settings", label: "Cài đặt", href: `${base}/settings` },
+    { key: "staff", label: "Nhân viên", href: `${base}/staff`, section: "staff" },
+    { key: "menu", label: "Thực đơn", href: `${base}/menu`, section: "menu" },
+    { key: "tables", label: "Bàn & QR", href: `${base}/tables`, section: "tables" },
+    { key: "reports", label: "Báo cáo", href: `${base}/reports`, section: "reports" },
+    { key: "settings", label: "Cài đặt", href: `${base}/settings`, section: "settings" },
   ];
+  const items = allItems.filter((item) => !item.section || canManage(role, item.section));
 
   const isActive = (href?: string) => {
     if (!href) return false;

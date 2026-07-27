@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionMembership } from "@/lib/auth/session";
-import { canManage } from "@/lib/auth/rbac";
+import { canManage, canToggleAvailability } from "@/lib/auth/rbac";
 import {
   validateImage,
   uploadMenuImage,
@@ -335,9 +335,21 @@ export async function reorderItem(formData: FormData) {
   revalidatePath(menuPath(slug));
 }
 
-/** Bật/tắt "hết món" — tối ưu cho toggle optimistic (không redirect). */
+/**
+ * Bật/tắt "hết món" — QD-010 §5: quyền RỘNG HƠN các action còn lại trong file này.
+ * Nhân viên POS/KDS gọi được (`canToggleAvailability`), nhưng vẫn KHÔNG sửa được tên/giá/ảnh
+ * vì mọi action khác giữ `requireMenuManager`. Update chỉ chạm đúng cột `is_available` —
+ * không nhận thêm field nào từ client.
+ *
+ * Ném lỗi thay vì `redirect`: người gọi là toggle optimistic ở POS/KDS, bắt lỗi để revert UI
+ * (redirect về /admin/menu sẽ đá nhân viên ra khỏi bề mặt đang làm việc).
+ */
 export async function setItemAvailable(slug: string, id: string, available: boolean) {
-  const session = await requireMenuManager(slug);
+  const session = await getSessionMembership(slug);
+  if (!session || !canToggleAvailability(session.role)) {
+    throw new Error("Không đủ quyền.");
+  }
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("menu_items")
@@ -345,5 +357,10 @@ export async function setItemAvailable(slug: string, id: string, available: bool
     .eq("id", id)
     .eq("tenant_id", session.tenant.id);
   if (error) throw new Error(error.message);
+
+  // Món hết ảnh hưởng cả 4 bề mặt — revalidate hết để không ai còn thấy trạng thái cũ.
   revalidatePath(menuPath(slug));
+  revalidatePath(`/r/${slug}/pos`);
+  revalidatePath(`/r/${slug}/kds`);
+  revalidatePath(`/r/${slug}/menu`);
 }

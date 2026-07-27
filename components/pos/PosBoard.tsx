@@ -565,7 +565,12 @@ export function PosBoard({
         )}
 
         <section className="min-h-0 min-w-0 flex-1">
-          <MenuPanel menu={menu} canAdd={takeawayMode || !!selectedTable} onAddLine={addLine} />
+          <MenuPanel
+            slug={slug}
+            menu={menu}
+            canAdd={takeawayMode || !!selectedTable}
+            onAddLine={addLine}
+          />
         </section>
 
         <aside className="w-[26rem] shrink-0 border-l border-hairline-soft lg:w-[30rem]">

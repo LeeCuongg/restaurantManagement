@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSessionMembership } from "@/lib/auth/session";
 import { canAccess, defaultRouteForRole } from "@/lib/auth/rbac";
 import { getKdsTickets } from "@/lib/orders/kds";
+import { getCustomerMenu } from "@/lib/orders/customer-menu";
 import { StationScreen } from "@/components/staff/StationScreen";
 import { KdsBoard } from "@/components/kds/KdsBoard";
 
@@ -22,10 +23,15 @@ export default async function KdsHome({
   if (!session) redirect(`/r/${slug}/kds/login`);
   if (!canAccess(session.role, "kds")) redirect(defaultRouteForRole(slug, session.role));
 
-  const tickets = await getKdsTickets(session.tenant.id);
+  // `menu` cho drawer "Báo hết món" (MENU-04) — getCustomerMenu trả CẢ món đang hết.
+  const [tickets, menu] = await Promise.all([
+    getKdsTickets(session.tenant.id),
+    getCustomerMenu(slug),
+  ]);
+
   return (
     <StationScreen slug={slug} surface="kds">
-      <KdsBoard tenantId={session.tenant.id} initial={tickets} />
+      <KdsBoard slug={slug} tenantId={session.tenant.id} initial={tickets} menu={menu} />
     </StationScreen>
   );
 }

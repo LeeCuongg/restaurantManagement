@@ -1,26 +1,42 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Ban } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { KdsTicket as KdsTicketType } from "@/lib/orders/kds";
+import type { CustomerMenu } from "@/lib/orders/customer-menu";
 import { KdsTicket } from "./KdsTicket";
+import { SoldOutDrawer } from "./SoldOutDrawer";
 
 /**
- * KdsBoard (§4.3, ORDER-04) — BẢNG BẾP CHỈ ĐỂ XEM (bếp không chạm — QĐ 22/07). Vé confirmed hiện
- * realtime, xếp cũ→mới (FIFO); vé tự ẩn khi phục vụ hết món (POS bấm "Đã phục vụ"). Không nút thao
- * tác trên bếp. Badge delta = (thấy vé lần đầu − confirmed_at) giây, chốt 1 lần → công cụ đo ≤3s.
+ * KdsBoard (§4.3, ORDER-04) — BẢNG VÉ CHỈ ĐỂ XEM (bếp không chạm vé — QĐ 22/07). Vé confirmed hiện
+ * realtime, xếp cũ→mới (FIFO); vé tự ẩn khi phục vụ hết món (POS bấm "Đã phục vụ"). Badge delta =
+ * (thấy vé lần đầu − confirmed_at) giây, chốt 1 lần → công cụ đo ≤3s.
+ *
+ * Ngoại lệ DUY NHẤT về thao tác: nút "Báo hết món" (MENU-04) — đổi tình trạng THỰC ĐƠN, không đổi
+ * trạng thái vé, nên không phá quy tắc trên.
  */
 export function KdsBoard({
+  slug,
   tenantId,
   initial,
+  menu,
 }: {
+  slug: string;
   tenantId: string;
   initial: KdsTicketType[];
+  menu: CustomerMenu | null;
 }) {
   const router = useRouter();
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [deltas, setDeltas] = useState<Record<string, number>>({});
+  const [soldOutOpen, setSoldOutOpen] = useState(false);
+
+  const soldOutCount = useMemo(
+    () => (menu?.categories ?? []).flatMap((c) => c.items).filter((i) => !i.is_available).length,
+    [menu]
+  );
 
   // Realtime → refresh. Gắn JWT đăng nhập (setAuth) — nếu không, postgres_changes bị RLS chặn.
   useEffect(() => {
@@ -69,11 +85,28 @@ export function KdsBoard({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface">
-      <header className="flex items-center justify-between border-b border-hairline bg-canvas px-lg py-sm">
+      <header className="flex items-center justify-between gap-md border-b border-hairline bg-canvas px-lg py-sm">
         <h2 className="text-lg font-semibold text-ink">
           Vé đang chờ làm <span className="text-steel">({initial.length})</span>
         </h2>
-        <span className="text-xs text-steel">Xếp cũ → mới · tự ẩn khi phục vụ</span>
+        <div className="flex items-center gap-md">
+          <span className="hidden text-xs text-steel sm:inline">Xếp cũ → mới · tự ẩn khi phục vụ</span>
+          {/* Không phải thao tác trên VÉ — chỉ báo tình trạng thực đơn (MENU-04). */}
+          <button
+            type="button"
+            onClick={() => setSoldOutOpen(true)}
+            style={{ touchAction: "manipulation" }}
+            className="inline-flex min-h-11 items-center gap-xs rounded-md border border-hairline-strong px-md text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Ban className="h-4 w-4" aria-hidden />
+            Báo hết món
+            {soldOutCount > 0 && (
+              <span className="rounded-full bg-status-late px-xs text-xs text-status-late-fg tabular-nums">
+                {soldOutCount}
+              </span>
+            )}
+          </button>
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-md">
@@ -90,6 +123,8 @@ export function KdsBoard({
           </ul>
         )}
       </div>
+
+      <SoldOutDrawer slug={slug} menu={menu} open={soldOutOpen} onOpenChange={setSoldOutOpen} />
     </div>
   );
 }

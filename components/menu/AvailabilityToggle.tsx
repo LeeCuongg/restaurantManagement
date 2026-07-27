@@ -2,19 +2,25 @@
 
 import { useOptimistic, useTransition } from "react";
 import { setItemAvailable } from "@/app/r/[slug]/admin/(protected)/menu/actions";
+import { cn } from "@/lib/utils";
 
 /**
  * Switch bật/tắt "hết món" — optimistic: đổi ngay trên UI rồi gọi server action.
  * Nếu server lỗi, revert. is_available=false ⇒ "Hết".
+ *
+ * Dùng chung ở 3 bề mặt (admin/menu, POS, KDS) — quyền gọi do `canToggleAvailability` quyết định
+ * ở server (QD-010 §5). `className` để bề mặt dày đặc nâng vùng chạm lên ≥44px.
  */
 export function AvailabilityToggle({
   slug,
   itemId,
   available,
+  className,
 }: {
   slug: string;
   itemId: string;
   available: boolean;
+  className?: string;
 }) {
   const [optimistic, setOptimistic] = useOptimistic(available);
   const [pending, startTransition] = useTransition();
@@ -39,7 +45,11 @@ export function AvailabilityToggle({
       aria-label={optimistic ? "Còn món (bấm để báo hết)" : "Hết món (bấm để bật lại)"}
       onClick={toggle}
       disabled={pending}
-      className="inline-flex min-h-9 items-center gap-xs rounded-md px-xs text-xs font-medium hover:bg-surface disabled:opacity-60"
+      style={{ touchAction: "manipulation" }}
+      className={cn(
+        "inline-flex min-h-9 items-center gap-xs rounded-md px-xs text-xs font-medium hover:bg-surface disabled:opacity-60",
+        className
+      )}
     >
       <span
         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${

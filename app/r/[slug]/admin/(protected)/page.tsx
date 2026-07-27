@@ -1,10 +1,21 @@
 import Link from "next/link";
 import { getSessionMembership } from "@/lib/auth/session";
+import { canManage } from "@/lib/auth/rbac";
 import { Card, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getOnboardingState } from "./onboarding/actions";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Tổng quan admin — hiện CHỈ là thẻ điều hướng, không có số liệu tiền, nên không cần guard
+ * `canManage` riêng (layout đã lọc owner|manager).
+ *
+ * ⚠️ AUTH-05: nếu sau này thêm KPI doanh thu vào đây thì PHẢI bọc bằng
+ * `canManage(role, "reports")` — không thì rò rỉ đúng thứ trang Báo cáo đang chặn.
+ * Thẻ điều hướng cũng ẩn/hiện theo cùng `canManage` như sidebar, để không dẫn người dùng
+ * tới trang họ sẽ bị đá ra.
+ */
 
 export default async function AdminDashboard({
   params,
@@ -79,16 +90,18 @@ export default async function AdminDashboard({
             <span className="text-ink">Nhân viên</span>.
           </CardContent>
         </Card>
-        <Card>
-          <CardTitle>Cài đặt</CardTitle>
-          <CardContent>
-            Logo, tên nhà hàng, %phí/%VAT, footer hóa đơn ở mục{" "}
-            <Link href={`/r/${slug}/admin/settings`} className="text-primary hover:underline">
-              Cài đặt
-            </Link>
-            .
-          </CardContent>
-        </Card>
+        {session && canManage(session.role, "settings") && (
+          <Card>
+            <CardTitle>Cài đặt</CardTitle>
+            <CardContent>
+              Logo, tên nhà hàng, %phí/%VAT, footer hóa đơn ở mục{" "}
+              <Link href={`/r/${slug}/admin/settings`} className="text-primary hover:underline">
+                Cài đặt
+              </Link>
+              .
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

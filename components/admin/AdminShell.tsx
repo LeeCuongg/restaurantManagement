@@ -41,7 +41,7 @@ export function AdminShell({
           </div>
         </div>
 
-        <AdminNav base={base} />
+        <AdminNav base={base} role={role} />
 
         <form action={signOut} className="border-t border-hairline-soft p-sm">
           <Button type="submit" variant="secondary" size="sm" className="w-full">

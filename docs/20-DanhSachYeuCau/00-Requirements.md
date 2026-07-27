@@ -28,12 +28,15 @@
 | AUTH-02 | Thiết bị trạm | POS/KDS đăng nhập 1 lần bằng tài khoản station của nhà hàng (tương thích; không còn bắt buộc sau QD-009) | P1 | ☑ (checkpoint 01-03) |
 | AUTH-03 | Đăng nhập nhân viên Email+PIN | Cashier/waiter/kitchen đăng nhập thẳng ở `/pos\|/kds/login` bằng email riêng + PIN 4 số → vào ngay bề mặt với đúng danh tính; thao tác gắn `staff_id`. Không còn bước "Chọn nhân viên" (QD-009) | P1 | ◐ (P5 — chuyển sang email+PIN) |
 | AUTH-04 | RBAC theo vai trò | Mỗi vai trò chỉ thấy/làm đúng chức năng (owner/manager/cashier/waiter/kitchen); test phân quyền | P1 | ☑ (checkpoint 01-03) |
+| AUTH-05 | Phân quyền chi tiết trong khu admin | `canManage(role, section)` là **ma trận thật** theo QD-010: `settings` chỉ owner; `menu`/`tables`/`staff`/`onboarding`/`reports` cho owner+manager. Sidebar `AdminNav` **ẩn hẳn** mục không có quyền (không hiện rồi chặn). Đăng nhập manager: sidebar không có "Cài đặt"; gõ thẳng `/admin/settings` → bị đá về `/admin`. Test `tests/auth/rbac.test.ts` phủ 6 vai trò × 6 mục | P6 | ◐ code xong (06-01); rbac.test 73/73 + smoke 8/8 PASS; chờ checkpoint |
+| AUTH-06 | Owner cấp tài khoản quản lý | Owner tạo được thành viên vai trò `manager` ngay ở `/admin/staff` — nhánh **mật khẩu ≥8 ký tự**, không phải PIN 4 số (QD-010 §4). Manager chỉ tạo/sửa/xóa được cashier/waiter/kitchen: form manager KHÔNG có lựa chọn vai trò `manager`, và server action từ chối nếu manager gửi `role=manager` hoặc đụng membership của owner | P6 | ◐ code xong (06-01); smoke xác nhận owner tạo được manager, manager không thấy option "Quản lý"; chờ checkpoint |
 
 ## MENU
 | Mã | Yêu cầu | Tiêu chí chấp nhận | GĐ | TT |
 |---|---|---|---|---|
 | MENU-01 | CRUD danh mục & món | Tạo/sửa/xóa danh mục, món (ảnh ≤2MB, giá, mô tả), sắp xếp | P2 | ◐ code xong (02-01); chờ checkpoint |
 | MENU-02 | Nút "hết món" (86) | Bật/tắt `is_available` món & option; khách không đặt được món hết | P2 | ◐ toggle admin+DB code xong (02-01/02); "khách thấy Hết" → P3 |
+| MENU-04 | "Hết món" bật được ngay trên POS/KDS | Nhân viên (cashier/waiter/kitchen/station) bật/tắt "hết món" **tại `/pos`**, không phải vào khu admin (QD-010 §5). Món đã tắt hiện mờ + nhãn "Hết" trong `MenuPanel` và không thêm vào giỏ được; khách ở `/menu` thấy Hết ≤ lần tải kế tiếp. Quyền `canToggleAvailability` chỉ mở đúng cột `is_available`: test khẳng định cashier gọi được `setItemAvailable` nhưng KHÔNG gọi được `updateItem`/`deleteItem` | P6 | ◐ code xong (06-01); smoke 7/7 PASS (POS toggle + KDS drawer + khách thấy "Hết"); chờ kiểm bằng tài khoản cashier/kitchen thật |
 | MENU-03 | Nhóm tùy chọn + phụ thu | Tạo modifier group (min/max/required) + option có phụ thu; gắn vào món | P2 | ◐ code xong (02-02); chờ checkpoint |
 
 ## TABLE — Khu vực, bàn, QR
