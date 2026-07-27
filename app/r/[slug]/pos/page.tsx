@@ -46,7 +46,8 @@ export default async function PosHome({
     name: m.display_name ?? "(không tên)",
     role: m.role as "manager" | "cashier",
   }));
-  const allowDiscount = parseSettings(tenantRow?.settings).allow_discount;
+  const tenantSettings = parseSettings(tenantRow?.settings);
+  const allowDiscount = tenantSettings.allow_discount;
 
   return (
     <StationScreen slug={slug} surface="pos">
@@ -58,6 +59,7 @@ export default async function PosHome({
         cancelStaff={cancelStaff}
         canCancelWithoutPin={isPrincipal}
         allowDiscount={allowDiscount}
+        serviceMode={tenantSettings.service_mode}
       />
     </StationScreen>
   );

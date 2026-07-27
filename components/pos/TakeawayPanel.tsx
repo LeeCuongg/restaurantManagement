@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Loader2, ShoppingBag, Printer, Receipt } from "lucide-react";
+import { X, Loader2, ShoppingBag } from "lucide-react";
 import type { CustomerMenuItem } from "@/lib/orders/customer-menu";
 import type { CartLine } from "@/lib/orders/types";
 import type { BillView, PaymentMethod } from "@/lib/billing/types";
@@ -14,6 +14,7 @@ import { ModifierSheet, type PendingLine } from "@/components/customer/ModifierS
 import { Input } from "@/components/ui/input";
 import { PaymentDialog } from "./PaymentDialog";
 import { CancelItemDialog, type CancelStaff } from "./CancelItemDialog";
+import { TicketPrintButtons } from "./TicketPrintButtons";
 import {
   createTakeawayOrderAction,
   openOnlineBillAction,
@@ -41,6 +42,8 @@ export function TakeawayPanel({
   onClose,
   cancelStaff,
   canCancelWithoutPin,
+  title = "Bán mang về",
+  hideClose = false,
 }: {
   slug: string;
   cart: CartLine[];
@@ -53,6 +56,10 @@ export function TakeawayPanel({
   onClose: () => void;
   cancelStaff: CancelStaff[];
   canCancelWithoutPin: boolean;
+  /** Tiêu đề panel — "Bán mang về" (mặc định) hoặc "Bán tại quầy" (chế độ quầy). */
+  title?: string;
+  /** Ẩn nút đóng (chế độ quầy: không có bàn để quay về). */
+  hideClose?: boolean;
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -119,16 +126,18 @@ export function TakeawayPanel({
     <div className="flex h-full min-h-0 flex-col bg-canvas">
       <div className="flex items-center justify-between border-b border-hairline-soft px-lg py-md">
         <h2 className="inline-flex items-center gap-sm font-display text-xl text-ink">
-          <ShoppingBag className="h-5 w-5 text-primary" /> Bán mang về
+          <ShoppingBag className="h-5 w-5 text-primary" /> {title}
         </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Đóng bán mang về"
-          className="grid h-9 w-9 place-items-center rounded-md text-steel hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        {!hideClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={`Đóng ${title.toLowerCase()}`}
+            className="grid h-9 w-9 place-items-center rounded-md text-steel hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
       {error && (
@@ -232,20 +241,11 @@ export function TakeawayPanel({
                       )}
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-xs">
-                      <button
-                        type="button"
-                        onClick={() => getPrintAdapter().printKitchenTicket({ slug, orderId: o.id })}
-                        className="inline-flex h-8 items-center gap-xxs rounded-md border border-hairline-strong px-sm text-xs font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                      >
-                        <Printer className="h-3.5 w-3.5" /> Phiếu bếp
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => getPrintAdapter().printCustomerTicket({ slug, orderId: o.id })}
-                        className="inline-flex h-8 items-center gap-xxs rounded-md border border-hairline-strong px-sm text-xs font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                      >
-                        <Receipt className="h-3.5 w-3.5" /> Phiếu khách
-                      </button>
+                      <TicketPrintButtons
+                        slug={slug}
+                        orderId={o.id}
+                        kitchenLabel={o.kitchenNo != null ? `#${o.kitchenNo}` : undefined}
+                      />
                       <button
                         type="button"
                         onClick={() =>

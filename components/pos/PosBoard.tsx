@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { CustomerMenu, CustomerMenuItem } from "@/lib/orders/customer-menu";
 import type { PosSnapshot } from "@/lib/orders/pos";
+import type { ServiceMode } from "@/lib/tenant/settings";
 import type { CartLine } from "@/lib/orders/types";
 import {
   createStaffOrderAction,
@@ -55,6 +56,7 @@ export function PosBoard({
   cancelStaff,
   canCancelWithoutPin,
   allowDiscount,
+  serviceMode = "table",
 }: {
   slug: string;
   tenantId: string;
@@ -63,11 +65,14 @@ export function PosBoard({
   cancelStaff: CancelStaff[];
   canCancelWithoutPin: boolean;
   allowDiscount: boolean;
+  serviceMode?: ServiceMode;
 }) {
   const router = useRouter();
+  // Chế độ quầy (quán không dùng bàn): ẩn sơ đồ bàn, POS mở thẳng màn bán quầy.
+  const counter = serviceMode === "counter";
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [pendingOpen, setPendingOpen] = useState(false);
-  const [takeawayMode, setTakeawayMode] = useState(false);
+  const [takeawayMode, setTakeawayMode] = useState(counter);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
@@ -137,6 +142,7 @@ export function PosBoard({
     setAddError(null);
   };
   const exitTakeaway = () => {
+    if (counter) return; // Chế độ quầy: không có bàn để quay về, giữ nguyên màn bán quầy.
     setTakeawayMode(false);
     setCart([]);
   };
@@ -355,8 +361,8 @@ export function PosBoard({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Escape" && setQuery("")}
             inputMode="search"
-            placeholder="Tìm bàn / số đơn…"
-            aria-label="Tìm bàn hoặc số đơn"
+            placeholder={counter ? "Tìm số đơn…" : "Tìm bàn / số đơn…"}
+            aria-label={counter ? "Tìm số đơn" : "Tìm bàn hoặc số đơn"}
             className="h-11 w-full rounded-full border border-hairline-strong bg-canvas pl-9 pr-9 text-base text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm"
           />
           {query && (
@@ -411,18 +417,22 @@ export function PosBoard({
             </div>
           )}
         </div>
-        <span className="hidden shrink-0 text-sm text-steel xl:inline">
-          {initial.tables.length} bàn ·{" "}
-          {initial.tables.filter((t) => t.status === "occupied").length} đang phục vụ
-        </span>
+        {!counter && (
+          <span className="hidden shrink-0 text-sm text-steel xl:inline">
+            {initial.tables.length} bàn ·{" "}
+            {initial.tables.filter((t) => t.status === "occupied").length} đang phục vụ
+          </span>
+        )}
         <div className="ml-auto flex shrink-0 items-center gap-sm">
-          <Link
-            href={`/r/${slug}/pos/reservations`}
-            className="inline-flex h-11 items-center gap-sm rounded-md border border-hairline-strong bg-canvas px-md text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          >
-            <CalendarClock className="h-4 w-4" />
-            Đặt bàn
-          </Link>
+          {!counter && (
+            <Link
+              href={`/r/${slug}/pos/reservations`}
+              className="inline-flex h-11 items-center gap-sm rounded-md border border-hairline-strong bg-canvas px-md text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              <CalendarClock className="h-4 w-4" />
+              Đặt bàn
+            </Link>
+          )}
           <Link
             href={`/r/${slug}/pos/online`}
             className="inline-flex h-11 items-center gap-sm rounded-md border border-hairline-strong bg-canvas px-md text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
@@ -531,19 +541,21 @@ export function PosBoard({
 
       {/* 3 cột: bàn (trái) · thực đơn (giữa) · đơn bàn (phải) */}
       <div className="flex min-h-0 flex-1">
-        <aside className="w-80 shrink-0 overflow-y-auto border-r border-hairline-soft p-md lg:w-96">
-          <TableMap
-            areas={initial.areas}
-            tables={initial.tables}
-            sessions={initial.sessions}
-            reservations={initial.reservations}
-            selectedTableId={selectedTableId}
-            onSelect={selectTable}
-            takeawayActive={takeawayMode}
-            takeawayCount={initial.takeawayOrders.length}
-            onSelectTakeaway={enterTakeaway}
-          />
-        </aside>
+        {!counter && (
+          <aside className="w-80 shrink-0 overflow-y-auto border-r border-hairline-soft p-md lg:w-96">
+            <TableMap
+              areas={initial.areas}
+              tables={initial.tables}
+              sessions={initial.sessions}
+              reservations={initial.reservations}
+              selectedTableId={selectedTableId}
+              onSelect={selectTable}
+              takeawayActive={takeawayMode}
+              takeawayCount={initial.takeawayOrders.length}
+              onSelectTakeaway={enterTakeaway}
+            />
+          </aside>
+        )}
 
         <section className="min-h-0 min-w-0 flex-1">
           <MenuPanel menu={menu} canAdd={takeawayMode || !!selectedTable} onAddLine={addLine} />
@@ -563,6 +575,8 @@ export function PosBoard({
               onClose={exitTakeaway}
               cancelStaff={cancelStaff}
               canCancelWithoutPin={canCancelWithoutPin}
+              title={counter ? "Bán tại quầy" : "Bán mang về"}
+              hideClose={counter}
             />
           ) : selectedTable ? (
             <OrderPanel

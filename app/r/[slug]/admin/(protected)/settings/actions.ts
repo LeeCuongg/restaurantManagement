@@ -157,6 +157,7 @@ export async function updateSettings(formData: FormData) {
     receipt_footer: String(formData.get("receipt_footer") ?? current.receipt_footer),
     qr_order_auto_send: formData.get("qr_order_auto_send") === "on",
     allow_discount: formData.get("allow_discount") === "on",
+    service_mode: formData.get("service_mode") === "counter" ? "counter" : "table",
   });
 
   const failed = await updateTenant(supabase, session.tenant.id, {
