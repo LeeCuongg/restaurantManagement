@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Eye } from "lucide-react";
 import { getSessionMembership } from "@/lib/auth/session";
 import { canManage, defaultRouteForRole } from "@/lib/auth/rbac";
 import { redirect } from "next/navigation";
@@ -89,12 +90,23 @@ export default async function MenuPage({
             Tạo danh mục và món (ảnh, giá VND, mô tả). Bật &quot;hết món&quot; để tạm ẩn khỏi bán.
           </p>
         </div>
-        <Link
-          href={`/r/${slug}/admin/menu/modifiers`}
-          className="text-sm text-primary underline-offset-4 hover:underline"
-        >
-          Nhóm tùy chọn (size, topping…) →
-        </Link>
+        <div className="flex flex-wrap items-center gap-md">
+          {/* Mở đúng trang khách thấy (chế độ chỉ-xem vì không có token QR) — sửa món xong xem
+              lại ngay, không phải tự gõ URL hay quét QR. Tab mới để không mất chỗ đang sửa. */}
+          <Button asChild variant="secondary" size="sm">
+            <Link href={`/r/${slug}/menu`} target="_blank" rel="noopener noreferrer">
+              <Eye className="h-4 w-4" aria-hidden />
+              Xem thử thực đơn
+              <span className="sr-only"> (mở tab mới)</span>
+            </Link>
+          </Button>
+          <Link
+            href={`/r/${slug}/admin/menu/modifiers`}
+            className="text-sm text-primary underline-offset-4 hover:underline"
+          >
+            Nhóm tùy chọn (size, topping…) →
+          </Link>
+        </div>
       </div>
 
       {error && (
