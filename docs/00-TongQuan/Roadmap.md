@@ -88,13 +88,14 @@ Nền móng multi-tenant an toàn (P1) → dữ liệu nhà hàng (P2) → lõi 
 ## P6 — Phát hành
 **Mục tiêu:** Đóng gói, kiểm thử, phát hành V1.0 trên prod.
 **Phụ thuộc:** P1–P5.
-**Yêu cầu:** OPS-04, AUTH-05, AUTH-06, MENU-04 + toàn bộ tiêu chí V1.
+**Yêu cầu:** OPS-04, AUTH-05, AUTH-06, MENU-04, ORDER-14 + toàn bộ tiêu chí V1.
 **Kế hoạch:**
 - [~] 06-01 **Phân quyền chi tiết khu admin** (QD-010): ma trận `canManage` theo mục (Cài đặt chỉ owner), sidebar theo quyền, owner cấp được tài khoản `manager` bằng mật khẩu mạnh, "hết món" chuyển xuống POS/KDS — `30-KeHoach/P6/06-01-PLAN.md`. Làm **trước** 06-02 vì E2E phải viết theo mô hình quyền cuối cùng. *Code xong 27/07/2026; tsc/lint/build xanh, 100 unit test + RLS 6/6 + smoke 15/15 PASS; chờ checkpoint (`06-01-SUMMARY.md`).*
-- 06-02 E2E (Playwright) các luồng chính + test RLS chạy CI.
-- 06-03 PWA (installable) cho khách/POS/KDS.
-- 06-04 Seed 2 tenant demo trên prod + smoke test 3 loại thiết bị (giả lập trình duyệt).
-- 06-05 Tài liệu phát hành V1.0 + `50-PhienBan/`.
+- [~] 06-02 **Gọi thêm cho đơn không gắn bàn** (QD-011): mỗi lượt gọi thêm là đơn thật (phiếu bếp riêng) nhưng nối vào đơn gốc ngay lúc tạo → 1 nhóm = 1 hóa đơn = 1 lần thu — `30-KeHoach/P6/06-02-PLAN.md`. Migration `0021_order_parent.sql`. *Code xong 28/07/2026; tsc/lint/build xanh, 112 unit test + smoke 13/13 PASS; chờ checkpoint (`06-02-SUMMARY.md`).*
+- 06-03 E2E (Playwright) các luồng chính + test RLS chạy CI.
+- 06-04 PWA (installable) cho khách/POS/KDS.
+- 06-05 Seed 2 tenant demo trên prod + smoke test 3 loại thiết bị (giả lập trình duyệt).
+- 06-06 Tài liệu phát hành V1.0 + `50-PhienBan/`.
 **Nghiệm thu:** 2 tenant demo chạy prod · E2E xanh · phân quyền admin theo mục (AUTH-05/06) · checklist 9 tiêu chí V1 đạt (in thật hoãn tới khi có phần cứng — ghi rõ ở báo cáo).
 
 ---

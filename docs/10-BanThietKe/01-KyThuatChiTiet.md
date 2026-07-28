@@ -84,11 +84,18 @@ table_sessions(id, tenant_id, table_id, status, opened_at, closed_at, opened_by)
 ### 3.4 Order & máy trạng thái (D8, D9)
 ```
 orders(id, tenant_id, table_session_id nullable, channel, source, status,
-       customer_contact jsonb nullable, note, created_by, confirmed_by, created_at)
+       customer_contact jsonb nullable, note, created_by, confirmed_by, created_at,
+       parent_order_id nullable)
   channel ∈ {dine_in, takeaway, delivery}
   source  ∈ {qr, staff}
   status  ∈ {pending_confirm, confirmed, preparing, ready, served, completed, cancelled}
   customer_contact: {name, phone, address?} — cho takeaway/delivery (D11)
+  parent_order_id: nhóm "gọi thêm" cho đơn KHÔNG gắn bàn (QD-011, migration 0021).
+    NULL = đơn gốc. Nhóm PHẲNG 1 tầng ⇒ "cả nhóm" = 1 truy vấn:
+      where id = :root or parent_order_id = :root
+    Đơn dine_in KHÔNG dùng cột này (đã gom theo table_session_id).
+    Bill neo vào đơn GỐC (bills.online_order_id) và gom order_items cả nhóm ⇒
+      1 nhóm = 1 bill = 1 lần thu (nới QD-008 §1).
 
 order_items(id, tenant_id, order_id, menu_item_id, name_snapshot, unit_price_snapshot,
             qty, note, status, cancel_reason nullable, prepared_at nullable)

@@ -126,4 +126,9 @@ middleware — guard quyền nằm ở layout/page.
 - **Vai trò `manager`** nay cấp được từ `/admin/staff` (chỉ owner cấp) và đăng nhập bằng **mật khẩu
   ≥8 ký tự**, không dùng PIN 4 số như nhân viên trạm.
 - **"Hết món"** bật/tắt được ở `/pos` (thẻ món) và `/kds` (nút "Báo hết món") — không cần vào admin.
+- **Gọi thêm cho đơn không gắn bàn** ([QD-011](../15-QuyetDinh/QD-011-GoiThemChoDonKhongBan.md), thi công ở 06-02):
+  panel bán mang về / gọi món tại quầy trên `/r/[slug]/pos` có nút **"Gọi thêm"** — lượt gọi thêm là
+  **đơn thật** (số bếp + phiếu bếp + vé KDS riêng) nhưng `orders.parent_order_id` trỏ đơn gốc, nên
+  **cả nhóm thu MỘT hóa đơn**. Ô **"Tìm số đơn"** ở header panel (chế độ quầy) **lọc** hàng đợi còn
+  đúng nhóm đó.
 - Dòng `/admin/data-scope` đã xóa khỏi bảng: route không còn trong `app/r/[slug]/admin/(protected)/`.

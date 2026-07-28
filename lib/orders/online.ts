@@ -109,10 +109,12 @@ export type OnlineOrderView = {
   contact: OnlineOrderContact;
   items: OnlineOrderItem[];
   total: number;
+  /** Đơn gốc nếu đây là lượt "gọi thêm" (QD-011); null = đơn gốc. */
+  parentOrderId: string | null;
 };
 
 const ONLINE_ORDER_SELECT =
-  "id, channel, status, kitchen_no, note, customer_contact, created_at, order_items(id, name_snapshot, unit_price_snapshot, qty, note, status, created_at, order_item_modifiers(name_snapshot))";
+  "id, channel, status, kitchen_no, note, customer_contact, created_at, parent_order_id, order_items(id, name_snapshot, unit_price_snapshot, qty, note, status, created_at, order_item_modifiers(name_snapshot))";
 
 /** Map 1 row order (kèm items) → OnlineOrderView. */
 function toOnlineOrderView(o: Record<string, unknown>): OnlineOrderView {
@@ -140,6 +142,7 @@ function toOnlineOrderView(o: Record<string, unknown>): OnlineOrderView {
     contact,
     items,
     total,
+    parentOrderId: (o.parent_order_id as string | null) ?? null,
   };
 }
 

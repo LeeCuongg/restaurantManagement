@@ -169,6 +169,8 @@ export async function insertOrderGraph(
     note: string | null;
     customerContact: Record<string, unknown> | null;
     built: BuiltLine[];
+    /** Đơn gốc của nhóm "gọi thêm" (QD-011). Chỉ dùng cho đơn không gắn bàn. */
+    parentOrderId?: string | null;
   }
 ): Promise<CreateOrderResult> {
   // Order vào thẳng confirmed (staff / qr auto_send) → gán số bếp ngay.
@@ -187,6 +189,7 @@ export async function insertOrderGraph(
       kitchen_no: kitchenNo,
       customer_contact: args.customerContact,
       note: args.note,
+      parent_order_id: args.parentOrderId ?? null,
     })
     .select("id")
     .single();
@@ -359,12 +362,20 @@ export type CreateStaffTakeawayInput = {
   customerPhone?: string;
   note?: string;
   actingStaffId: string;
+  /**
+   * Đơn gốc khi đây là lượt GỌI THÊM (QD-011). Người gọi phải chuẩn hóa về gốc bằng
+   * `resolveGroupRoot` trước — hàm này không tự leo lên cây.
+   */
+  parentOrderId?: string | null;
 };
 
 /**
  * Nhân viên gõ đơn MANG VỀ tại quầy (walk-in): channel='takeaway', source='staff',
  * table_session_id=null, vào thẳng confirmed (bỏ duyệt như POS thêm món) → xuống bếp + hiện ở
  * /pos/online để làm + thu tiền. Tên/SĐT khách tùy chọn (để gọi khi món xong).
+ *
+ * Lượt gọi thêm cũng đi đúng đường này: vẫn là ĐƠN THẬT (số bếp riêng, phiếu bếp riêng — QD-011
+ * §2), chỉ khác ở `parentOrderId` để thu tiền gom về một bill.
  */
 export async function createStaffTakeawayOrder(
   input: CreateStaffTakeawayInput
@@ -393,5 +404,6 @@ export async function createStaffTakeawayOrder(
     note,
     customerContact,
     built: validated.built,
+    parentOrderId: input.parentOrderId ?? null,
   });
 }

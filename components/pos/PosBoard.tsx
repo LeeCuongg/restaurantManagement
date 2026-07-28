@@ -73,6 +73,8 @@ export function PosBoard({
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [pendingOpen, setPendingOpen] = useState(false);
   const [takeawayMode, setTakeawayMode] = useState(counter);
+  /** Lọc hàng đợi đơn không bàn còn đúng đơn chọn từ ô "Tìm số đơn". */
+  const [filterOrderId, setFilterOrderId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
@@ -175,7 +177,13 @@ export function PosBoard({
     if (!q) return null;
     const tables = counter ? [] : initial.tables.filter((t) => t.name.toLowerCase().includes(q));
     const seen = new Set<string>();
-    const orders: { key: string; kitchenNo: number; where: string; tableId?: string }[] = [];
+    const orders: {
+      key: string;
+      kitchenNo: number;
+      where: string;
+      tableId?: string;
+      orderId?: string;
+    }[] = [];
     if (!counter) {
       for (const s of initial.sessions) {
         const name = initial.tables.find((t) => t.id === s.tableId)?.name ?? "?";
@@ -195,7 +203,12 @@ export function PosBoard({
         if (seen.has(key)) continue;
         seen.add(key);
         // Chế độ quầy: đơn không gắn bàn là khách ăn tại quán, không phải mang về.
-        orders.push({ key, kitchenNo: o.kitchenNo, where: counter ? "Tại quán" : "Mang về" });
+        orders.push({
+          key,
+          kitchenNo: o.kitchenNo,
+          where: counter ? "Tại quán" : "Mang về",
+          orderId: o.id,
+        });
       }
     }
     return { tables, orders };
@@ -208,6 +221,18 @@ export function PosBoard({
   const gotoTakeaway = () => {
     setQuery("");
     enterTakeaway();
+  };
+
+  /**
+   * Bấm kết quả "Số đơn" của đơn không bàn → LỌC hàng đợi còn đúng đơn đó.
+   * KHÔNG dùng `enterTakeaway()` vì nó xóa giỏ đang gõ dở; ở chế độ quầy thì panel vốn đã mở nên
+   * hàm đó chẳng làm gì thấy được — đó là lý do ô tìm số đơn "bấm mà không thấy phản ứng".
+   */
+  const gotoTakeawayOrder = (orderId: string) => {
+    setQuery("");
+    setSelectedTableId(null);
+    setTakeawayMode(true);
+    setFilterOrderId(orderId);
   };
 
   const selectedTable = initial.tables.find((t) => t.id === selectedTableId) ?? null;
@@ -354,76 +379,94 @@ export function PosBoard({
     }
   };
 
+  /**
+   * Ô tìm bàn / số đơn. Chế độ BÀN: nằm ở thanh trên cùng, ngay trên sơ đồ bàn mà nó lọc.
+   * Chế độ QUẦY: không có bàn để tìm — nó chỉ lọc hàng đợi đơn, nên chuyển hẳn sang header
+   * panel "Gọi món cho khách" bên phải, cạnh đúng danh sách nó tác động.
+   */
+  const searchBox = (
+    <>
+      {/* Chế độ bàn: rộng bằng khối tile bàn bên trái. Chế độ quầy: nằm trong header panel nên
+          hẹp hơn để không lấn tiêu đề. */}
+      <div className={cn("relative shrink-0", counter ? "w-56 lg:w-64" : "w-72 lg:w-[22rem]")}>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-steel" aria-hidden />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+          inputMode="search"
+          placeholder={counter ? "Tìm số đơn…" : "Tìm bàn / số đơn…"}
+          aria-label={counter ? "Tìm số đơn" : "Tìm bàn hoặc số đơn"}
+          className="h-11 w-full rounded-full border border-hairline-strong bg-canvas pl-9 pr-9 text-base text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            aria-label="Xóa tìm kiếm"
+            className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-steel hover:bg-surface"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+        {results && (
+          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 max-h-80 overflow-y-auto rounded-lg border border-hairline-soft bg-canvas p-xs shadow-modal">
+            {results.tables.length === 0 && results.orders.length === 0 && (
+              <p className="px-md py-sm text-sm text-steel">
+                {counter ? "Không thấy đơn khớp." : "Không thấy bàn/đơn khớp."}
+              </p>
+            )}
+            {results.tables.length > 0 && (
+              <>
+                <p className="px-md pb-xxs pt-xs text-xs font-medium uppercase tracking-wide text-steel">Bàn</p>
+                {results.tables.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => gotoTable(t.id)}
+                    className="flex min-h-[44px] w-full items-center justify-between gap-sm rounded-md px-md py-sm text-left text-sm hover:bg-surface"
+                  >
+                    <span className="font-medium text-ink">Bàn {t.name}</span>
+                    <span className="text-xs text-steel">{STATUS_VN[t.status]}</span>
+                  </button>
+                ))}
+              </>
+            )}
+            {results.orders.length > 0 && (
+              <>
+                <p className="px-md pb-xxs pt-xs text-xs font-medium uppercase tracking-wide text-steel">Số đơn</p>
+                {results.orders.map((o) => (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() =>
+                      o.tableId
+                        ? gotoTable(o.tableId)
+                        : o.orderId
+                          ? gotoTakeawayOrder(o.orderId)
+                          : gotoTakeaway()
+                    }
+                    className="flex min-h-[44px] w-full items-center justify-between gap-sm rounded-md px-md py-sm text-left text-sm hover:bg-surface"
+                  >
+                    <span className="font-medium text-ink">Đơn #{o.kitchenNo}</span>
+                    <span className="text-xs text-steel">{o.where}</span>
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface">
       {/* Toolbar */}
       <div className="flex items-center gap-md border-b border-hairline-soft bg-canvas py-sm pl-md pr-lg">
-        {/* Tìm bàn / số đơn — rộng bằng khối tile bàn bên trái (aside w-80/w-96 trừ p-md hai bên) */}
-        <div className="relative w-72 shrink-0 lg:w-[22rem]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-steel" aria-hidden />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && setQuery("")}
-            inputMode="search"
-            placeholder={counter ? "Tìm số đơn…" : "Tìm bàn / số đơn…"}
-            aria-label={counter ? "Tìm số đơn" : "Tìm bàn hoặc số đơn"}
-            className="h-11 w-full rounded-full border border-hairline-strong bg-canvas pl-9 pr-9 text-base text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              aria-label="Xóa tìm kiếm"
-              className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-steel hover:bg-surface"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-          {results && (
-            <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 max-h-80 overflow-y-auto rounded-lg border border-hairline-soft bg-canvas p-xs shadow-modal">
-              {results.tables.length === 0 && results.orders.length === 0 && (
-                <p className="px-md py-sm text-sm text-steel">
-                  {counter ? "Không thấy đơn khớp." : "Không thấy bàn/đơn khớp."}
-                </p>
-              )}
-              {results.tables.length > 0 && (
-                <>
-                  <p className="px-md pb-xxs pt-xs text-xs font-medium uppercase tracking-wide text-steel">Bàn</p>
-                  {results.tables.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => gotoTable(t.id)}
-                      className="flex min-h-[44px] w-full items-center justify-between gap-sm rounded-md px-md py-sm text-left text-sm hover:bg-surface"
-                    >
-                      <span className="font-medium text-ink">Bàn {t.name}</span>
-                      <span className="text-xs text-steel">{STATUS_VN[t.status]}</span>
-                    </button>
-                  ))}
-                </>
-              )}
-              {results.orders.length > 0 && (
-                <>
-                  <p className="px-md pb-xxs pt-xs text-xs font-medium uppercase tracking-wide text-steel">Số đơn</p>
-                  {results.orders.map((o) => (
-                    <button
-                      key={o.key}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => (o.tableId ? gotoTable(o.tableId) : gotoTakeaway())}
-                      className="flex min-h-[44px] w-full items-center justify-between gap-sm rounded-md px-md py-sm text-left text-sm hover:bg-surface"
-                    >
-                      <span className="font-medium text-ink">Đơn #{o.kitchenNo}</span>
-                      <span className="text-xs text-steel">{o.where}</span>
-                    </button>
-                  ))}
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        {!counter && searchBox}
         {!counter && (
           <span className="hidden shrink-0 text-sm text-steel xl:inline">
             {initial.tables.length} bàn ·{" "}
@@ -573,7 +616,16 @@ export function PosBoard({
           />
         </section>
 
-        <aside className="w-[26rem] shrink-0 border-l border-hairline-soft lg:w-[30rem]">
+        {/* Panel đơn không bàn cần chỗ cho HAI cột (gõ đơn + hàng đợi) nên rộng hơn panel bàn;
+            chỉ nới từ xl trở lên để màn hẹp không bóp mất thực đơn. */}
+        <aside
+          className={cn(
+            "shrink-0 border-l border-hairline-soft",
+            takeawayMode
+              ? "w-[26rem] lg:w-[34rem] xl:w-[52rem] 2xl:w-[60rem]"
+              : "w-[26rem] lg:w-[30rem]"
+          )}
+        >
           {takeawayMode ? (
             <TakeawayPanel
               slug={slug}
@@ -588,6 +640,9 @@ export function PosBoard({
               cancelStaff={cancelStaff}
               canCancelWithoutPin={canCancelWithoutPin}
               counter={counter}
+              filterOrderId={filterOrderId}
+              onClearFilter={() => setFilterOrderId(null)}
+              searchSlot={counter ? searchBox : null}
             />
           ) : selectedTable ? (
             <OrderPanel

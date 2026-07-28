@@ -10,6 +10,7 @@ import { parseSettings } from "@/lib/tenant/settings";
 import { computeBillTotals } from "./compute";
 import { planSplitByItems, planSplitEvenly, type SplitPick, type SplitSourceLine } from "./split";
 import { broadcastOrderStatus } from "@/lib/orders/broadcast";
+import { groupOrderIds } from "@/lib/orders/order-group";
 import type { BillView, BillLineView, DiscountType } from "./types";
 
 /**
@@ -157,9 +158,17 @@ export async function openBillForSession(
 }
 
 /**
- * Mở/đồng bộ bill cho 1 ĐƠN ONLINE (mang về/giao) — IDEMPOTENT theo online_order_id (P5 / 05-03).
- * 1 đơn = 1 bill (table_session_id=null, online_order_id=orderId), gom trọn order_items (≠cancelled).
- * KHÔNG tách/gộp. %phí/%VAT lấy từ settings lúc mở. Trả billId.
+ * Mở/đồng bộ bill cho một NHÓM đơn không gắn bàn (mang về/giao) — P5/05-03, mở rộng ở QD-011.
+ *
+ * Bill neo vào ĐƠN GỐC (`online_order_id = rootId`) và gom `order_items` (≠cancelled) của **gốc
+ * + mọi lượt gọi thêm**. Gọi vào bằng id của bất kỳ đơn nào trong nhóm đều ra cùng một bill.
+ *
+ * Idempotent nhưng KHÔNG "trả bill cũ rồi thôi": nếu bill đang `open` mà nhóm phát sinh món mới
+ * (khách gọi thêm sau khi nhân viên đã bấm "Thu tiền" một lần), hàm **đồng bộ lại** — thêm
+ * bill_items còn thiếu, bỏ bill_items của món đã hủy, rồi tính lại tổng. Không có bước này thì
+ * hóa đơn thiếu đúng phần khách vừa gọi. Bill `paid` thì giữ nguyên (đã chốt sổ).
+ *
+ * KHÔNG tách/gộp/chia đều — thứ đó chỉ dine-in có. %phí/%VAT lấy từ settings lúc MỞ bill.
  */
 export async function openBillForOrder(
   tenantId: string,
@@ -170,29 +179,41 @@ export async function openBillForOrder(
 
   const { data: order } = await client
     .from("orders")
-    .select("id, channel")
+    .select("id, channel, parent_order_id")
     .eq("tenant_id", tenantId)
     .eq("id", orderId)
     .maybeSingle();
   if (!order) return { error: "Không tìm thấy đơn." };
   if (order.channel === "dine_in") return { error: "Đơn tại bàn dùng luồng POS." };
 
-  // Idempotent: đã có bill (open|paid) cho đơn → trả lại.
-  const { data: existing } = await client
-    .from("bills")
-    .select("id")
-    .eq("tenant_id", tenantId)
-    .eq("online_order_id", orderId)
-    .in("status", ["open", "paid"])
-    .maybeSingle();
-  if (existing) return { billId: existing.id as string };
+  // Bill luôn neo vào gốc — bấm thu tiền ở đơn con cũng ra bill của cả nhóm.
+  const rootId = (order.parent_order_id as string | null) ?? (order.id as string);
+  const orderIds = await groupOrderIds(client, tenantId, rootId);
 
   const { data: ois } = await client
     .from("order_items")
     .select("id, unit_price_snapshot, qty, status")
     .eq("tenant_id", tenantId)
-    .eq("order_id", orderId);
+    .in("order_id", orderIds);
   const items = (ois ?? []).filter((i) => i.status !== "cancelled");
+
+  const { data: existing } = await client
+    .from("bills")
+    .select("id, status")
+    .eq("tenant_id", tenantId)
+    .eq("online_order_id", rootId)
+    .in("status", ["open", "paid"])
+    .maybeSingle();
+
+  if (existing) {
+    const billId = existing.id as string;
+    if (existing.status === "paid") return { billId };
+    const sync = await syncGroupBillItems(client, tenantId, billId, items);
+    if (sync) return { error: sync };
+    await recomputeBill(client, tenantId, billId);
+    return { billId };
+  }
+
   if (items.length === 0) return { error: "Đơn chưa có món để tính tiền." };
 
   const settings = await getSessionSettings(client, tenantId);
@@ -203,7 +224,7 @@ export async function openBillForOrder(
       tenant_id: tenantId,
       bill_no: billNo,
       table_session_id: null,
-      online_order_id: orderId,
+      online_order_id: rootId,
       status: "open",
       service_charge_pct: settings.service_charge_pct,
       vat_pct: settings.vat_pct,
@@ -214,19 +235,61 @@ export async function openBillForOrder(
   if (error || !created) return { error: "Không mở được hóa đơn. Vui lòng thử lại." };
   const billId = created.id as string;
 
-  const rows = items.map((i) => ({
-    tenant_id: tenantId,
-    bill_id: billId,
-    order_item_id: i.id as string,
-    qty_allocated: i.qty as number,
-    unit_price_snapshot: i.unit_price_snapshot as number,
-    amount: (i.unit_price_snapshot as number) * (i.qty as number),
-  }));
-  const { error: biErr } = await client.from("bill_items").insert(rows);
-  if (biErr) return { error: "Không thêm được món vào hóa đơn. Vui lòng thử lại." };
+  const sync = await syncGroupBillItems(client, tenantId, billId, items);
+  if (sync) return { error: sync };
 
   await recomputeBill(client, tenantId, billId);
   return { billId };
+}
+
+/**
+ * Đưa bill_items của một bill nhóm về khớp đúng danh sách `items` hiện tại: thêm món mới, xóa
+ * món đã bị hủy khỏi bill. Trả chuỗi lỗi nếu hỏng, `null` nếu xong.
+ * (Đơn không bàn không tách bill nên mỗi order_item có tối đa 1 dòng bill_items — so sánh theo
+ * tập id là đủ, không cần đối chiếu qty_allocated.)
+ */
+async function syncGroupBillItems(
+  client: SupabaseClient,
+  tenantId: string,
+  billId: string,
+  items: { id: unknown; unit_price_snapshot: unknown; qty: unknown }[]
+): Promise<string | null> {
+  const { data: current } = await client
+    .from("bill_items")
+    .select("id, order_item_id")
+    .eq("tenant_id", tenantId)
+    .eq("bill_id", billId);
+
+  const have = new Set((current ?? []).map((r) => r.order_item_id as string));
+  const want = new Set(items.map((i) => i.id as string));
+
+  const toAdd = items.filter((i) => !have.has(i.id as string));
+  if (toAdd.length > 0) {
+    const rows = toAdd.map((i) => ({
+      tenant_id: tenantId,
+      bill_id: billId,
+      order_item_id: i.id as string,
+      qty_allocated: i.qty as number,
+      unit_price_snapshot: i.unit_price_snapshot as number,
+      amount: (i.unit_price_snapshot as number) * (i.qty as number),
+    }));
+    const { error } = await client.from("bill_items").insert(rows);
+    if (error) return "Không thêm được món vào hóa đơn. Vui lòng thử lại.";
+  }
+
+  const toDrop = (current ?? [])
+    .filter((r) => !want.has(r.order_item_id as string))
+    .map((r) => r.id as string);
+  if (toDrop.length > 0) {
+    const { error } = await client
+      .from("bill_items")
+      .delete()
+      .in("id", toDrop)
+      .eq("tenant_id", tenantId);
+    if (error) return "Không cập nhật được hóa đơn. Vui lòng thử lại.";
+  }
+
+  return null;
 }
 
 /**
@@ -382,15 +445,20 @@ export async function payBill(
   }
   for (const s of sessions) await closeSessionIfSettled(client, tenantId, s);
 
-  // Đơn online: thu đủ = HOÀN TẤT (đơn không gắn phiên bàn). Roll-up ở trên đã đặt món 'served';
-  // ở đây nâng đơn lên 'completed' (trạng thái cuối cho theo dõi khách) + broadcast.
+  // Đơn không gắn bàn: thu đủ = HOÀN TẤT. Roll-up ở trên đã đặt món 'served'; ở đây nâng đơn lên
+  // 'completed' (trạng thái cuối cho theo dõi khách) + broadcast.
+  // Nâng CẢ NHÓM gọi thêm (QD-011 §4), không chỉ đơn neo bill — nếu không, các lượt gọi thêm
+  // kẹt ở 'served' và không bao giờ rời hàng đợi POS dù khách đã trả tiền.
   if (bill.online_order_id) {
+    const rootId = bill.online_order_id as string;
+    const groupIds = await groupOrderIds(client, tenantId, rootId);
     await client
       .from("orders")
       .update({ status: "completed", updated_at: now })
-      .eq("id", bill.online_order_id as string)
-      .eq("tenant_id", tenantId);
-    await broadcastOrderStatus(bill.online_order_id as string);
+      .in("id", groupIds)
+      .eq("tenant_id", tenantId)
+      .neq("status", "cancelled");
+    for (const oid of groupIds) await broadcastOrderStatus(oid);
   }
 
   const change = Math.max(0, Math.round(input.amountReceived) - total);

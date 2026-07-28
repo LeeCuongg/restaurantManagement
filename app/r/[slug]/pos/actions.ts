@@ -20,6 +20,7 @@ import {
   getOnlineOrder,
   type OnlineOrderView,
 } from "@/lib/orders/online";
+import { resolveGroupRoot, groupOrderIds, groupIsPaid } from "@/lib/orders/order-group";
 import { verifyPinForRoles } from "@/lib/auth/pin-gate";
 import { resolveStaffCall } from "@/lib/orders/staff-calls";
 import {
@@ -37,7 +38,7 @@ import {
 } from "@/lib/billing/bill";
 import type { BillView, DiscountType, PaymentMethod } from "@/lib/billing/types";
 import type { SplitPick } from "@/lib/billing/split";
-import type { OrderLineInput } from "@/lib/orders/types";
+import type { OrderLineInput, OrderStatus } from "@/lib/orders/types";
 
 export type ActionResult = { ok: true; orderId?: string } | { ok: false; error: string };
 export type BillsActionResult = { ok: true; bills: BillView[] } | { ok: false; error: string };
@@ -523,15 +524,33 @@ export async function getOnlineOrderAction(
   return { ok: true, order };
 }
 
-/** Bán mang về tại quầy: tạo đơn takeaway (source=staff, xác nhận ngay) → vào /pos/online. */
+/**
+ * Bán mang về tại quầy: tạo đơn takeaway (source=staff, xác nhận ngay) → vào /pos/online.
+ *
+ * `addToOrderId` = lượt GỌI THÊM cho đơn đang chờ (QD-011, ORDER-14). Đơn mới vẫn là đơn thật
+ * (số bếp + phiếu bếp riêng), chỉ khác `parent_order_id` để thu tiền gom về một bill.
+ */
 export async function createTakeawayOrderAction(
   slug: string,
   lines: OrderLineInput[],
   contact?: { name?: string; phone?: string },
-  note?: string
+  note?: string,
+  addToOrderId?: string
 ): Promise<ActionResult> {
   const auth = await authorizePos(slug);
   if ("error" in auth) return { ok: false, error: auth.error };
+
+  // Chuẩn hóa về ĐƠN GỐC ở server: bấm "Gọi thêm" trên đơn con vẫn phải trỏ về gốc, và
+  // client không được tự quyết cha (nhóm phẳng — QD-011 §3).
+  let parentOrderId: string | null = null;
+  if (addToOrderId) {
+    const supabase = await createClient();
+    const root = await resolveGroupRoot(supabase, auth.tenantId, addToOrderId);
+    if ("error" in root) return { ok: false, error: root.error };
+    if (await groupIsPaid(supabase, auth.tenantId, root.rootId))
+      return { ok: false, error: "Đơn đã thu tiền — hãy tạo đơn mới." };
+    parentOrderId = root.rootId;
+  }
 
   const result = await createStaffTakeawayOrder({
     tenantId: auth.tenantId,
@@ -540,10 +559,12 @@ export async function createTakeawayOrderAction(
     customerPhone: contact?.phone,
     note,
     actingStaffId: auth.staffId,
+    parentOrderId,
   });
   if ("error" in result) return { ok: false, error: result.error };
 
   await broadcastOrderStatus(result.orderId);
+  revalidatePath(`/r/${slug}/pos`);
   revalidatePath(`/r/${slug}/pos/online`);
   return { ok: true, orderId: result.orderId };
 }
@@ -682,21 +703,35 @@ export async function cancelOrder(
   const supabase = await createClient();
   const { data: order } = await supabase
     .from("orders")
-    .select("id, status")
+    .select("id, status, channel, parent_order_id")
     .eq("id", input.orderId)
     .eq("tenant_id", tenantId)
     .maybeSingle();
   if (!order) return { ok: false, error: "Không tìm thấy đơn." };
   if (order.status === "cancelled") return { ok: false, error: "Đơn đã hủy." };
 
+  // Hủy ĐƠN GỐC của nhóm gọi thêm = hủy CẢ NHÓM, một lý do, một lần duyệt PIN (QD-011 §5).
+  // Chỉ hủy đúng đơn gốc sẽ để đơn con mồ côi và bill mất mốc neo. Hủy đơn con thì chỉ đơn đó.
+  const isGroupRoot =
+    order.parent_order_id == null && order.channel !== "dine_in";
+  const targetIds = isGroupRoot
+    ? await groupOrderIds(supabase, tenantId, input.orderId)
+    : [input.orderId];
+
   const { data: items } = await supabase
     .from("order_items")
     .select("status")
-    .eq("order_id", input.orderId)
+    .in("order_id", targetIds)
     .eq("tenant_id", tenantId);
   const rows = items ?? [];
   if (rows.some((s) => s.status === "served"))
-    return { ok: false, error: "Đơn có món đã phục vụ, không thể hủy cả đơn." };
+    return {
+      ok: false,
+      error:
+        targetIds.length > 1
+          ? "Nhóm đơn có món đã phục vụ, không thể hủy cả nhóm."
+          : "Đơn có món đã phục vụ, không thể hủy cả đơn.",
+    };
   if (!rows.some((s) => s.status !== "cancelled"))
     return { ok: false, error: "Đơn không còn món để hủy." };
 
@@ -706,20 +741,29 @@ export async function cancelOrder(
   const { error: itErr } = await supabase
     .from("order_items")
     .update({ status: "cancelled", cancel_reason: reasonSlice, cancelled_by: cancelledBy })
-    .eq("order_id", input.orderId)
+    .in("order_id", targetIds)
     .eq("tenant_id", tenantId)
     .neq("status", "cancelled");
   if (itErr) return { ok: false, error: "Hủy đơn thất bại. Vui lòng thử lại." };
 
-  if (canTransition(order.status, "cancelled")) {
+  const { data: targets } = await supabase
+    .from("orders")
+    .select("id, status")
+    .in("id", targetIds)
+    .eq("tenant_id", tenantId);
+  const cancellable = (targets ?? [])
+    .filter((o) => canTransition(o.status as OrderStatus, "cancelled"))
+    .map((o) => o.id as string);
+  if (cancellable.length > 0) {
     await supabase
       .from("orders")
       .update({ status: "cancelled", cancel_reason: reasonSlice, updated_at: now })
-      .eq("id", input.orderId)
+      .in("id", cancellable)
       .eq("tenant_id", tenantId);
   }
 
-  await broadcastOrderStatus(input.orderId);
+  for (const oid of targetIds) await broadcastOrderStatus(oid);
   revalidatePath(`/r/${slug}/pos`);
+  revalidatePath(`/r/${slug}/pos/online`);
   return { ok: true, orderId: input.orderId };
 }
