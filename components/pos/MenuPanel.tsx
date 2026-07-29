@@ -2,31 +2,30 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import { Plus, Search, UtensilsCrossed } from "lucide-react";
+import { Ban, Plus, Search, UtensilsCrossed } from "lucide-react";
 import type { CustomerMenu, CustomerMenuItem } from "@/lib/orders/customer-menu";
 import { formatVnd } from "@/lib/orders/cart";
+import { normalizeVi as norm } from "@/lib/menu/search";
 import { ModifierSheet, type PendingLine } from "@/components/customer/ModifierSheet";
+import { AvailabilityToggle } from "@/components/menu/AvailabilityToggle";
 import { cn } from "@/lib/utils";
 
 /**
  * MenuPanel (POS cột phải) — thực đơn luôn hiển thị + Ô TÌM KIẾM. Chạm bất kỳ món nào đều mở
  * ModifierSheet để nhập SL + GHI CHÚ (mọi món đều ghi chú được — yêu cầu chủ dự án); món có
- * tùy chọn thì chọn thêm. Chỉ thêm được khi đã chọn bàn (canAdd). Chỉ hiện món available.
+ * tùy chọn thì chọn thêm. Chỉ thêm được khi đã chọn bàn (canAdd).
+ *
+ * MENU-04: món HẾT vẫn hiện (mờ, không thêm được) kèm switch Còn/Hết để nhân viên báo hết ngay
+ * tại POS — không phải vào khu quản trị (QD-010 §5).
  */
 
-/** Bỏ dấu tiếng Việt để tìm kiếm không dấu ("com ga" khớp "Cơm gà"). */
-const norm = (s: string) =>
-  s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/đ/gi, "d")
-    .toLowerCase();
-
 export function MenuPanel({
+  slug,
   menu,
   canAdd,
   onAddLine,
 }: {
+  slug: string;
   menu: CustomerMenu | null;
   canAdd: boolean;
   onAddLine: (line: PendingLine) => void;
@@ -43,13 +42,15 @@ export function MenuPanel({
   };
 
   // Lọc theo tìm kiếm (không dấu); ẩn danh mục rỗng.
+  // Món HẾT vẫn hiện (mờ + nhãn "Hết") để nhân viên bật lại được — MENU-04. `getCustomerMenu`
+  // vốn trả cả món is_available=false nên chỉ cần bỏ lọc, không đụng query.
   const filtered = useMemo(() => {
     if (!menu) return [];
     const q = norm(query.trim());
     return menu.categories
       .map((cat) => ({
         ...cat,
-        items: cat.items.filter((i) => i.is_available && (!q || norm(i.name).includes(q))),
+        items: cat.items.filter((i) => !q || norm(i.name).includes(q)),
       }))
       .filter((cat) => cat.items.length > 0);
   }, [menu, query]);
@@ -87,41 +88,74 @@ export function MenuPanel({
                 {cat.name}
               </h3>
               <ul className="grid grid-cols-2 gap-sm md:grid-cols-3 xl:grid-cols-4">
-                {cat.items.map((it) => (
-                  <li key={it.id}>
-                    <button
-                      type="button"
-                      onClick={() => tap(it)}
-                      disabled={!canAdd}
-                      aria-label={`Thêm ${it.name}`}
-                      className={cn(
-                        "group flex h-full min-h-[76px] w-full items-center gap-md rounded-lg border border-hairline-soft p-sm text-left shadow-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
-                        canAdd ? "hover:bg-cream active:bg-cream-deeper" : "cursor-not-allowed opacity-50"
-                      )}
+                {cat.items.map((it) => {
+                  const addable = canAdd && it.is_available;
+                  return (
+                    // Toggle là ANH EM của nút thêm món, không lồng trong nó: nút trong nút là
+                    // HTML không hợp lệ và bấm "Hết" sẽ nổi bọt lên mở ModifierSheet.
+                    <li
+                      key={it.id}
+                      className="flex h-full flex-col overflow-hidden rounded-lg border border-hairline-soft shadow-card"
                     >
-                      <span className="flex min-w-0 flex-1 flex-col gap-xxs">
-                        <span className="line-clamp-2 text-sm font-medium leading-snug text-ink [text-wrap:balance]">
-                          {it.name}
-                        </span>
-                        <span className="text-sm font-semibold tabular-nums text-primary">
-                          {formatVnd(it.base_price)}
-                        </span>
-                      </span>
-                      <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-hairline-soft bg-surface">
-                        {it.image_url ? (
-                          <Image src={it.image_url} alt="" fill sizes="64px" className="object-cover" />
-                        ) : (
-                          <span className="grid h-full w-full place-items-center text-stone/70">
-                            <UtensilsCrossed className="h-5 w-5" aria-hidden />
-                          </span>
+                      <button
+                        type="button"
+                        onClick={() => tap(it)}
+                        disabled={!addable}
+                        aria-label={
+                          it.is_available ? `Thêm ${it.name}` : `${it.name} — hết món`
+                        }
+                        className={cn(
+                          "group flex min-h-[76px] flex-1 items-center gap-md p-sm text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
+                          addable
+                            ? "hover:bg-cream active:bg-cream-deeper"
+                            : "cursor-not-allowed opacity-50"
                         )}
-                      </span>
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-fg shadow-card transition-transform group-active:scale-95">
-                        <Plus className="h-4 w-4" strokeWidth={2.5} />
-                      </span>
-                    </button>
-                  </li>
-                ))}
+                      >
+                        <span className="flex min-w-0 flex-1 flex-col gap-xxs">
+                          <span className="line-clamp-2 text-sm font-medium leading-snug text-ink [text-wrap:balance]">
+                            {it.name}
+                          </span>
+                          <span className="text-sm font-semibold tabular-nums text-primary">
+                            {formatVnd(it.base_price)}
+                          </span>
+                        </span>
+                        <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-hairline-soft bg-surface">
+                          {it.image_url ? (
+                            <Image src={it.image_url} alt="" fill sizes="64px" className="object-cover" />
+                          ) : (
+                            <span className="grid h-full w-full place-items-center text-stone/70">
+                              <UtensilsCrossed className="h-5 w-5" aria-hidden />
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className={cn(
+                            "grid h-10 w-10 shrink-0 place-items-center rounded-full shadow-card transition-transform group-active:scale-95",
+                            it.is_available
+                              ? "bg-primary text-primary-fg"
+                              : "bg-hairline-strong text-canvas"
+                          )}
+                        >
+                          {it.is_available ? (
+                            <Plus className="h-4 w-4" strokeWidth={2.5} />
+                          ) : (
+                            <Ban className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+                          )}
+                        </span>
+                      </button>
+
+                      <div className="flex items-center justify-between gap-xs border-t border-hairline-soft bg-surface px-sm">
+                        <span className="text-xs text-steel">Còn/Hết</span>
+                        <AvailabilityToggle
+                          slug={slug}
+                          itemId={it.id}
+                          available={it.is_available}
+                          className="min-h-11"
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           ))

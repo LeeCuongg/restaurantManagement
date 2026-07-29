@@ -1,3 +1,8 @@
+> **Cập nhật 28/07/2026 — [QD-011](QD-011-GoiThemChoDonKhongBan.md) nới quy tắc "1 đơn = 1 bill"**
+> thành **"1 NHÓM đơn = 1 bill"** cho đơn KHÔNG gắn bàn: khách gọi thêm thì mỗi lượt là một đơn
+> thật (phiếu bếp riêng) nhưng nối vào đơn gốc qua `orders.parent_order_id`, và cả nhóm thu chung
+> một hóa đơn. Vẫn KHÔNG tách/gộp/chia đều. Đơn khách tự đặt online không sinh liên kết này.
+
 # QD-008 — Quyết định Kênh online (P5)
 
 **Ngày:** 22/07/2026 · **Trạng thái:** CHỐT

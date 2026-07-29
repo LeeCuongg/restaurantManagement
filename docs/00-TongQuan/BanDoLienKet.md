@@ -81,10 +81,9 @@ middleware — guard quyền nằm ở layout/page.
 | `/r/pho-viet/admin/menu/modifiers` | Nhóm tùy chọn + phụ thu | owner/manager |
 | `/r/pho-viet/admin/tables` | Khu vực, bàn | owner/manager |
 | `/r/pho-viet/admin/staff` | Nhân viên (email + PIN) | owner/manager |
-| `/r/pho-viet/admin/settings` | Cấu hình nhà hàng | owner/manager |
+| `/r/pho-viet/admin/settings` | Cấu hình nhà hàng (%phí, %VAT, logo, footer hóa đơn) | **owner** (QD-010) |
 | `/r/pho-viet/admin/onboarding` | Wizard khởi tạo | owner/manager |
 | `/r/pho-viet/admin/reports` | Báo cáo doanh thu | owner/manager |
-| `/r/pho-viet/admin/data-scope` | Kiểm chứng phạm vi dữ liệu (RLS) | owner/manager |
 
 ### POS — `/r/pho-viet/pos/...` (đăng nhập email + PIN)
 | URL | Mô tả | Truy cập |
@@ -121,3 +120,15 @@ middleware — guard quyền nằm ở layout/page.
   code hai màn này nằm ở `/pos/reservations` và `/pos/online` (đã chuyển khỏi khu admin).
 - Guard quyền theo vai trò xem `lib/auth/rbac.ts` (`canAccess`); cách ly tenant do RLS
   (`auth_tenant_ids()`), không phân biệt vai trò ở tầng DB.
+- **Phân quyền trong khu admin** theo ma trận `canManage` ([QD-010](../15-QuyetDinh/QD-010-PhanQuyenKhuAdmin.md),
+  thi công ở 06-01): `settings` chỉ owner; các mục còn lại owner|manager. Sidebar **ẩn hẳn** mục
+  không có quyền. Ngưỡng vào `/admin` không đổi — vai trò trạm vẫn bị chặn.
+- **Vai trò `manager`** nay cấp được từ `/admin/staff` (chỉ owner cấp) và đăng nhập bằng **mật khẩu
+  ≥8 ký tự**, không dùng PIN 4 số như nhân viên trạm.
+- **"Hết món"** bật/tắt được ở `/pos` (thẻ món) và `/kds` (nút "Báo hết món") — không cần vào admin.
+- **Gọi thêm cho đơn không gắn bàn** ([QD-011](../15-QuyetDinh/QD-011-GoiThemChoDonKhongBan.md), thi công ở 06-02):
+  panel bán mang về / gọi món tại quầy trên `/r/[slug]/pos` có nút **"Gọi thêm"** — lượt gọi thêm là
+  **đơn thật** (số bếp + phiếu bếp + vé KDS riêng) nhưng `orders.parent_order_id` trỏ đơn gốc, nên
+  **cả nhóm thu MỘT hóa đơn**. Ô **"Tìm số đơn"** ở header panel (chế độ quầy) **lọc** hàng đợi còn
+  đúng nhóm đó.
+- Dòng `/admin/data-scope` đã xóa khỏi bảng: route không còn trong `app/r/[slug]/admin/(protected)/`.
