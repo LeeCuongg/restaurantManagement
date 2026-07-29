@@ -33,11 +33,18 @@ export function TicketPrintButtons({
   slug,
   orderId,
   kitchenLabel,
+  align = "end",
 }: {
   slug: string;
   orderId: string;
   /** Nhãn đơn hiển thị trong hộp nhắc, vd "#12". Bỏ trống thì không hiện số. */
   kitchenLabel?: string;
+  /**
+   * Lề của chip so với cặp nút. "end" (mặc định) cho chỗ cụm nút nằm bên phải một hàng
+   * (OrderPanel); "start" cho chỗ cụm nút căn trái nguyên hàng (TakeawayPanel) — chip khi đó
+   * nằm thẳng dưới nút "Phiếu bếp", đúng nút mà nó nói về.
+   */
+  align?: "start" | "end";
 }) {
   const [remind, setRemind] = useState(false);
   const [print, setPrint] = useState<KitchenPrintState>({ status: "none", at: null });
@@ -87,7 +94,7 @@ export function TicketPrintButtons({
 
   return (
     <>
-      <div className="flex flex-col items-end gap-xxs">
+      <div className={`flex flex-col gap-xxs ${align === "start" ? "items-start" : "items-end"}`}>
         <div className="flex items-center gap-xs">
           <button type="button" onClick={printKitchen} className={BTN}>
             <Printer className="h-3.5 w-3.5" /> Phiếu bếp

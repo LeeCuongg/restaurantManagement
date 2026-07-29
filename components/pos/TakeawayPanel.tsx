@@ -385,22 +385,21 @@ export function TakeawayPanel({
                       : "rounded-lg border border-hairline-soft p-md transition-shadow"
                   }
                 >
-                  {/* Header GIỮ NGUYÊN 3 điều khiển như trước (in bếp / in khách / hủy) — panel
-                      chỉ ~26rem, nút thứ 4 làm vỡ hàng. "Gọi thêm" nằm ở cuối khối. */}
-                  {/* Hàng 1 CHỈ số đơn + giờ: panel ~26rem vừa đúng 3 nút, thêm bất kỳ thứ gì
-                      vào cột trái là bóp vỡ tiêu đề. */}
-                  <div className="flex items-start justify-between gap-sm">
-                    <p className="shrink-0 text-sm font-medium text-ink">
+                  {/* Số đơn CHIẾM HÀNG RIÊNG, cụm nút xuống hàng dưới full-width. Xếp cùng hàng
+                      thì panel (~390px sau khi chia đôi) không đủ cho 3 nút → "Hủy đơn" bị cắt. */}
+                  <div className="flex flex-col gap-xs">
+                    <p className="text-sm font-medium text-ink">
                       Đơn {orderLabel(g.root)}
                       <span className="ml-xs text-xs font-normal text-steel">
                         {hhmm(g.root.createdAt)}
                       </span>
                     </p>
-                    <div className="flex shrink-0 flex-wrap items-start justify-end gap-xs">
+                    <div className="flex flex-wrap items-start gap-xs">
                       <TicketPrintButtons
                         slug={slug}
                         orderId={g.root.id}
                         kitchenLabel={orderLabel(g.root) || undefined}
+                        align="start"
                       />
                       <button
                         type="button"
@@ -440,17 +439,18 @@ export function TakeawayPanel({
                       key={c.id}
                       className="mt-sm border-t border-dashed border-hairline pt-sm"
                     >
-                      <div className="flex items-start justify-between gap-sm">
-                        <p className="inline-flex shrink-0 items-center gap-xxs whitespace-nowrap text-xs font-medium text-steel">
+                      <div className="flex flex-col gap-xs">
+                        <p className="inline-flex items-center gap-xxs whitespace-nowrap text-xs font-medium text-steel">
                           <CornerDownRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
                           Lượt {orderLabel(c)}
                           <span className="font-normal">{hhmm(c.createdAt)}</span>
                         </p>
-                        <div className="flex shrink-0 flex-wrap items-start justify-end gap-xs">
+                        <div className="flex flex-wrap items-start gap-xs">
                           <TicketPrintButtons
                             slug={slug}
                             orderId={c.id}
                             kitchenLabel={orderLabel(c) || undefined}
+                            align="start"
                           />
                           <button
                             type="button"
