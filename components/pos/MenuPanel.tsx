@@ -87,7 +87,10 @@ export function MenuPanel({
               <h3 className="sticky top-0 z-10 -mx-md mb-xs bg-canvas px-md py-xs font-display text-sm text-steel">
                 {cat.name}
               </h3>
-              <ul className="grid grid-cols-2 gap-sm md:grid-cols-3 xl:grid-cols-4">
+              {/* auto-fill theo bề ngang THẬT của cột menu, không theo bề ngang cửa sổ: breakpoint
+                  md/xl đo viewport nên màn rộng vẫn ép 4 cột vào cột hẹp → thẻ ~130px, tên món bị
+                  bóp về 0 và nút tròn bị cắt. Mỗi thẻ cần ≥160px cho ảnh+nút+padding. */}
+              <ul className="grid gap-sm grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]">
                 {cat.items.map((it) => {
                   const addable = canAdd && it.is_available;
                   return (
