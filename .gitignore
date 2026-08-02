@@ -1,5 +1,8 @@
 _tmp/
 node_modules/
+# Thư mục triển khai cầu in cho từng quán (cau-in-<slug>): là bản ghép sẵn của scripts/ + .env.local
+# chứa SUPABASE_SERVICE_ROLE_KEY. Mang đi lắp máy, KHÔNG commit.
+/cau-in-*/
 .env*
 !.env.example
 !.env.local.example
