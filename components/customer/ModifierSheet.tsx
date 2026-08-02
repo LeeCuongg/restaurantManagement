@@ -9,7 +9,8 @@ import { QtyStepper } from "./QtyStepper";
 import { cn } from "@/lib/utils";
 
 /**
- * modifier-sheet (§5.2) — chọn tùy chọn + SL + ghi chú.
+ * modifier-sheet (§5.2) — chọn tùy chọn + SL. Ghi chú nhập ở GIỎ (mỗi dòng một ô), không nhập
+ * ở đây: hai chỗ nhập cùng một thứ thì người dùng gõ chỗ này lại đi tìm chỗ kia.
  *  - presentation="sheet" (mặc định, KHÁCH/mobile): bottom sheet vaul (drag/momentum iOS).
  *  - presentation="dialog" (POS/desktop): modal Ở GIỮA màn hình (bottom sheet trên màn rộng vô lý).
  * Validate min/max/required ở client; server re-validate khi gửi.
@@ -29,7 +30,10 @@ export function ModifierSheet({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onAdd: (line: PendingLine) => void;
-  /** Có giá trị → chế độ SỬA: nạp sẵn tùy chọn/SL/ghi chú của dòng đang sửa. */
+  /**
+   * Có giá trị → chế độ SỬA: nạp sẵn tùy chọn/SL của dòng đang sửa. `note` đi kèm để TRẢ LẠI
+   * nguyên vẹn — sheet không cho sửa ghi chú nhưng cũng không được xóa mất nó.
+   */
   initialLine?: { qty: number; note: string; optionIds: string[] } | null;
   submitLabel?: string;
   presentation?: "sheet" | "dialog";
@@ -166,26 +170,13 @@ export function ModifierSheet({
     );
   });
 
-  const noteQtyJsx = (
-    <>
-      <div className="mt-lg">
-        <label htmlFor="modifier-note" className="text-sm font-medium text-ink">
-          Ghi chú
-        </label>
-        <input
-          id="modifier-note"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          maxLength={200}
-          placeholder="VD: ít cay, không hành…"
-          className="mt-xs h-11 w-full rounded-md border border-hairline px-md text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-        />
-      </div>
-      <div className="mt-lg flex items-center justify-between">
-        <span className="text-sm text-steel">Số lượng</span>
-        <QtyStepper value={qty} onChange={setQty} />
-      </div>
-    </>
+  // Ghi chú KHÔNG nằm ở đây nữa: mỗi món trong giỏ đã có ô ghi chú riêng, để cả hai chỗ thì cùng
+  // một thứ nhập được ở hai nơi. Sheet này chỉ còn lo tùy chọn + số lượng.
+  const qtyJsx = (
+    <div className="mt-lg flex items-center justify-between">
+      <span className="text-sm text-steel">Số lượng</span>
+      <QtyStepper value={qty} onChange={setQty} />
+    </div>
   );
 
   const footerJsx = (
@@ -237,7 +228,7 @@ export function ModifierSheet({
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-lg pb-md pt-xs">
             {groupsJsx}
-            {noteQtyJsx}
+            {qtyJsx}
           </div>
           {footerJsx}
         </div>
@@ -257,7 +248,7 @@ export function ModifierSheet({
             <Drawer.Title className="font-display text-xl text-ink">{item.name}</Drawer.Title>
             {item.description && <p className="mt-xxs text-sm text-steel">{item.description}</p>}
             {groupsJsx}
-            {noteQtyJsx}
+            {qtyJsx}
           </div>
           {footerJsx}
         </Drawer.Content>

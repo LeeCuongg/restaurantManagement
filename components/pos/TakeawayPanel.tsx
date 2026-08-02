@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { PaymentDialog } from "./PaymentDialog";
 import { CancelItemDialog, type CancelStaff } from "./CancelItemDialog";
 import { TicketPrintButtons } from "./TicketPrintButtons";
+import { TakeawayHistory } from "./TakeawayHistory";
 import {
   createTakeawayOrderAction,
   openOnlineBillAction,
@@ -24,6 +25,12 @@ import {
 
 const hhmm = (iso: string) =>
   new Date(iso).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+/** Nút tab trong header panel. */
+const tabBtn = (active: boolean) =>
+  active
+    ? "inline-flex h-8 items-center rounded-full bg-primary px-md text-xs font-semibold text-primary-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    : "inline-flex h-8 items-center rounded-full px-md text-xs font-medium text-slate hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2";
 
 type CancelTarget = { id: string; name: string; variant: "item" | "order" };
 
@@ -84,6 +91,7 @@ export function TakeawayPanel({
   onCartQty,
   onCartRemove,
   onCartEdit,
+  onCartNote,
   onClearCart,
   onClose,
   cancelStaff,
@@ -92,6 +100,9 @@ export function TakeawayPanel({
   filterOrderId = null,
   onClearFilter,
   searchSlot = null,
+  tab,
+  onTabChange,
+  searchQuery,
 }: {
   slug: string;
   cart: CartLine[];
@@ -100,6 +111,7 @@ export function TakeawayPanel({
   onCartQty: (lineId: string, qty: number) => void;
   onCartRemove: (lineId: string) => void;
   onCartEdit: (lineId: string, line: PendingLine) => void;
+  onCartNote: (lineId: string, note: string) => void;
   onClearCart: () => void;
   onClose: () => void;
   cancelStaff: CancelStaff[];
@@ -115,6 +127,11 @@ export function TakeawayPanel({
   onClearFilter?: () => void;
   /** Ô "Tìm số đơn" đặt trong header panel — chế độ quầy không có bàn nên nó thuộc về đây. */
   searchSlot?: React.ReactNode;
+  /** Tab đang mở. Do PosBoard giữ vì ô tìm (ở thanh trên) tra theo tab. */
+  tab: "queue" | "history";
+  onTabChange: (tab: "queue" | "history") => void;
+  /** Chữ đang gõ ở ô tìm DUY NHẤT phía trên — tab lịch sử dùng nó để lọc danh sách. */
+  searchQuery: string;
 }) {
   const title = counter ? "Gọi món cho khách" : "Bán mang về";
   const createLabel = counter ? "Tạo đơn" : "Tạo đơn mang về";
@@ -137,7 +154,9 @@ export function TakeawayPanel({
   /** Đơn gốc đang được nối thêm (chế độ "Gọi thêm"); null = tạo đơn mới độc lập. */
   const [addToOrderId, setAddToOrderId] = useState<string | null>(null);
 
-  const groups = useMemo(() => groupTakeawayOrders(orders), [orders]);
+  // Đơn MỚI NHẤT lên đầu: quán đông, đơn vừa gõ mà nằm cuối danh sách thì nhân viên phải cuộn
+  // tìm mỗi lần khách quay lại hỏi/gọi thêm.
+  const groups = useMemo(() => groupTakeawayOrders(orders, { newestFirst: true }), [orders]);
   const addingTo = groups.find((g) => g.root.id === addToOrderId) ?? null;
   // Nhóm biến mất (đã thu tiền/hủy ở thiết bị khác) → tự thoát chế độ gọi thêm thay vì gửi lên
   // server một parent không còn hợp lệ.
@@ -208,10 +227,36 @@ export function TakeawayPanel({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-canvas">
-      <div className="flex items-center gap-md border-b border-hairline-soft px-lg py-md">
+      {/* Header: tiêu đề · tab · ô tìm DUY NHẤT. Ba thứ này cùng điều khiển một danh sách nên
+          gom chung một thanh; wrap khi panel hẹp. */}
+      <div className="flex flex-wrap items-center gap-x-md gap-y-sm border-b border-hairline-soft px-lg py-md">
         <h2 className="inline-flex shrink-0 items-center gap-sm font-display text-xl text-ink">
           <ShoppingBag className="h-5 w-5 text-primary" /> {title}
         </h2>
+        <div
+          role="tablist"
+          aria-label="Danh sách đơn"
+          className="inline-flex shrink-0 rounded-full border border-hairline-strong p-xxs"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "queue"}
+            onClick={() => onTabChange("queue")}
+            className={tabBtn(tab === "queue")}
+          >
+            Đang chờ ({groups.length})
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "history"}
+            onClick={() => onTabChange("history")}
+            className={tabBtn(tab === "history")}
+          >
+            Đã xong
+          </button>
+        </div>
         {searchSlot && <div className="ml-auto flex shrink-0 items-center">{searchSlot}</div>}
         {!hideClose && (
           <button
@@ -293,37 +338,49 @@ export function TakeawayPanel({
                 if (!it) return null;
                 const names = optionNames(it, l.optionIds);
                 return (
-                  <li key={l.lineId} className="flex items-start justify-between gap-sm border-b border-hairline-soft pb-sm last:border-b-0">
-                    <div className="min-w-0">
-                      {/* Tên món to hơn phần còn lại: nhân viên liếc qua là soát được món đã gõ. */}
-                      <p className="text-base font-medium text-ink">{it.name}</p>
-                      {names.length > 0 && <p className="text-xs text-steel">{names.join(" · ")}</p>}
-                      {l.note && <p className="text-xs italic text-stone">“{l.note}”</p>}
+                  <li key={l.lineId} className="border-b border-hairline-soft pb-sm last:border-b-0">
+                    <div className="flex items-start justify-between gap-sm">
+                      <div className="min-w-0">
+                        {/* Tên món to hơn phần còn lại: nhân viên liếc qua là soát được món đã gõ. */}
+                        <p className="text-base font-medium text-ink">{it.name}</p>
+                        {names.length > 0 && <p className="text-xs text-steel">{names.join(" · ")}</p>}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-sm">
+                        <QtyStepper value={l.qty} onChange={(v) => onCartQty(l.lineId, v)} />
+                        {it.groups.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditing({
+                                lineId: l.lineId,
+                                item: it,
+                                initial: { qty: l.qty, note: l.note, optionIds: l.optionIds },
+                              })
+                            }
+                            className="text-xs text-primary hover:underline"
+                          >
+                            Sửa
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onCartRemove(l.lineId)}
+                          aria-label="Xoá khỏi giỏ"
+                          className="text-xs text-status-late hover:underline"
+                        >
+                          Xoá
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-sm">
-                      <QtyStepper value={l.qty} onChange={(v) => onCartQty(l.lineId, v)} />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEditing({
-                            lineId: l.lineId,
-                            item: it,
-                            initial: { qty: l.qty, note: l.note, optionIds: l.optionIds },
-                          })
-                        }
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onCartRemove(l.lineId)}
-                        aria-label="Xoá khỏi giỏ"
-                        className="text-xs text-status-late hover:underline"
-                      >
-                        Xoá
-                      </button>
-                    </div>
+                    {/* Ghi chú nhập TẠI ĐÂY (không còn ở hộp thoại chọn món). */}
+                    <input
+                      value={l.note}
+                      onChange={(e) => onCartNote(l.lineId, e.target.value)}
+                      maxLength={200}
+                      placeholder="Ghi chú (VD: ít cay…)"
+                      aria-label={`Ghi chú cho ${it.name}`}
+                      className="mt-xs h-9 w-full rounded-md border border-hairline px-sm text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
                   </li>
                 );
               })}
@@ -348,28 +405,28 @@ export function TakeawayPanel({
 
       </div>
 
-      {/* ---- Đơn đang chờ (chưa thu tiền) — gom theo NHÓM gọi thêm ---- */}
+      {/* ---- Hàng đợi (chưa thu tiền) / Lịch sử (đã xong) ---- */}
       <div className="min-h-0 flex-1 overflow-y-auto px-lg py-md">
-        {groups.length === 0 ? (
+        {/* Chip "đang lọc theo số đơn" bám mép trên để lúc nào cũng thoát lọc được. */}
+        {tab === "queue" && filteredOrder && (
+          <div className="sticky top-0 z-20 -mt-md flex bg-canvas py-sm">
+            <button
+              type="button"
+              onClick={onClearFilter}
+              className="inline-flex h-7 items-center gap-xxs rounded-full bg-cream-deeper px-sm text-xs font-medium text-ink hover:bg-cream-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Đang lọc: Đơn {orderLabel(filteredOrder)}
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </div>
+        )}
+
+        {tab === "history" ? (
+          <TakeawayHistory slug={slug} counter={counter} query={searchQuery} />
+        ) : groups.length === 0 ? (
           <p className="py-xl text-center text-sm text-steel">Chưa có đơn nào đang chờ.</p>
         ) : (
           <div>
-            <div className="sticky top-0 z-10 -mt-md flex flex-wrap items-center gap-sm bg-canvas py-sm">
-              <p className="text-sm font-medium text-ink">
-                Đơn đang chờ ({visibleGroups.length}
-                {filterOrderId ? `/${groups.length}` : ""})
-              </p>
-              {filteredOrder && (
-                <button
-                  type="button"
-                  onClick={onClearFilter}
-                  className="inline-flex h-7 items-center gap-xxs rounded-full bg-cream-deeper px-sm text-xs font-medium text-ink hover:bg-cream-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                  Đang lọc: Đơn {orderLabel(filteredOrder)}
-                  <X className="h-3.5 w-3.5" aria-hidden />
-                </button>
-              )}
-            </div>
             {visibleGroups.length === 0 && (
               <p className="py-xl text-center text-sm text-steel">
                 Đơn này không còn trong hàng đợi.
@@ -398,8 +455,6 @@ export function TakeawayPanel({
                       <TicketPrintButtons
                         slug={slug}
                         orderId={g.root.id}
-                        kitchenLabel={orderLabel(g.root) || undefined}
-                        align="start"
                       />
                       <button
                         type="button"
@@ -449,8 +504,6 @@ export function TakeawayPanel({
                           <TicketPrintButtons
                             slug={slug}
                             orderId={c.id}
-                            kitchenLabel={orderLabel(c) || undefined}
-                            align="start"
                           />
                           <button
                             type="button"

@@ -11,9 +11,9 @@ import { AvailabilityToggle } from "@/components/menu/AvailabilityToggle";
 import { cn } from "@/lib/utils";
 
 /**
- * MenuPanel (POS cột phải) — thực đơn luôn hiển thị + Ô TÌM KIẾM. Chạm bất kỳ món nào đều mở
- * ModifierSheet để nhập SL + GHI CHÚ (mọi món đều ghi chú được — yêu cầu chủ dự án); món có
- * tùy chọn thì chọn thêm. Chỉ thêm được khi đã chọn bàn (canAdd).
+ * MenuPanel (POS cột phải) — thực đơn luôn hiển thị + Ô TÌM KIẾM. Chạm một món: có tùy chọn thì
+ * mở ModifierSheet để chọn; KHÔNG có tùy chọn thì vào thẳng giỏ. Số lượng và ghi chú sửa ngay ở
+ * giỏ nên không cần hộp thoại trung gian. Chỉ thêm được khi đã chọn bàn (canAdd).
  *
  * MENU-04: món HẾT vẫn hiện (mờ, không thêm được) kèm switch Còn/Hết để nhân viên báo hết ngay
  * tại POS — không phải vào khu quản trị (QD-010 §5).
@@ -36,7 +36,12 @@ export function MenuPanel({
 
   const tap = (it: CustomerMenuItem) => {
     if (!canAdd || !it.is_available) return;
-    // Luôn mở sheet để nhập SL + ghi chú (mọi món đều ghi chú được).
+    if (it.groups.length === 0) {
+      // Món không có tùy chọn → THÊM THẲNG vào giỏ. Ghi chú và số lượng đều sửa được ngay tại
+      // giỏ, nên mở hộp thoại chỉ để bấm thêm một nút nữa là thừa một nhịp cho mỗi món.
+      onAddLine({ itemId: it.id, qty: 1, note: "", optionIds: [] });
+      return;
+    }
     setActiveItem(it);
     setModifierOpen(true);
   };

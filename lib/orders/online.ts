@@ -16,6 +16,7 @@ import {
   type CreateOrderResult,
 } from "./create-order";
 import { broadcastOrderStatus } from "./broadcast";
+import type { BillStatus, PaymentMethod } from "@/lib/billing/types";
 import type { OrderItemStatus, OrderStatus } from "./types";
 import type { OrderLineInput } from "./types";
 
@@ -116,10 +117,19 @@ export type OnlineOrderView = {
 const ONLINE_ORDER_SELECT =
   "id, channel, status, kitchen_no, note, customer_contact, created_at, parent_order_id, order_items(id, name_snapshot, unit_price_snapshot, qty, note, status, created_at, order_item_modifiers(name_snapshot))";
 
-/** Map 1 row order (kèm items) → OnlineOrderView. */
-function toOnlineOrderView(o: Record<string, unknown>): OnlineOrderView {
+/**
+ * Map 1 row order (kèm items) → OnlineOrderView.
+ *
+ * `keepCancelledItems`: giữ lại món đã hủy trong `items` (màn LỊCH SỬ cần đọc được đơn hủy — hủy
+ * đơn thì hủy luôn từng món nên lọc đi là ra đơn rỗng). `total` luôn CHỈ cộng món chưa hủy = đúng
+ * số tiền khách trả.
+ */
+function toOnlineOrderView(
+  o: Record<string, unknown>,
+  opts: { keepCancelledItems?: boolean } = {}
+): OnlineOrderView {
   const items: OnlineOrderItem[] = ((o.order_items as Record<string, unknown>[]) ?? [])
-    .filter((it) => it.status !== "cancelled")
+    .filter((it) => opts.keepCancelledItems || it.status !== "cancelled")
     .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
     .map((it) => ({
       id: it.id as string,
@@ -130,7 +140,9 @@ function toOnlineOrderView(o: Record<string, unknown>): OnlineOrderView {
       unitPrice: it.unit_price_snapshot as number,
       modifiers: ((it.order_item_modifiers as { name_snapshot: string }[]) ?? []).map((m) => m.name_snapshot),
     }));
-  const total = items.reduce((s, it) => s + it.unitPrice * it.qty, 0);
+  const total = items
+    .filter((it) => it.status !== "cancelled")
+    .reduce((s, it) => s + it.unitPrice * it.qty, 0);
   const contact = (o.customer_contact as OnlineOrderContact | null) ?? {};
   return {
     id: o.id as string,
@@ -171,6 +183,112 @@ export async function listTakeawayOrders(tenantId: string): Promise<OnlineOrderV
     .in("status", ["confirmed", "ready"])
     .order("created_at", { ascending: true });
   return (data ?? []).map((o) => toOnlineOrderView(o as Record<string, unknown>));
+}
+
+// ---- Lịch sử đơn không gắn bàn (đã thu tiền / đã hủy) ------------------------
+
+/** Tiền đã thu của MỘT nhóm đơn — bill luôn neo vào đơn gốc (`bills.online_order_id`). */
+export type TakeawayBillInfo = {
+  /** Đơn GỐC mà bill neo vào. */
+  orderId: string;
+  billId: string;
+  billNo: number | null;
+  status: BillStatus;
+  total: number;
+  paidAt: string | null;
+  methods: PaymentMethod[];
+};
+
+export type TakeawayHistory = {
+  orders: OnlineOrderView[];
+  bills: TakeawayBillInfo[];
+  /** Chạm trần `HISTORY_LIMIT` → màn hình phải nói rõ là đang cắt bớt, không im lặng. */
+  truncated: boolean;
+};
+
+const VN_OFFSET = 7 * 3600 * 1000;
+const HISTORY_LIMIT = 400;
+
+/** [đầu, cuối) UTC của khoảng NGÀY VN `fromDay..toDay` (YYYY-MM-DD, bao gồm cả hai đầu). */
+export function vnDayRangeToUtc(fromDay: string, toDay: string): { fromUtc: string; toUtc: string } {
+  const start = Date.parse(`${fromDay}T00:00:00Z`);
+  const end = Date.parse(`${toDay}T00:00:00Z`) + 86400000;
+  return {
+    fromUtc: new Date(start - VN_OFFSET).toISOString(),
+    toUtc: new Date(end - VN_OFFSET).toISOString(),
+  };
+}
+
+/**
+ * Đơn không gắn bàn ĐÃ KẾT THÚC (completed/cancelled) trong khoảng ngày VN — để nhân viên xem lại
+ * đơn đã thu tiền. Hàng đợi POS chỉ giữ đơn confirmed/ready nên thu tiền xong là đơn rời màn hình;
+ * đây là đường quay lại.
+ *
+ * Kèm `bills` (neo theo đơn gốc) để hiện SỐ TIỀN ĐÃ THU thật + in lại hóa đơn, thay vì cộng lại từ
+ * món (bill có thể đã giảm giá / phụ thu). Số bếp reset mỗi ngày nên lọc theo ngày là bắt buộc để
+ * đọc đúng "Đơn #5" là đơn nào.
+ */
+export async function listTakeawayHistory(
+  tenantId: string,
+  fromDay: string,
+  toDay: string
+): Promise<TakeawayHistory> {
+  const supabase = await createClient();
+  const { fromUtc, toUtc } = vnDayRangeToUtc(fromDay, toDay);
+
+  const { data: orderRows } = await supabase
+    .from("orders")
+    .select(ONLINE_ORDER_SELECT)
+    .eq("tenant_id", tenantId)
+    .eq("channel", "takeaway")
+    .in("status", ["completed", "cancelled"])
+    .gte("created_at", fromUtc)
+    .lt("created_at", toUtc)
+    .order("created_at", { ascending: false })
+    .limit(HISTORY_LIMIT + 1);
+
+  const rows = orderRows ?? [];
+  const truncated = rows.length > HISTORY_LIMIT;
+  // Trả lại thứ tự TĂNG DẦN: gom nhóm cần con đứng sau gốc, đảo thứ tự nhóm là việc của UI.
+  const kept = (truncated ? rows.slice(0, HISTORY_LIMIT) : rows).reverse();
+  const orders = kept.map((o) => toOnlineOrderView(o as Record<string, unknown>, { keepCancelledItems: true }));
+
+  if (orders.length === 0) return { orders, bills: [], truncated };
+
+  const { data: billRows } = await supabase
+    .from("bills")
+    .select("id, bill_no, status, total, paid_at, online_order_id")
+    .eq("tenant_id", tenantId)
+    .in("online_order_id", orders.map((o) => o.id));
+
+  const billList = billRows ?? [];
+  const { data: paymentRows } = billList.length
+    ? await supabase
+        .from("payments")
+        .select("bill_id, method")
+        .eq("tenant_id", tenantId)
+        .in("bill_id", billList.map((b) => b.id as string))
+    : { data: [] as { bill_id: string; method: string }[] };
+
+  const methodsByBill = new Map<string, PaymentMethod[]>();
+  for (const p of paymentRows ?? []) {
+    const list = methodsByBill.get(p.bill_id as string) ?? [];
+    const m = p.method as PaymentMethod;
+    if (!list.includes(m)) list.push(m);
+    methodsByBill.set(p.bill_id as string, list);
+  }
+
+  const bills: TakeawayBillInfo[] = billList.map((b) => ({
+    orderId: b.online_order_id as string,
+    billId: b.id as string,
+    billNo: (b.bill_no as number) ?? null,
+    status: b.status as BillStatus,
+    total: b.total as number,
+    paidAt: (b.paid_at as string) ?? null,
+    methods: methodsByBill.get(b.id as string) ?? [],
+  }));
+
+  return { orders, bills, truncated };
 }
 
 /** Chi tiết 1 đơn online/takeaway theo id (mọi trạng thái). Phiên admin/POS RLS. */

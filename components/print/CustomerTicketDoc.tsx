@@ -3,11 +3,12 @@
 import { useEffect, useRef } from "react";
 import type { CustomerTicketView, KitchenWidth } from "@/lib/print/adapter";
 import { formatVnd } from "@/lib/orders/cart";
+import { logCustomerTicketPrint } from "@/app/r/[slug]/print/actions";
 
 /**
  * Phiếu KHÁCH in (client) — JetBrains Mono, đen trắng. Số đơn (ĐƠN #N) IN TO, KHỚP với phiếu
  * bếp để bếp mang món ra gọi đúng khách. Kèm giá + tổng. 3 khổ: 58/80mm + A5. Nút ẩn khi in.
- * Không ghi print_jobs (phiếu khách giữ, không cần theo dõi in-lại).
+ * Khi mở: ghi print_jobs 1 lần (POS đếm số lần in) rồi window.print().
  */
 const SIZE: Record<
   KitchenWidth,
@@ -19,10 +20,12 @@ const SIZE: Record<
 };
 
 export function CustomerTicketDoc({
+  slug,
   ticket,
   width,
   time,
 }: {
+  slug: string;
   ticket: CustomerTicketView;
   width: KitchenWidth;
   time: string;
@@ -32,9 +35,10 @@ export function CustomerTicketDoc({
   useEffect(() => {
     if (ran.current) return;
     ran.current = true;
+    logCustomerTicketPrint(slug, ticket.orderId).catch(() => {});
     const t = setTimeout(() => window.print(), 400);
     return () => clearTimeout(t);
-  }, []);
+  }, [slug, ticket.orderId]);
 
   const s = SIZE[width];
   const qtyTotal = ticket.items.reduce((acc, i) => acc + i.qty, 0);
