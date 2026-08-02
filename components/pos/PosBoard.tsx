@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, BellRing, Check, CalendarClock, Search, ShoppingBag, X } from "lucide-react";
+import { Bell, BellRing, Check, CalendarClock, ShoppingBag } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { CustomerMenu, CustomerMenuItem } from "@/lib/orders/customer-menu";
@@ -27,6 +27,7 @@ import type { SplitPick } from "@/lib/billing/split";
 import { getPrintAdapter } from "@/lib/print/adapter";
 import type { AdjustPayload } from "./AdjustBillDialog";
 import type { PendingLine } from "@/components/customer/ModifierSheet";
+import { SearchField } from "./SearchField";
 import { TableMap } from "./TableMap";
 import { OrderPanel } from "./OrderPanel";
 import { MenuPanel } from "./MenuPanel";
@@ -73,6 +74,11 @@ export function PosBoard({
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [pendingOpen, setPendingOpen] = useState(false);
   const [takeawayMode, setTakeawayMode] = useState(counter);
+  /**
+   * Tab của panel đơn không bàn. Giữ Ở ĐÂY (không phải trong TakeawayPanel) vì ô tìm nằm trên
+   * thanh này: tab quyết định ô tìm đang tra hàng đợi hay tra lịch sử.
+   */
+  const [takeawayTab, setTakeawayTab] = useState<"queue" | "history">("queue");
   /** Lọc hàng đợi đơn không bàn còn đúng đơn chọn từ ô "Tìm số đơn". */
   const [filterOrderId, setFilterOrderId] = useState<string | null>(null);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -175,6 +181,9 @@ export function PosBoard({
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return null;
+    // Tab LỊCH SỬ: cùng ô tìm này lọc thẳng danh sách đơn đã xong (một ô lo cả hai tab), nên
+    // không bung bảng gợi ý — gợi ý chỉ tra được đơn ĐANG CHỜ, ở đây sẽ luôn "không thấy đơn".
+    if (takeawayMode && takeawayTab === "history") return null;
     const tables = counter ? [] : initial.tables.filter((t) => t.name.toLowerCase().includes(q));
     const seen = new Set<string>();
     const orders: {
@@ -212,7 +221,7 @@ export function PosBoard({
       }
     }
     return { tables, orders };
-  }, [query, initial.tables, initial.sessions, initial.takeawayOrders, counter]);
+  }, [query, initial.tables, initial.sessions, initial.takeawayOrders, counter, takeawayMode, takeawayTab]);
 
   const gotoTable = (id: string) => {
     setQuery("");
@@ -232,7 +241,16 @@ export function PosBoard({
     setQuery("");
     setSelectedTableId(null);
     setTakeawayMode(true);
+    setTakeawayTab("queue"); // kết quả gợi ý chỉ có đơn đang chờ
     setFilterOrderId(orderId);
+  };
+
+  // Đổi tab → xóa ô tìm: chữ đang gõ để tra hàng đợi mà mang sang lọc lịch sử (hoặc ngược lại)
+  // thì ra một danh sách rỗng khó hiểu.
+  const changeTakeawayTab = (next: "queue" | "history") => {
+    setTakeawayTab(next);
+    setQuery("");
+    if (next === "history") setFilterOrderId(null);
   };
 
   const selectedTable = initial.tables.find((t) => t.id === selectedTableId) ?? null;
@@ -259,6 +277,8 @@ export function PosBoard({
   const cartQty = (lineId: string, qty: number) =>
     setCart((prev) => prev.map((l) => (l.lineId === lineId ? { ...l, qty } : l)));
   const cartRemove = (lineId: string) => setCart((prev) => prev.filter((l) => l.lineId !== lineId));
+  const cartNote = (lineId: string, note: string) =>
+    setCart((prev) => prev.map((l) => (l.lineId === lineId ? { ...l, note } : l)));
   const cartEdit = (lineId: string, line: PendingLine) =>
     setCart((prev) =>
       prev.map((l) =>
@@ -379,36 +399,32 @@ export function PosBoard({
     }
   };
 
+  // DUY NHẤT một ô tìm trên màn POS. Nội dung nó tra đổi theo ngữ cảnh đang mở:
+  //  - tab "Đang chờ": gợi ý bàn / số đơn đang chờ, chọn một cái để nhảy tới;
+  //  - tab "Đã xong": lọc thẳng danh sách lịch sử theo số đơn / tên / SĐT (không gợi ý).
+  const historyTab = takeawayMode && takeawayTab === "history";
+  const searchPlaceholder = historyTab
+    ? "Số đơn / tên / SĐT…"
+    : counter
+      ? "Tìm số đơn…"
+      : "Tìm bàn / số đơn…";
+
   /**
-   * Ô tìm bàn / số đơn. Chế độ BÀN: nằm ở thanh trên cùng, ngay trên sơ đồ bàn mà nó lọc.
-   * Chế độ QUẦY: không có bàn để tìm — nó chỉ lọc hàng đợi đơn, nên chuyển hẳn sang header
-   * panel "Gọi món cho khách" bên phải, cạnh đúng danh sách nó tác động.
+   * Chế độ BÀN: ô tìm nằm ở thanh trên cùng, ngay trên sơ đồ bàn mà nó lọc.
+   * Chế độ QUẦY: không có bàn để tìm — chuyển hẳn sang header panel "Gọi món cho khách" bên phải,
+   * cạnh đúng danh sách nó tác động.
    */
   const searchBox = (
     <>
       {/* Chế độ bàn: rộng bằng khối tile bàn bên trái. Chế độ quầy: nằm trong header panel nên
           hẹp hơn để không lấn tiêu đề. */}
-      <div className={cn("relative shrink-0", counter ? "w-56 lg:w-64" : "w-72 lg:w-[22rem]")}>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-steel" aria-hidden />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Escape" && setQuery("")}
-          inputMode="search"
-          placeholder={counter ? "Tìm số đơn…" : "Tìm bàn / số đơn…"}
-          aria-label={counter ? "Tìm số đơn" : "Tìm bàn hoặc số đơn"}
-          className="h-11 w-full rounded-full border border-hairline-strong bg-canvas pl-9 pr-9 text-base text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm"
-        />
-        {query && (
-          <button
-            type="button"
-            onClick={() => setQuery("")}
-            aria-label="Xóa tìm kiếm"
-            className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-steel hover:bg-surface"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+      <SearchField
+        value={query}
+        onChange={setQuery}
+        placeholder={searchPlaceholder}
+        ariaLabel={historyTab ? "Tìm trong lịch sử đơn" : counter ? "Tìm số đơn" : "Tìm bàn hoặc số đơn"}
+        className={cn("shrink-0", counter ? "w-56 lg:w-64" : "w-72 lg:w-[22rem]")}
+      >
         {results && (
           <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 max-h-80 overflow-y-auto rounded-lg border border-hairline-soft bg-canvas p-xs shadow-modal">
             {results.tables.length === 0 && results.orders.length === 0 && (
@@ -458,7 +474,7 @@ export function PosBoard({
             )}
           </div>
         )}
-      </div>
+      </SearchField>
     </>
   );
 
@@ -635,6 +651,7 @@ export function PosBoard({
               onCartQty={cartQty}
               onCartRemove={cartRemove}
               onCartEdit={cartEdit}
+              onCartNote={cartNote}
               onClearCart={() => setCart([])}
               onClose={exitTakeaway}
               cancelStaff={cancelStaff}
@@ -643,6 +660,9 @@ export function PosBoard({
               filterOrderId={filterOrderId}
               onClearFilter={() => setFilterOrderId(null)}
               searchSlot={counter ? searchBox : null}
+              tab={takeawayTab}
+              onTabChange={changeTakeawayTab}
+              searchQuery={query}
             />
           ) : selectedTable ? (
             <OrderPanel
@@ -654,6 +674,7 @@ export function PosBoard({
               onCartQty={cartQty}
               onCartRemove={cartRemove}
               onCartEdit={cartEdit}
+              onCartNote={cartNote}
               onConfirmAdd={confirmAdd}
               adding={adding}
               addError={addError}

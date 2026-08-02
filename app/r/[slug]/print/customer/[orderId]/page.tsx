@@ -43,5 +43,5 @@ export default async function CustomerPrintPage({
       })
     : "";
 
-  return <CustomerTicketDoc ticket={ticket} width={width} time={time} />;
+  return <CustomerTicketDoc slug={slug} ticket={ticket} width={width} time={time} />;
 }

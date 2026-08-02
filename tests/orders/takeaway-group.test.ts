@@ -71,6 +71,15 @@ describe("groupTakeawayOrders", () => {
     expect(g[0].total).toBe(20_000);
   });
 
+  it("newestFirst → nhóm mới nhất lên đầu, lượt gọi thêm TRONG nhóm vẫn theo thứ tự thời gian", () => {
+    const g = groupTakeawayOrders(
+      [order("r1", null, 10_000), order("r2", null, 10_000), order("c1", "r1", 5_000)],
+      { newestFirst: true }
+    );
+    expect(g.map((x) => x.root.id)).toEqual(["r2", "r1"]);
+    expect(g[1].children.map((c) => c.id)).toEqual(["c1"]);
+  });
+
   it("danh sách rỗng → không nhóm nào", () => {
     expect(groupTakeawayOrders([])).toEqual([]);
   });

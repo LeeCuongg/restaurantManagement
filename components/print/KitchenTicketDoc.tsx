@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { KitchenTicketView, KitchenWidth } from "@/lib/print/adapter";
-import { logKitchenTicketPrint } from "@/app/r/[slug]/print/kitchen/actions";
+import { logKitchenTicketPrint } from "@/app/r/[slug]/print/actions";
 
 /**
  * Phiếu bếp in (client) — JetBrains Mono, đen trắng. 3 khổ: 58/80mm (máy in nhiệt) + A5 (máy in

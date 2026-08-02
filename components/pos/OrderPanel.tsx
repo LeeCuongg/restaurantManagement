@@ -27,6 +27,7 @@ export function OrderPanel({
   onCartQty,
   onCartRemove,
   onCartEdit,
+  onCartNote,
   onConfirmAdd,
   adding,
   addError,
@@ -44,6 +45,7 @@ export function OrderPanel({
   onCartQty: (lineId: string, qty: number) => void;
   onCartRemove: (lineId: string) => void;
   onCartEdit: (lineId: string, line: PendingLine) => void;
+  onCartNote: (lineId: string, note: string) => void;
   onConfirmAdd: () => void;
   adding: boolean;
   addError: string | null;
@@ -163,7 +165,6 @@ export function OrderPanel({
                     <TicketPrintButtons
                       slug={slug}
                       orderId={order.id}
-                      kitchenLabel={order.kitchen_no != null ? `#${order.kitchen_no}` : undefined}
                     />
                   </div>
                 </div>
@@ -223,38 +224,50 @@ export function OrderPanel({
                 if (!it) return null;
                 const names = cartOptionNames(it, l.optionIds);
                 return (
-                  <li key={l.lineId} className="flex items-center justify-between gap-sm">
-                    <div className="min-w-0">
-                      <p className="text-sm text-ink">{it.name}</p>
-                      {names.length > 0 && (
-                        <p className="text-xs text-steel">{names.join(" · ")}</p>
-                      )}
-                      {l.note && <p className="text-xs italic text-stone">“{l.note}”</p>}
+                  <li key={l.lineId}>
+                    <div className="flex items-center justify-between gap-sm">
+                      <div className="min-w-0">
+                        <p className="text-sm text-ink">{it.name}</p>
+                        {names.length > 0 && (
+                          <p className="text-xs text-steel">{names.join(" · ")}</p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 items-center gap-sm">
+                        <QtyStepper value={l.qty} onChange={(v) => onCartQty(l.lineId, v)} />
+                        {it.groups.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditing({
+                                lineId: l.lineId,
+                                item: it,
+                                initial: { qty: l.qty, note: l.note, optionIds: l.optionIds },
+                              })
+                            }
+                            className="text-xs text-primary hover:underline"
+                          >
+                            Sửa
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onCartRemove(l.lineId)}
+                          aria-label="Xoá khỏi giỏ"
+                          className="text-xs text-status-late hover:underline"
+                        >
+                          Xoá
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-sm">
-                      <QtyStepper value={l.qty} onChange={(v) => onCartQty(l.lineId, v)} />
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEditing({
-                            lineId: l.lineId,
-                            item: it,
-                            initial: { qty: l.qty, note: l.note, optionIds: l.optionIds },
-                          })
-                        }
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onCartRemove(l.lineId)}
-                        aria-label="Xoá khỏi giỏ"
-                        className="text-xs text-status-late hover:underline"
-                      >
-                        Xoá
-                      </button>
-                    </div>
+                    {/* Ghi chú nhập TẠI ĐÂY (không còn ở hộp thoại chọn món). */}
+                    <input
+                      value={l.note}
+                      onChange={(e) => onCartNote(l.lineId, e.target.value)}
+                      maxLength={200}
+                      placeholder="Ghi chú (VD: ít cay…)"
+                      aria-label={`Ghi chú cho ${it.name}`}
+                      className="mt-xs h-9 w-full rounded-md border border-hairline px-sm text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
                   </li>
                 );
               })}

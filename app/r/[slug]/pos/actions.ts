@@ -18,7 +18,9 @@ import {
   rejectOnlineOrder,
   markOnlineReady,
   getOnlineOrder,
+  listTakeawayHistory,
   type OnlineOrderView,
+  type TakeawayHistory,
 } from "@/lib/orders/online";
 import { resolveGroupRoot, groupOrderIds, groupIsPaid } from "@/lib/orders/order-group";
 import { verifyPinForRoles } from "@/lib/auth/pin-gate";
@@ -45,6 +47,12 @@ export type BillsActionResult = { ok: true; bills: BillView[] } | { ok: false; e
 export type PayActionResult =
   | { ok: true; change: number; bills: BillView[] }
   | { ok: false; error: string };
+
+/**
+ * Trần khoảng lọc lịch sử đơn (ngày VN) — đủ xem cả quý, không cho quét cả bảng.
+ * KHÔNG export: file "use server" chỉ được export hàm async.
+ */
+const MAX_HISTORY_DAYS = 92;
 
 /**
  * Guard chung: phải là phiên nhân viên có quyền POS. Trả staffId thao tác = membership của chính
@@ -522,6 +530,30 @@ export async function getOnlineOrderAction(
   if ("error" in auth) return { ok: false, error: auth.error };
   const order = await getOnlineOrder(auth.tenantId, orderId);
   return { ok: true, order };
+}
+
+/**
+ * Lịch sử đơn không gắn bàn đã kết thúc trong khoảng ngày VN (đã thu tiền / đã hủy).
+ * Chặn khoảng quá rộng ở server: quán chạy lâu thì "từ 2020 đến nay" là quét cả bảng orders.
+ */
+export async function listTakeawayHistoryAction(
+  slug: string,
+  fromDay: string,
+  toDay: string
+): Promise<{ ok: true; history: TakeawayHistory } | { ok: false; error: string }> {
+  const auth = await authorizePos(slug);
+  if ("error" in auth) return { ok: false, error: auth.error };
+
+  const isDay = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(`${s}T00:00:00Z`));
+  if (!isDay(fromDay) || !isDay(toDay)) return { ok: false, error: "Ngày không hợp lệ." };
+  if (fromDay > toDay) return { ok: false, error: "Ngày bắt đầu phải trước ngày kết thúc." };
+
+  const days = (Date.parse(`${toDay}T00:00:00Z`) - Date.parse(`${fromDay}T00:00:00Z`)) / 86400000 + 1;
+  if (days > MAX_HISTORY_DAYS)
+    return { ok: false, error: `Chỉ xem được tối đa ${MAX_HISTORY_DAYS} ngày một lần.` };
+
+  const history = await listTakeawayHistory(auth.tenantId, fromDay, toDay);
+  return { ok: true, history };
 }
 
 /**

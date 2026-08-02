@@ -3,7 +3,7 @@
  * V1: BrowserPrintAdapter (mở route in, route tự window.print + ghi log). V1.x: BridgePrintAdapter
  * (ghi print_jobs pending cho cầu in ESC/POS cục bộ poll) — bật bằng NEXT_PUBLIC_PRINT_MODE=bridge.
  */
-import { queueKitchenTicketPrint } from "@/app/r/[slug]/print/kitchen/actions";
+import { queueKitchenTicketPrint } from "@/app/r/[slug]/print/actions";
 
 export type KitchenTicketView = {
   orderId: string;
@@ -35,15 +35,20 @@ export type CustomerTicketView = {
 };
 
 /**
- * Trạng thái in phiếu bếp của MỘT đơn — lấy từ print_jobs mới nhất, để POS hiện thường trực
- * (nhân viên không phải nhớ đã in chưa; toast bay mất là bỏ sót).
+ * Trạng thái in MỘT loại phiếu của MỘT đơn — lấy từ print_jobs, để POS hiện thường trực (nhân
+ * viên không phải nhớ đã in chưa; toast bay mất là bỏ sót).
  * none = chưa in lần nào · pending = đã gửi, chờ cầu in · printed/failed = kết quả thật từ máy in.
  */
-export type KitchenPrintState = {
+export type TicketPrintState = {
   status: "none" | "pending" | "printed" | "failed";
-  /** printed_at nếu đã in, ngược lại created_at. */
+  /** printed_at của lần GẦN NHẤT nếu đã in, ngược lại created_at. */
   at: string | null;
+  /** SỐ LẦN đã in thành công. Phiếu in lại nhiều lần là chuyện thường, nhân viên cần đối chiếu. */
+  count: number;
 };
+
+/** Trạng thái cả hai loại phiếu của một đơn — một lượt gọi cho cả cụm nút in. */
+export type OrderPrintState = { kitchen: TicketPrintState; customer: TicketPrintState };
 
 /** Khổ phiếu bếp: 58/80mm (máy in nhiệt) hoặc A5 (máy in thường, chữ to đọc xa). */
 export type KitchenWidth = "58" | "80" | "a5";

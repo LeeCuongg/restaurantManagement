@@ -20,8 +20,15 @@ export type TakeawayGroup = {
  *
  * Đơn con "mồ côi" (gốc không còn trong danh sách vì đã hủy hoặc đã hoàn tất) được nâng thành
  * nhóm riêng thay vì biến mất khỏi màn hình — nhân viên vẫn phải thu được tiền món đó.
+ *
+ * `newestFirst`: đảo thứ tự NHÓM (đơn khách mới nhất lên đầu) — quán đông thì đơn vừa gõ phải nằm
+ * ngay tầm mắt, không bắt nhân viên cuộn xuống đáy. Các lượt gọi thêm TRONG nhóm vẫn giữ thứ tự
+ * thời gian tăng dần (đọc theo trình tự khách gọi).
  */
-export function groupTakeawayOrders(orders: OnlineOrderView[]): TakeawayGroup[] {
+export function groupTakeawayOrders(
+  orders: OnlineOrderView[],
+  opts: { newestFirst?: boolean } = {}
+): TakeawayGroup[] {
   const byId = new Map(orders.map((o) => [o.id, o]));
   const childrenOf = new Map<string, OnlineOrderView[]>();
   const roots: OnlineOrderView[] = [];
@@ -36,7 +43,11 @@ export function groupTakeawayOrders(orders: OnlineOrderView[]): TakeawayGroup[] 
     }
   }
 
-  return roots.map((root) => {
+  const ordered = opts.newestFirst
+    ? [...roots].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    : roots;
+
+  return ordered.map((root) => {
     const children = childrenOf.get(root.id) ?? [];
     return {
       root,
