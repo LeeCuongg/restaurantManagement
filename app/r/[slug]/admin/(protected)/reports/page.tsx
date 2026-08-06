@@ -53,7 +53,7 @@ export default async function ReportsPage({
       </div>
 
       {!hasData ? (
-        <div className="mt-lg grid place-items-center rounded-lg border border-hairline bg-canvas py-2xl text-center">
+        <div className="mt-lg grid place-items-center rounded-lg border border-hairline bg-canvas py-xxl text-center">
           <p className="text-sm text-steel">Chưa có hóa đơn đã thanh toán trong kỳ này.</p>
         </div>
       ) : (

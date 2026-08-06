@@ -19,8 +19,10 @@ import {
 
 type Group = { area: Area | null; tables: Table[] };
 
+// min-w-0: <select> rộng bằng option DÀI NHẤT (tên khu vực do người dùng đặt) nên phải cho co
+// lại, không thì một khu tên dài đủ đẩy tràn ngang trang trên điện thoại.
 const selectCls =
-  "h-9 rounded-md border border-hairline-strong bg-canvas px-md text-sm text-ink focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary";
+  "h-9 min-w-0 rounded-md border border-hairline-strong bg-canvas px-md text-base text-ink sm:text-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary";
 
 /** Cột khu vực + lưới bàn. Thêm/sửa/xóa/đổi thứ tự khu vực & bàn (server action). */
 export function AreaTableManager({

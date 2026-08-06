@@ -17,7 +17,7 @@ export function RangePicker({ base, bucket, offset }: { base: string; bucket: Bu
   ];
 
   return (
-    <div className="flex items-center gap-sm">
+    <div className="flex flex-wrap items-center gap-sm">
       <div className="inline-flex rounded-md border border-hairline p-0.5">
         {buckets.map((b) => (
           <button
@@ -25,7 +25,8 @@ export function RangePicker({ base, bucket, offset }: { base: string; bucket: Bu
             type="button"
             onClick={() => go(b.key, 0)}
             className={cn(
-              "rounded px-md py-xs text-sm font-medium transition-colors",
+              // min-h-9 để chip kỳ trên mobile vẫn đủ vùng chạm khi đứng cạnh 2 nút mũi tên.
+              "min-h-9 rounded px-md py-xs text-sm font-medium transition-colors",
               bucket === b.key ? "bg-primary text-primary-fg" : "text-steel hover:bg-surface"
             )}
           >

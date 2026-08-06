@@ -210,8 +210,9 @@ export default async function MenuPage({
                       </div>
                     </div>
 
-                    {/* Footer thao tác — chiếm hết chiều ngang thẻ */}
-                    <div className="mt-auto flex items-center justify-between border-t border-hairline-soft pt-sm">
+                    {/* Footer thao tác — chiếm hết chiều ngang thẻ. `flex-wrap` để switch còn/hết
+                        + 4 nút xuống hàng thay vì tràn khỏi thẻ trên màn ~360px. */}
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-xs border-t border-hairline-soft pt-sm">
                       <AvailabilityToggle slug={slug} itemId={it.id} available={it.is_available} />
                       <div className="flex items-center gap-xs">
                         <form action={reorderItem}>
