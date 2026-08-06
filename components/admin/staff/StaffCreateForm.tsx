@@ -28,7 +28,8 @@ export function StaffCreateForm({
     <Card className="mt-lg">
       <form
         action={createStaff}
-        className="grid grid-cols-1 gap-md sm:grid-cols-[1fr_1fr_150px_180px_auto] sm:items-start"
+        // 5 ô cạnh nhau chỉ vừa từ `xl`; tablet dọc dùng 2 cột, điện thoại xếp dọc 1 cột.
+        className="grid grid-cols-1 gap-md sm:grid-cols-2 xl:grid-cols-[1fr_1fr_150px_180px_auto] xl:items-start"
       >
         <input type="hidden" name="slug" value={slug} />
 
@@ -49,7 +50,7 @@ export function StaffCreateForm({
             required
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="h-11 rounded-md border border-hairline-strong bg-canvas px-md text-sm text-ink focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-11 rounded-md border border-hairline-strong bg-canvas px-md text-base text-ink sm:text-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
           >
             <option value="cashier">Thu ngân</option>
             <option value="waiter">Phục vụ</option>
@@ -90,7 +91,9 @@ export function StaffCreateForm({
           </span>
         </label>
 
-        <SubmitButton pendingLabel="Đang thêm…">Thêm</SubmitButton>
+        <SubmitButton pendingLabel="Đang thêm…" className="w-full sm:w-auto sm:justify-self-start">
+          Thêm
+        </SubmitButton>
       </form>
     </Card>
   );

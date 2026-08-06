@@ -87,7 +87,7 @@ export function GroupEditor({
       <div className="mt-md flex flex-col gap-xs border-t border-hairline-soft pt-md">
         {group.options.map((o) => (
           <div key={o.id} className="flex flex-wrap items-center gap-sm">
-            <form action={updateOption} className="flex items-center gap-xs">
+            <form action={updateOption} className="flex flex-wrap items-center gap-xs">
               <input type="hidden" name="slug" value={slug} />
               <input type="hidden" name="id" value={o.id} />
               <Input name="name" defaultValue={o.name} required className="h-9 w-36" />

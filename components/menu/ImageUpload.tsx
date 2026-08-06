@@ -58,7 +58,7 @@ export function ImageUpload({
   return (
     <div className="flex flex-col gap-xxs text-sm text-slate">
       <span>{label}</span>
-      <div className="flex items-center gap-md">
+      <div className="flex flex-wrap items-center gap-md">
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -79,7 +79,9 @@ export function ImageUpload({
           name={name}
           accept={ACCEPT.join(",")}
           onChange={onChange}
-          className="block w-full text-sm text-slate file:mr-md file:rounded-md file:border file:border-hairline-strong file:bg-surface file:px-md file:py-xs file:text-sm file:text-ink hover:file:bg-cream"
+          // min-w-0: input[type=file] có bề rộng nội tại ~290px; thiếu nó thì flex item không co
+          // được và đẩy tràn ngang cả trang Cài đặt trên điện thoại.
+          className="block w-full min-w-0 text-sm text-slate file:mr-md file:rounded-md file:border file:border-hairline-strong file:bg-surface file:px-md file:py-xs file:text-sm file:text-ink hover:file:bg-cream"
         />
       </div>
       {error && (

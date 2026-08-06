@@ -74,12 +74,14 @@ export default async function SettingsPage({
           <CardTitle>Cấu hình vận hành</CardTitle>
           <form action={updateSettings} className="mt-md flex flex-col gap-md">
             <input type="hidden" name="slug" value={slug} />
-            <label className="flex max-w-sm flex-col gap-xxs text-sm text-slate">
+            <label className="flex min-w-0 max-w-sm flex-col gap-xxs text-sm text-slate">
               Chế độ phục vụ
+              {/* min-w-0: bề rộng NỘI TẠI của <select> = option dài nhất ("Gọi món tại quầy — …")
+                  ~390px; thiếu nó là cả trang Cài đặt tràn ngang trên điện thoại. */}
               <select
                 name="service_mode"
                 defaultValue={settings.service_mode}
-                className="rounded-md border border-hairline-strong bg-canvas px-md py-sm text-sm text-ink focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="w-full min-w-0 rounded-md border border-hairline-strong bg-canvas px-md py-sm text-base text-ink sm:text-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
               >
                 <option value="table">Theo bàn — có sơ đồ bàn, đặt bàn, QR bàn</option>
                 <option value="counter">Gọi món tại quầy — không gắn bàn (gọi món &amp; thu tiền tại quầy)</option>
@@ -122,7 +124,7 @@ export default async function SettingsPage({
                 rows={2}
                 defaultValue={settings.receipt_footer}
                 placeholder="Cảm ơn quý khách!"
-                className="rounded-md border border-hairline-strong bg-canvas px-md py-sm text-sm text-ink placeholder:text-muted focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                className="rounded-md border border-hairline-strong bg-canvas px-md py-sm text-base text-ink placeholder:text-muted sm:text-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
               />
             </label>
 

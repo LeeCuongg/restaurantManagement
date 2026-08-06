@@ -58,14 +58,15 @@ export function ItemDialog({
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-ink/40 p-lg"
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto overscroll-contain bg-ink/40 p-sm sm:p-lg"
           onClick={() => setOpen(false)}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-label={isEdit ? "Sửa món" : "Thêm món"}
-            className="mt-lg w-full max-w-lg rounded-lg border border-hairline-soft bg-canvas p-xl shadow-modal"
+            // Trên điện thoại lề/padding phải nhỏ lại, không thì form còn chưa tới 300px bề ngang.
+            className="my-sm w-full max-w-lg rounded-lg border border-hairline-soft bg-canvas p-lg shadow-modal sm:mt-lg sm:p-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -103,7 +104,8 @@ export function ItemDialog({
                   name="category_id"
                   required
                   defaultValue={item?.category_id ?? defaultCategoryId ?? ""}
-                  className="h-11 rounded-md border border-hairline-strong bg-canvas px-md text-sm text-ink focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  // min-w-0: <select> rộng bằng tên danh mục dài nhất — phải cho co trong dialog hẹp.
+                  className="h-11 w-full min-w-0 rounded-md border border-hairline-strong bg-canvas px-md text-base text-ink sm:text-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 >
                   <option value="" disabled>
                     — Chọn danh mục —
@@ -133,7 +135,7 @@ export function ItemDialog({
                   rows={2}
                   defaultValue={item?.description ?? ""}
                   placeholder="Phở bò tái, nước dùng đậm đà"
-                  className="rounded-md border border-hairline-strong bg-canvas px-md py-sm text-sm text-ink placeholder:text-muted focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                  className="rounded-md border border-hairline-strong bg-canvas px-md py-sm text-base text-ink placeholder:text-muted sm:text-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                 />
               </label>
 
@@ -141,11 +143,18 @@ export function ItemDialog({
 
               {children}
 
+              {/* h-11 (44px) trên mobile — vùng chạm AA; desktop về h-9 cho gọn. */}
               <div className="mt-sm flex items-center justify-end gap-sm">
-                <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-11 sm:h-9"
+                  onClick={() => setOpen(false)}
+                >
                   Hủy
                 </Button>
-                <SubmitButton size="sm" pendingLabel="Đang lưu…">
+                <SubmitButton size="sm" className="h-11 sm:h-9" pendingLabel="Đang lưu…">
                   {isEdit ? "Lưu" : "Thêm món"}
                 </SubmitButton>
               </div>

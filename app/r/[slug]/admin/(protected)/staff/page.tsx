@@ -42,9 +42,9 @@ export default async function StaffPage({
   const canCreateManager = canAssignRole(session.role, "manager");
 
   return (
-    <div className="w-full max-w-4xl">
+    <div className="w-full">
       <h1 className="font-display text-2xl text-ink">Nhân viên</h1>
-      <p className="mt-xxs text-sm text-steel">
+      <p className="mt-xxs max-w-3xl text-sm text-steel">
         Nhân viên trạm có email riêng + PIN 4 số, đăng nhập thẳng ở POS/KDS (QD-009).{" "}
         {canCreateManager
           ? "Vai trò Quản lý vào được khu quản trị nên dùng mật khẩu, không dùng PIN — và không xem được mục Cài đặt."
@@ -53,8 +53,62 @@ export default async function StaffPage({
 
       <StaffCreateForm slug={slug} canCreateManager={canCreateManager} />
 
-      {/* Danh sách */}
-      <div className="mt-lg overflow-x-auto rounded-lg border border-hairline-soft">
+      {/* Danh sách — thẻ trên điện thoại/tablet, bảng từ `xl` trở lên.
+          Bảng 6 cột (2 form thao tác + badge vai trò) cần ~1000px nội dung mới không xuống dòng
+          vỡ chữ; dưới ngưỡng đó dùng thẻ thay vì ép người dùng cuộn ngang. */}
+      <div className="mt-lg grid gap-sm sm:grid-cols-2 xl:hidden">
+        {(staff ?? []).map((s) => {
+          const role = s.role as Role;
+          const editable = canAssignRole(session.role, role);
+          const isManagerRow = role === "manager";
+
+          return (
+            <div key={s.id} className="rounded-lg border border-hairline-soft bg-canvas p-md">
+              <div className="flex items-start justify-between gap-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-ink">{s.display_name}</p>
+                  <p className="truncate font-mono text-xs text-steel">{s.email ?? "—"}</p>
+                </div>
+                <Badge variant={isManagerRow || role === "owner" ? "orange" : "cream"}>
+                  {ROLE_LABEL[role] ?? role}
+                </Badge>
+              </div>
+
+              <p className="mt-xs text-xs">
+                {s.active ? (
+                  <span className="text-status-ready">Đang bật</span>
+                ) : (
+                  <span className="text-steel">Đã tắt</span>
+                )}
+              </p>
+
+              {editable ? (
+                <div className="mt-sm flex flex-col gap-sm border-t border-hairline-soft pt-sm">
+                  <ResetSecretForm
+                    slug={slug}
+                    id={s.id}
+                    name={s.display_name}
+                    isManager={isManagerRow}
+                    stacked
+                  />
+                  <RowActions slug={slug} id={s.id} name={s.display_name} active={s.active} />
+                </div>
+              ) : (
+                <p className="mt-sm border-t border-hairline-soft pt-sm text-xs text-stone">
+                  Không thao tác được
+                </p>
+              )}
+            </div>
+          );
+        })}
+        {(staff ?? []).length === 0 && (
+          <p className="rounded-lg border border-hairline-soft bg-canvas px-md py-lg text-center text-sm text-steel sm:col-span-2">
+            Chưa có nhân viên. Thêm ở form phía trên.
+          </p>
+        )}
+      </div>
+
+      <div className="mt-lg hidden overflow-x-auto rounded-lg border border-hairline-soft xl:block">
         <table className="w-full text-sm">
           <thead className="bg-surface text-left text-steel">
             <tr>
@@ -90,63 +144,19 @@ export default async function StaffPage({
                   </td>
                   <td className="px-md py-sm">
                     {editable ? (
-                      <form action={resetPin} className="flex items-center gap-xs">
-                        <input type="hidden" name="slug" value={slug} />
-                        <input type="hidden" name="id" value={s.id} />
-                        {isManagerRow ? (
-                          <Input
-                            name="secret"
-                            type="password"
-                            minLength={8}
-                            required
-                            autoComplete="new-password"
-                            placeholder="Mật khẩu mới"
-                            className="h-9 w-40"
-                            aria-label={`Mật khẩu mới cho ${s.display_name}`}
-                          />
-                        ) : (
-                          <Input
-                            name="secret"
-                            inputMode="numeric"
-                            pattern="\d{4}"
-                            maxLength={4}
-                            required
-                            autoComplete="off"
-                            placeholder="••••"
-                            className="h-9 w-24"
-                            aria-label={`PIN mới cho ${s.display_name}`}
-                          />
-                        )}
-                        <Button type="submit" variant="secondary" size="sm">
-                          Lưu
-                        </Button>
-                      </form>
+                      <ResetSecretForm
+                        slug={slug}
+                        id={s.id}
+                        name={s.display_name}
+                        isManager={isManagerRow}
+                      />
                     ) : (
                       <span className="text-xs text-stone">—</span>
                     )}
                   </td>
                   <td className="px-md py-sm">
                     {editable ? (
-                      <div className="flex items-center gap-xs">
-                        <form action={setStaffActive}>
-                          <input type="hidden" name="slug" value={slug} />
-                          <input type="hidden" name="id" value={s.id} />
-                          <input type="hidden" name="active" value={s.active ? "false" : "true"} />
-                          <Button type="submit" variant="link" size="sm">
-                            {s.active ? "Tắt" : "Bật"}
-                          </Button>
-                        </form>
-                        <form action={deleteStaff}>
-                          <input type="hidden" name="slug" value={slug} />
-                          <input type="hidden" name="id" value={s.id} />
-                          <ConfirmSubmit
-                            message={`Xóa "${s.display_name}"? Thao tác không hoàn tác được.`}
-                            className="inline-flex h-9 items-center rounded-md px-sm text-sm text-status-late hover:bg-surface"
-                          >
-                            Xóa
-                          </ConfirmSubmit>
-                        </form>
-                      </div>
+                      <RowActions slug={slug} id={s.id} name={s.display_name} active={s.active} />
                     ) : (
                       <span className="text-xs text-stone">Không thao tác được</span>
                     )}
@@ -164,6 +174,101 @@ export default async function StaffPage({
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Ô đặt lại bí mật. Dùng chung cho thẻ mobile và ô bảng desktop để hai bề mặt không lệch nhau
+ * (đúng field `secret`, đúng ràng buộc PIN 4 số vs mật khẩu ≥8 ký tự).
+ * `stacked`: xếp dọc + ô nhập full-width cho thẻ mobile; bảng desktop giữ nguyên hàng ngang.
+ */
+function ResetSecretForm({
+  slug,
+  id,
+  name,
+  isManager,
+  stacked,
+}: {
+  slug: string;
+  id: string;
+  name: string;
+  isManager: boolean;
+  stacked?: boolean;
+}) {
+  const inputCls = stacked
+    ? "h-11 min-w-0 flex-1"
+    : isManager
+      ? "h-9 w-40"
+      : "h-9 w-24";
+
+  return (
+    <form action={resetPin} className="flex items-center gap-xs">
+      <input type="hidden" name="slug" value={slug} />
+      <input type="hidden" name="id" value={id} />
+      {isManager ? (
+        <Input
+          name="secret"
+          type="password"
+          minLength={8}
+          required
+          autoComplete="new-password"
+          placeholder="Mật khẩu mới"
+          className={inputCls}
+          aria-label={`Mật khẩu mới cho ${name}`}
+        />
+      ) : (
+        <Input
+          name="secret"
+          inputMode="numeric"
+          pattern="\d{4}"
+          maxLength={4}
+          required
+          autoComplete="off"
+          placeholder="••••"
+          className={inputCls}
+          aria-label={`PIN mới cho ${name}`}
+        />
+      )}
+      <Button type="submit" variant="secondary" size={stacked ? "md" : "sm"} className="shrink-0">
+        Lưu
+      </Button>
+    </form>
+  );
+}
+
+/** Bật/tắt + xóa một thành viên. Dùng chung cho thẻ mobile và ô bảng desktop. */
+function RowActions({
+  slug,
+  id,
+  name,
+  active,
+}: {
+  slug: string;
+  id: string;
+  name: string;
+  active: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-xs">
+      <form action={setStaffActive}>
+        <input type="hidden" name="slug" value={slug} />
+        <input type="hidden" name="id" value={id} />
+        <input type="hidden" name="active" value={active ? "false" : "true"} />
+        <Button type="submit" variant="link" size="sm">
+          {active ? "Tắt" : "Bật"}
+        </Button>
+      </form>
+      <form action={deleteStaff}>
+        <input type="hidden" name="slug" value={slug} />
+        <input type="hidden" name="id" value={id} />
+        <ConfirmSubmit
+          message={`Xóa "${name}"? Thao tác không hoàn tác được.`}
+          className="inline-flex h-9 items-center rounded-md px-sm text-sm text-status-late hover:bg-surface"
+        >
+          Xóa
+        </ConfirmSubmit>
+      </form>
     </div>
   );
 }
