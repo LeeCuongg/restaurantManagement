@@ -1,16 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarRange, Loader2, Printer } from "lucide-react";
-import type { OnlineOrderView, TakeawayBillInfo } from "@/lib/orders/online";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CalendarRange, ChevronDown, Loader2, Printer } from "lucide-react";
+import type {
+  OnlineOrderView,
+  TakeawayBillInfo,
+  TakeawayHistorySummary,
+} from "@/lib/orders/online";
 import { groupTakeawayOrders } from "@/lib/orders/takeaway-group";
 import { formatVnd } from "@/lib/orders/cart";
 import { getPrintAdapter } from "@/lib/print/adapter";
 import { listTakeawayHistoryAction } from "@/app/r/[slug]/pos/actions";
+import { cn } from "@/lib/utils";
 
 const VN_OFFSET = 7 * 3600 * 1000;
 const DAY = 86400000;
 const METHOD_LABEL: Record<string, string> = { cash: "Tiền mặt", transfer: "Chuyển khoản" };
+/** Gõ tới đâu gọi server tới đó là mỗi phím một truy vấn — chờ người dùng ngừng gõ. */
+const SEARCH_DEBOUNCE_MS = 350;
 
 /** Ngày VN (YYYY-MM-DD) của "hôm nay lệch `offset` ngày". Máy POS có thể để lệch múi giờ. */
 function vnDay(offset = 0): string {
@@ -85,6 +92,13 @@ function HistoryLines({ order }: { order: OnlineOrderView }) {
  *
  * Tiền hiện theo BILL đã chốt (đã trừ giảm giá, cộng phụ thu) chứ không cộng lại từ món — đây mới
  * là số tiền khách thật sự trả. In lại hóa đơn ngay tại chỗ cho khách hỏi lại.
+ *
+ * QUY MÔ (quán vài trăm đơn/ngày):
+ *  - Tải theo TRANG 20 nhóm + "Tải thêm" thay cho trần cứng 400 đơn. Trần cũ vừa cắt mất đơn vừa
+ *    đẩy việc sang người dùng ("hãy thu hẹp khoảng ngày").
+ *  - Thẻ đơn THU GỌN mặc định: một đơn 7 món trước đây cao ~11 dòng, giờ 4 dòng. Đây là thứ quyết
+ *    định chiều cao cột, không phải số đơn.
+ *  - Tìm kiếm và hai con số tổng chạy Ở SERVER trên cả khoảng ngày (xem listTakeawayHistory).
  */
 export function TakeawayHistory({
   slug,
@@ -100,31 +114,81 @@ export function TakeawayHistory({
   const [from, setFrom] = useState(() => vnDay(0));
   const [to, setTo] = useState(() => vnDay(0));
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orders, setOrders] = useState<OnlineOrderView[]>([]);
   const [bills, setBills] = useState<TakeawayBillInfo[]>([]);
-  const [truncated, setTruncated] = useState(false);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [summary, setSummary] = useState<TakeawayHistorySummary | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [matched, setMatched] = useState<Set<string>>(new Set());
 
-  const load = useCallback(async () => {
+  // Ô tìm nằm ở thanh POS (component cha) nên chữ tới đây theo từng phím → tự hoãn ở đây.
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // Kết quả về CHẬM hơn lần gõ sau sẽ ghi đè lên kết quả mới — đánh số lượt để bỏ lượt cũ.
+  const runId = useRef(0);
+
+  const loadFirst = useCallback(async () => {
+    const run = ++runId.current;
     setLoading(true);
     setError(null);
-    const res = await listTakeawayHistoryAction(slug, from, to);
+    const res = await listTakeawayHistoryAction(slug, from, to, { query: debouncedQuery });
+    if (run !== runId.current) return;
     setLoading(false);
     if (!res.ok) {
       setError(res.error);
       setOrders([]);
       setBills([]);
-      setTruncated(false);
+      setCursor(null);
+      setSummary(null);
+      setMatched(new Set());
       return;
     }
     setOrders(res.history.orders);
     setBills(res.history.bills);
-    setTruncated(res.history.truncated);
-  }, [slug, from, to]);
+    setCursor(res.history.nextCursor);
+    setSummary(res.history.summary);
+    setMatched(new Set(res.history.matchedIds));
+    setExpanded(new Set());
+  }, [slug, from, to, debouncedQuery]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadFirst();
+  }, [loadFirst]);
+
+  const loadMore = async () => {
+    if (!cursor || loadingMore) return;
+    const run = runId.current;
+    setLoadingMore(true);
+    const res = await listTakeawayHistoryAction(slug, from, to, {
+      cursor,
+      query: debouncedQuery,
+    });
+    if (run !== runId.current) return; // bộ lọc đã đổi giữa chừng → bỏ trang này
+    setLoadingMore(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    // Gộp theo id: keyset không chồng trang, nhưng bấm đúp / effect chạy hai lần thì vẫn an toàn.
+    setOrders((prev) => {
+      const byId = new Map(prev.map((o) => [o.id, o]));
+      for (const o of res.history.orders) byId.set(o.id, o);
+      return [...byId.values()];
+    });
+    setBills((prev) => {
+      const byId = new Map(prev.map((b) => [b.billId, b]));
+      for (const b of res.history.bills) byId.set(b.billId, b);
+      return [...byId.values()];
+    });
+    setMatched((prev) => new Set([...prev, ...res.history.matchedIds]));
+    setCursor(res.history.nextCursor);
+  };
 
   const applyPreset = (p: Preset) => {
     setPreset(p.key);
@@ -132,32 +196,20 @@ export function TakeawayHistory({
     setTo(p.to());
   };
 
-  const billByOrderId = useMemo(() => new Map(bills.map((b) => [b.orderId, b])), [bills]);
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
+  const billByOrderId = useMemo(() => new Map(bills.map((b) => [b.orderId, b])), [bills]);
   const groups = useMemo(() => groupTakeawayOrders(orders, { newestFirst: true }), [orders]);
 
-  // Tìm trong ĐÚNG khoảng đã tải (không gọi lại server): số đơn, tên khách, SĐT.
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return groups;
-    return groups.filter((g) => {
-      const all = [g.root, ...g.children];
-      return all.some(
-        (o) =>
-          (o.kitchenNo != null && String(o.kitchenNo).includes(q)) ||
-          (o.contact?.name ?? "").toLowerCase().includes(q) ||
-          (o.contact?.phone ?? "").toLowerCase().includes(q)
-      );
-    });
-  }, [groups, query]);
-
-  // Tổng đã thu = Σ bill 'paid' của các nhóm đang hiện (đơn hủy không có tiền).
-  const paidTotal = visible.reduce((s, g) => {
-    const b = billByOrderId.get(g.root.id);
-    return b && b.status === "paid" ? s + b.total : s;
-  }, 0);
-
-  const emptyLabel = counter ? "Không có đơn nào đã xong trong khoảng này." : "Không có đơn mang về nào đã xong trong khoảng này.";
+  const emptyLabel = counter
+    ? "Không có đơn nào đã xong trong khoảng này."
+    : "Không có đơn mang về nào đã xong trong khoảng này.";
 
   return (
     <div className="flex flex-col">
@@ -212,20 +264,25 @@ export function TakeawayHistory({
           </div>
         )}
 
-        {/* Một dòng tổng kết: KHOẢNG đang lọc (thay cho 2 ô ngày đã ẩn) · số đơn · tiền đã thu. */}
+        {/* Một dòng tổng kết: KHOẢNG đang lọc (thay cho 2 ô ngày đã ẩn) · số đơn · tiền đã thu.
+            Hai con số này của CẢ khoảng, đếm ở server — không phải cộng từ mấy trang đã tải. */}
         <div className="flex flex-wrap items-baseline justify-between gap-x-sm gap-y-xxs border-t border-hairline-soft pt-sm">
           <span className="text-xs text-steel">{rangeLabel(from, to)}</span>
-          {!loading && !error && (
+          {!loading && !error && summary && (
             <span className="text-sm text-steel">
-              <span className="font-medium text-ink">{visible.length} đơn</span>
+              <span className="font-medium text-ink">{summary.orderCount} đơn</span>
               {" · đã thu "}
-              <span className="font-semibold tabular-nums text-ink">{formatVnd(paidTotal)}</span>
+              <span className="font-semibold tabular-nums text-ink">
+                {summary.paidTotalCapped ? "≥ " : ""}
+                {formatVnd(summary.paidTotal)}
+              </span>
             </span>
           )}
         </div>
-        {truncated && !loading && (
+        {summary?.paidTotalCapped && !loading && (
           <p className="text-xs text-status-late">
-            Chỉ hiện 400 đơn gần nhất — hãy thu hẹp khoảng ngày.
+            Khoảng này quá nhiều hóa đơn nên tổng tiền chỉ là mức tối thiểu — xem Báo cáo để có số
+            chính xác.
           </p>
         )}
       </div>
@@ -240,22 +297,35 @@ export function TakeawayHistory({
         <p className="flex items-center justify-center gap-sm py-xl text-sm text-steel">
           <Loader2 className="h-4 w-4 animate-spin" /> Đang tải…
         </p>
-      ) : visible.length === 0 && !error ? (
+      ) : groups.length === 0 && !error ? (
         <p className="py-xl text-center text-sm text-steel">
-          {query ? "Không thấy đơn khớp trong khoảng này." : emptyLabel}
+          {debouncedQuery ? "Không thấy đơn khớp trong khoảng này." : emptyLabel}
         </p>
       ) : (
         <div className="flex flex-col gap-md">
-          {visible.map((g) => {
+          {groups.map((g) => {
             const bill = billByOrderId.get(g.root.id) ?? null;
             const cancelled = g.root.status === "cancelled";
             const label = g.root.kitchenNo != null ? `#${g.root.kitchenNo}` : "";
+            const open = expanded.has(g.root.id);
+            const lineCount =
+              g.root.items.length + g.children.reduce((s, c) => s + c.items.length, 0);
+            // Nhóm lọt vào kết quả vì một LƯỢT GỌI THÊM khớp, không phải đơn gốc: thẻ mang số
+            // gốc (#87) trong khi người dùng gõ số lượt (#90) — không chú thích thì đọc ra
+            // đúng như kết quả sai.
+            const matchedChildren =
+              matched.size > 0 && !matched.has(g.root.id)
+                ? g.children.filter((c) => matched.has(c.id))
+                : [];
+
             return (
               <div key={g.root.id} className="rounded-lg border border-hairline-soft p-md">
                 <div className="flex flex-wrap items-center gap-xs">
                   <p className="text-sm font-medium text-ink">
                     Đơn {label}
-                    <span className="ml-xs text-xs font-normal text-steel">{vnStamp(g.root.createdAt)}</span>
+                    <span className="ml-xs text-xs font-normal text-steel">
+                      {vnStamp(g.root.createdAt)}
+                    </span>
                   </p>
                   <span
                     className={
@@ -266,6 +336,25 @@ export function TakeawayHistory({
                   >
                     {cancelled ? "Đã hủy" : "Đã thu tiền"}
                   </span>
+
+                  {/* Số của các LƯỢT GỌI THÊM nằm ngay tiêu đề, không nấp trong phần món đã thu
+                      gọn: nhóm mang số của đơn GỐC, nên tìm "#90" mà thấy thẻ "Đơn #87" thì đọc ra
+                      y như kết quả sai. Tô đậm khi chính lượt đó là cái khớp từ khóa. */}
+                  {g.children.length > 0 && (
+                    <span
+                      className={cn(
+                        "inline-flex h-6 items-center rounded-full px-sm text-xs font-medium",
+                        matchedChildren.length > 0
+                          ? "bg-primary text-primary-fg"
+                          : "bg-cream text-ink"
+                      )}
+                    >
+                      + gọi thêm{" "}
+                      {g.children
+                        .map((c) => (c.kitchenNo != null ? `#${c.kitchenNo}` : "—"))
+                        .join(", ")}
+                    </span>
+                  )}
                 </div>
 
                 {(g.root.contact?.name || g.root.contact?.phone) && (
@@ -279,17 +368,36 @@ export function TakeawayHistory({
                   </p>
                 )}
 
-                <HistoryLines order={g.root} />
-
-                {g.children.map((c) => (
-                  <div key={c.id} className="mt-sm border-t border-dashed border-hairline pt-sm">
-                    <p className="text-xs font-medium text-steel">
-                      Lượt {c.kitchenNo != null ? `#${c.kitchenNo}` : ""}
-                      <span className="ml-xs font-normal">{vnStamp(c.createdAt)}</span>
-                    </p>
-                    <HistoryLines order={c} />
-                  </div>
-                ))}
+                {/* Món NẤP sau nút: xem lại đơn cũ là việc thỉnh thoảng, còn chiều cao cột thì phải
+                    trả giá mọi lúc — một đơn 7 món xổ sẵn cao gấp ~3 lần thẻ thu gọn. */}
+                {open && (
+                  <>
+                    {/* Chỉ dán nhãn khi nhóm CÓ lượt gọi thêm: đơn lẻ mà cũng ghi "Đơn gốc" là
+                        thừa chữ, còn nhóm mà để khối đầu không tên thì không biết món nào của lượt
+                        nào. Các lượt thụt vào + kẻ dọc để đọc ra ngay là chúng thuộc đơn trên. */}
+                    {g.children.length > 0 && (
+                      <p className="mt-sm text-xs font-medium text-steel">
+                        Đơn gốc {label}
+                        <span className="ml-xs font-normal">{vnStamp(g.root.createdAt)}</span>
+                      </p>
+                    )}
+                    <HistoryLines order={g.root} />
+                    {g.children.map((c) => (
+                      <div
+                        key={c.id}
+                        className="mt-sm border-l-2 border-primary/30 pl-md"
+                      >
+                        <p className="text-xs font-medium text-primary">
+                          Gọi thêm {c.kitchenNo != null ? `#${c.kitchenNo}` : ""}
+                          <span className="ml-xs font-normal text-steel">
+                            {vnStamp(c.createdAt)}
+                          </span>
+                        </p>
+                        <HistoryLines order={c} />
+                      </div>
+                    ))}
+                  </>
+                )}
 
                 <div className="mt-sm flex flex-wrap items-center justify-between gap-sm border-t border-hairline-soft pt-sm">
                   <span className="flex min-w-0 flex-col">
@@ -308,23 +416,55 @@ export function TakeawayHistory({
                         : cancelled
                           ? "Không thu tiền"
                           : "Chưa có hóa đơn"}
-                      {g.children.length > 0 ? ` · gồm ${g.children.length} lượt gọi thêm` : ""}
                     </span>
                   </span>
-                  {bill && bill.status === "paid" && (
+                  <div className="flex items-center gap-xs">
                     <button
                       type="button"
-                      onClick={() => getPrintAdapter().printReceipt({ slug, billId: bill.billId })}
-                      className="inline-flex h-9 items-center gap-xs rounded-md border border-hairline-strong bg-canvas px-md text-xs font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      onClick={() => toggle(g.root.id)}
+                      aria-expanded={open}
+                      className="inline-flex h-9 items-center gap-xxs rounded-md px-sm text-xs font-medium text-steel hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                     >
-                      <Printer className="h-4 w-4" aria-hidden />
-                      In lại hóa đơn
+                      {lineCount} món
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 transition-transform motion-reduce:transition-none ${open ? "rotate-180" : ""}`}
+                        aria-hidden
+                      />
                     </button>
-                  )}
+                    {bill && bill.status === "paid" && (
+                      <button
+                        type="button"
+                        onClick={() => getPrintAdapter().printReceipt({ slug, billId: bill.billId })}
+                        className="inline-flex h-9 items-center gap-xs rounded-md border border-hairline-strong bg-canvas px-md text-xs font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      >
+                        <Printer className="h-4 w-4" aria-hidden />
+                        In lại hóa đơn
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
           })}
+
+          {cursor && (
+            <button
+              type="button"
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="flex h-11 w-full items-center justify-center gap-sm rounded-md border border-hairline-strong bg-canvas text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-60"
+            >
+              {loadingMore ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Đang tải…
+                </>
+              ) : (
+                `Tải thêm${
+                  summary ? ` (đang hiện ${groups.length}/${summary.orderCount})` : ""
+                }`
+              )}
+            </button>
+          )}
         </div>
       )}
     </div>

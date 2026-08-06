@@ -30,7 +30,7 @@ export default async function KdsHome({
   ]);
 
   return (
-    <StationScreen slug={slug} surface="kds">
+    <StationScreen slug={slug} surface="kds" fill>
       <KdsBoard slug={slug} tenantId={session.tenant.id} initial={tickets} menu={menu} />
     </StationScreen>
   );

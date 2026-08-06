@@ -199,15 +199,53 @@ export type TakeawayBillInfo = {
   methods: PaymentMethod[];
 };
 
-export type TakeawayHistory = {
+/** Con số của CẢ khoảng lọc — không phải của trang đang xem. */
+export type TakeawayHistorySummary = {
+  /** Số NHÓM đơn khớp bộ lọc, đếm chính xác ở DB (không kéo dòng nào về). */
+  orderCount: number;
+  /** Σ bill đã thu. */
+  paidTotal: number;
+  /** Chạm trần `SUM_ROW_CAP` → `paidTotal` là con số THIẾU, màn hình phải nói rõ. */
+  paidTotalCapped: boolean;
+};
+
+export type TakeawayHistoryPage = {
+  /** Đơn gốc + đơn con của TRANG này (chưa gom nhóm — gom ở client). */
   orders: OnlineOrderView[];
   bills: TakeawayBillInfo[];
-  /** Chạm trần `HISTORY_LIMIT` → màn hình phải nói rõ là đang cắt bớt, không im lặng. */
-  truncated: boolean;
+  /** Con trỏ trang sau, dạng `createdAtISO|id` của đơn gốc cuối. null = đã hết. */
+  nextCursor: string | null;
+  /** Chỉ có ở trang ĐẦU; trang sau không tính lại cho đỡ tốn truy vấn. */
+  summary: TakeawayHistorySummary | null;
+  /**
+   * Id các đơn TRONG TRANG NÀY khớp từ khóa — gồm cả lượt gọi thêm. Rỗng khi không tìm kiếm.
+   *
+   * Cần vì đơn vị hiển thị là NHÓM mang số của đơn GỐC: gõ "90" mà lượt gọi thêm #90 thuộc gốc
+   * #87 thì màn hình hiện "Đơn #87" và trông y như kết quả sai. Có danh sách này, thẻ tự nói được
+   * "khớp lượt #90".
+   */
+  matchedIds: string[];
 };
 
 const VN_OFFSET = 7 * 3600 * 1000;
-const HISTORY_LIMIT = 400;
+/** Số NHÓM đơn mỗi trang. Nhỏ vì mỗi nhóm kéo theo cả cây món + tùy chọn. */
+const HISTORY_PAGE = 20;
+/** Trần số đơn khớp một lần tìm. Tìm ra hơn ngần này thì từ khóa quá rộng, không phải nhu cầu thật. */
+const SEARCH_MATCH_CAP = 500;
+/** Trần số bill gom vào tổng tiền. Mỗi dòng chỉ có cột `total` nên rất nhẹ. */
+const SUM_ROW_CAP = 5000;
+
+/**
+ * Chuỗi tìm kiếm đi THẲNG vào bộ lọc `or=(...)` của PostgREST, nơi `,()"*\` là ký tự CÚ PHÁP —
+ * để lọt vào là vỡ truy vấn hoặc ghép được điều kiện ngoài ý muốn. Cắt luôn độ dài.
+ */
+function sanitizeSearch(raw: string): string {
+  return raw
+    .replace(/[,()"*\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 40);
+}
 
 /** [đầu, cuối) UTC của khoảng NGÀY VN `fromDay..toDay` (YYYY-MM-DD, bao gồm cả hai đầu). */
 export function vnDayRangeToUtc(fromDay: string, toDay: string): { fromUtc: string; toUtc: string } {
@@ -231,35 +269,116 @@ export function vnDayRangeToUtc(fromDay: string, toDay: string): { fromUtc: stri
 export async function listTakeawayHistory(
   tenantId: string,
   fromDay: string,
-  toDay: string
-): Promise<TakeawayHistory> {
+  toDay: string,
+  opts: { cursor?: string | null; query?: string } = {}
+): Promise<TakeawayHistoryPage> {
   const supabase = await createClient();
   const { fromUtc, toUtc } = vnDayRangeToUtc(fromDay, toDay);
+  const q = sanitizeSearch(opts.query ?? "");
+  const empty: TakeawayHistoryPage = {
+    orders: [],
+    bills: [],
+    nextCursor: null,
+    summary: { orderCount: 0, paidTotal: 0, paidTotalCapped: false },
+    matchedIds: [],
+  };
 
+  // ---- 1. Tìm kiếm chạy Ở SERVER, trên CẢ khoảng ngày ----------------------
+  // Trước đây lọc ở client trong tập đã tải nên đơn nằm ngoài trần bị báo "không thấy" dù có
+  // thật. Khớp cả đơn CON (nhân viên nhớ số của lượt gọi thêm) rồi quy về đơn gốc, vì đơn vị
+  // hiển thị là NHÓM.
+  let searchRootIds: string[] | null = null;
+  let matchedAll: Set<string> | null = null;
+  if (q) {
+    const ors = [
+      `customer_contact->>name.ilike.*${q}*`,
+      `customer_contact->>phone.ilike.*${q}*`,
+    ];
+    // Số đơn khớp CHÍNH XÁC: gõ "8" mà ra cả #18, #80, #89 thì danh sách vô dụng.
+    if (/^\d+$/.test(q)) ors.unshift(`kitchen_no.eq.${q}`);
+
+    const { data: hits } = await supabase
+      .from("orders")
+      .select("id, parent_order_id")
+      .eq("tenant_id", tenantId)
+      .eq("channel", "takeaway")
+      .in("status", ["completed", "cancelled"])
+      .gte("created_at", fromUtc)
+      .lt("created_at", toUtc)
+      .or(ors.join(","))
+      .limit(SEARCH_MATCH_CAP);
+
+    matchedAll = new Set((hits ?? []).map((r) => r.id as string));
+    searchRootIds = [
+      ...new Set(
+        (hits ?? []).map((r) => (r.parent_order_id as string | null) ?? (r.id as string))
+      ),
+    ];
+    if (searchRootIds.length === 0) return empty;
+  }
+
+  // ---- 2. Một TRANG đơn gốc (keyset: created_at desc, id desc) --------------
+  // Phân trang theo ĐƠN GỐC chứ không theo đơn phẳng: cắt theo đơn phẳng sẽ xé đôi một nhóm
+  // "gọi thêm" giữa hai trang, đọc ra đơn thiếu món.
+  let rootQ = supabase
+    .from("orders")
+    .select("id, created_at")
+    .eq("tenant_id", tenantId)
+    .eq("channel", "takeaway")
+    .in("status", ["completed", "cancelled"])
+    .is("parent_order_id", null)
+    .gte("created_at", fromUtc)
+    .lt("created_at", toUtc)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(HISTORY_PAGE + 1);
+  if (searchRootIds) rootQ = rootQ.in("id", searchRootIds);
+  if (opts.cursor) {
+    const sep = opts.cursor.lastIndexOf("|");
+    const at = opts.cursor.slice(0, sep);
+    const id = opts.cursor.slice(sep + 1);
+    // Mốc kép để đơn TRÙNG created_at không bị nhảy cóc hay lặp lại giữa hai trang.
+    rootQ = rootQ.or(`created_at.lt.${at},and(created_at.eq.${at},id.lt.${id})`);
+  }
+  const { data: rootRows } = await rootQ;
+
+  const roots = rootRows ?? [];
+  const hasMore = roots.length > HISTORY_PAGE;
+  const pageRoots = hasMore ? roots.slice(0, HISTORY_PAGE) : roots;
+  const rootIds = pageRoots.map((r) => r.id as string);
+  const last = pageRoots[pageRoots.length - 1];
+  // `toISOString()` (hậu tố Z) chứ không lấy nguyên chuỗi DB: dạng `+00:00` có dấu `+`, đi qua
+  // query string sẽ bị giải mã thành DẤU CÁCH và mốc phân trang thành sai.
+  const nextCursor =
+    hasMore && last
+      ? `${new Date(last.created_at as string).toISOString()}|${last.id as string}`
+      : null;
+
+  const summary = opts.cursor
+    ? null
+    : await takeawayHistorySummary(supabase, tenantId, fromUtc, toUtc, searchRootIds);
+
+  if (rootIds.length === 0)
+    return { orders: [], bills: [], nextCursor: null, summary, matchedIds: [] };
+
+  // ---- 3. Cây đơn đầy đủ của đúng các gốc trong trang ------------------------
+  const idList = rootIds.join(",");
   const { data: orderRows } = await supabase
     .from("orders")
     .select(ONLINE_ORDER_SELECT)
     .eq("tenant_id", tenantId)
-    .eq("channel", "takeaway")
-    .in("status", ["completed", "cancelled"])
-    .gte("created_at", fromUtc)
-    .lt("created_at", toUtc)
-    .order("created_at", { ascending: false })
-    .limit(HISTORY_LIMIT + 1);
+    .or(`id.in.(${idList}),parent_order_id.in.(${idList})`)
+    .order("created_at", { ascending: true });
 
-  const rows = orderRows ?? [];
-  const truncated = rows.length > HISTORY_LIMIT;
-  // Trả lại thứ tự TĂNG DẦN: gom nhóm cần con đứng sau gốc, đảo thứ tự nhóm là việc của UI.
-  const kept = (truncated ? rows.slice(0, HISTORY_LIMIT) : rows).reverse();
-  const orders = kept.map((o) => toOnlineOrderView(o as Record<string, unknown>, { keepCancelledItems: true }));
-
-  if (orders.length === 0) return { orders, bills: [], truncated };
+  const orders = (orderRows ?? []).map((o) =>
+    toOnlineOrderView(o as Record<string, unknown>, { keepCancelledItems: true })
+  );
 
   const { data: billRows } = await supabase
     .from("bills")
     .select("id, bill_no, status, total, paid_at, online_order_id")
     .eq("tenant_id", tenantId)
-    .in("online_order_id", orders.map((o) => o.id));
+    .in("online_order_id", rootIds);
 
   const billList = billRows ?? [];
   const { data: paymentRows } = billList.length
@@ -288,7 +407,73 @@ export async function listTakeawayHistory(
     methods: methodsByBill.get(b.id as string) ?? [],
   }));
 
-  return { orders, bills, truncated };
+  return {
+    orders,
+    bills,
+    nextCursor,
+    summary,
+    matchedIds: matchedAll ? orders.filter((o) => matchedAll.has(o.id)).map((o) => o.id) : [],
+  };
+}
+
+/**
+ * Số đơn + tiền đã thu của CẢ khoảng lọc (không phải của trang đang xem).
+ *
+ * Trước đây hai con số này cộng từ tập đã tải nên khi danh sách bị cắt là hiện SỐ TIỀN SAI mà
+ * không báo gì. Nay: đếm bằng `count: exact` (không kéo dòng nào về), cộng tiền bằng một truy vấn
+ * chỉ lấy cột `total` của bill.
+ *
+ * Không dùng hàm tổng hợp của PostgREST vì project Supabase này tắt chúng (PGRST123).
+ */
+async function takeawayHistorySummary(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  fromUtc: string,
+  toUtc: string,
+  searchRootIds: string[] | null
+): Promise<TakeawayHistorySummary> {
+  let countQ = supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenantId)
+    .eq("channel", "takeaway")
+    .in("status", ["completed", "cancelled"])
+    .is("parent_order_id", null)
+    .gte("created_at", fromUtc)
+    .lt("created_at", toUtc);
+  if (searchRootIds) countQ = countQ.in("id", searchRootIds);
+
+  // Đang tìm kiếm thì đã có sẵn danh sách gốc khớp (≤ SEARCH_MATCH_CAP) → lọc thẳng theo id.
+  // Không tìm kiếm thì neo bill vào khoảng ngày của ĐƠN GỐC qua join inner, để con số khớp đúng
+  // danh sách bên dưới (lọc theo created_at của đơn, không phải paid_at của bill).
+  const sumQ = searchRootIds
+    ? supabase
+        .from("bills")
+        .select("total")
+        .eq("tenant_id", tenantId)
+        .eq("status", "paid")
+        .in("online_order_id", searchRootIds)
+        .limit(SUM_ROW_CAP)
+    : supabase
+        .from("bills")
+        .select("total, orders!inner(created_at, channel, status, parent_order_id)")
+        .eq("tenant_id", tenantId)
+        .eq("status", "paid")
+        .eq("orders.channel", "takeaway")
+        .is("orders.parent_order_id", null)
+        .in("orders.status", ["completed", "cancelled"])
+        .gte("orders.created_at", fromUtc)
+        .lt("orders.created_at", toUtc)
+        .limit(SUM_ROW_CAP);
+
+  const [{ count }, { data: totals }] = await Promise.all([countQ, sumQ]);
+
+  const rows = (totals ?? []) as { total: number }[];
+  return {
+    orderCount: count ?? 0,
+    paidTotal: rows.reduce((s, r) => s + (r.total ?? 0), 0),
+    paidTotalCapped: rows.length >= SUM_ROW_CAP,
+  };
 }
 
 /** Chi tiết 1 đơn online/takeaway theo id (mọi trạng thái). Phiên admin/POS RLS. */
