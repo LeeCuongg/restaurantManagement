@@ -177,7 +177,10 @@ export default async function MenuPage({
                             src={it.image_url}
                             alt={it.name}
                             fill
-                            sizes="64px"
+                            /* sizes = 2× bề rộng ô (64px): object-cover trên ảnh NGANG phải
+                               crop theo chiều cao, nên bản đúng 64w (cao ~36px) bị phóng to
+                               → mờ. Xin 128w để chiều cao đủ lấp ô vuông, và DPR2 lấy 256w. */
+                            sizes="128px"
                             className="object-cover"
                           />
                         ) : (

@@ -216,7 +216,9 @@ export async function createItem(formData: FormData) {
     .single();
   if (error || !inserted) return setFlash("error", error?.message ?? "Không tạo được món.");
 
-  // Ảnh (nếu có): upload rồi cập nhật image_url. Lỗi ảnh không chặn (giữ món, bỏ ảnh).
+  // Ảnh (nếu có): upload rồi cập nhật image_url. Lỗi ảnh KHÔNG hủy món đã tạo, nhưng
+  // phải báo ra — nuốt lỗi ở đây từng làm người dùng thấy "đã lưu" mà ảnh không lên.
+  let imageError: string | null = null;
   if (image instanceof File && image.size > 0) {
     try {
       const { publicUrl } = await uploadMenuImage(session.tenant.id, inserted.id, image);
@@ -225,8 +227,8 @@ export async function createItem(formData: FormData) {
         .update({ image_url: publicUrl })
         .eq("id", inserted.id)
         .eq("tenant_id", session.tenant.id);
-    } catch {
-      // bỏ qua lỗi ảnh
+    } catch (e) {
+      imageError = e instanceof Error ? e.message : "Upload ảnh lỗi.";
     }
   }
 
@@ -239,7 +241,12 @@ export async function createItem(formData: FormData) {
   }
 
   revalidatePath(menuPath(slug));
-  await setFlash("ok", `Đã thêm món "${name}".`);
+  await setFlash(
+    imageError ? "error" : "ok",
+    imageError
+      ? `Đã thêm món "${name}" nhưng ảnh không lên: ${imageError}`
+      : `Đã thêm món "${name}".`
+  );
 }
 
 export async function updateItem(formData: FormData) {
@@ -253,10 +260,11 @@ export async function updateItem(formData: FormData) {
   const supabase = await createClient();
   const image = formData.get("image");
   let image_url: string | undefined;
+  let imageError: string | null = null;
 
   if (image instanceof File && image.size > 0) {
     const v = validateImage(image);
-    if (!v.ok) return;
+    if (!v.ok) return setFlash("error", v.error);
     // Ảnh cũ để xóa sau khi thay.
     const { data: current } = await supabase
       .from("menu_items")
@@ -268,8 +276,9 @@ export async function updateItem(formData: FormData) {
       const { publicUrl } = await uploadMenuImage(session.tenant.id, id, image);
       image_url = publicUrl;
       await deleteMenuImage(pathFromPublicUrl(current?.image_url ?? null));
-    } catch {
-      // bỏ qua lỗi ảnh; vẫn lưu các field khác
+    } catch (e) {
+      // Vẫn lưu các field khác, nhưng phải báo — im lặng ở đây là "lưu thành công" giả.
+      imageError = e instanceof Error ? e.message : "Upload ảnh lỗi.";
     }
   }
 
@@ -296,7 +305,10 @@ export async function updateItem(formData: FormData) {
   }
 
   revalidatePath(menuPath(slug));
-  await setFlash("ok", "Đã lưu món.");
+  await setFlash(
+    imageError ? "error" : "ok",
+    imageError ? `Đã lưu món nhưng ảnh không lên: ${imageError}` : "Đã lưu món."
+  );
 }
 
 export async function deleteItem(formData: FormData) {

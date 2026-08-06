@@ -371,8 +371,10 @@ export function MenuBrowser({
                       )}
                     >
                       <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-surface">
+                        {/* sizes = 2× bề rộng ô: object-cover crop ảnh ngang theo chiều cao,
+                            bản đúng 80w sẽ bị phóng to → mờ (xem admin/menu/page.tsx). */}
                         {it.image_url ? (
-                          <Image src={it.image_url} alt={it.name} fill sizes="80px" className="object-cover" />
+                          <Image src={it.image_url} alt={it.name} fill sizes="160px" className="object-cover" />
                         ) : (
                           <span className="grid h-full w-full place-items-center text-[10px] text-muted">
                             Không ảnh
