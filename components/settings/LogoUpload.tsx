@@ -21,7 +21,7 @@ export function LogoUpload({
       <ImageUpload
         currentUrl={currentUrl}
         shape="circle"
-        label="Logo nhà hàng (≤2MB, PNG/JPEG/WebP)"
+        label="Logo nhà hàng (≤10MB, PNG/JPEG/WebP)"
       />
       <div>
         <SubmitButton size="sm" pendingLabel="Đang tải…">

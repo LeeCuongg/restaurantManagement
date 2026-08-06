@@ -2,18 +2,18 @@
 
 import { useRef, useState } from "react";
 
-const MAX_BYTES = 2 * 1024 * 1024;
+const MAX_BYTES = 10 * 1024 * 1024;
 const ACCEPT = ["image/png", "image/jpeg", "image/webp"];
 
 /**
- * Chọn ảnh (client): validate ≤2MB + loại (png/jpeg/webp) TRƯỚC khi gửi, báo lỗi
+ * Chọn ảnh (client): validate ≤10MB + loại (png/jpeg/webp) TRƯỚC khi gửi, báo lỗi
  * tại chỗ, preview. File hợp lệ đi kèm form (name="image") — server re-validate.
  * Ảnh sai bị reset khỏi input nên không gửi lên. Dùng chung cho món & logo.
  */
 export function ImageUpload({
   name = "image",
   currentUrl = null,
-  label = "Ảnh (≤2MB, PNG/JPEG/WebP)",
+  label = "Ảnh (≤10MB, PNG/JPEG/WebP)",
   shape = "rect",
 }: {
   name?: string;
@@ -40,7 +40,7 @@ export function ImageUpload({
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError("Ảnh vượt quá 2MB. Vui lòng chọn ảnh nhỏ hơn.");
+      setError("Ảnh vượt quá 10MB. Vui lòng chọn ảnh nhỏ hơn.");
       e.target.value = "";
       setPreview(currentUrl);
       return;

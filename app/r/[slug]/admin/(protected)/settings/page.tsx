@@ -53,13 +53,13 @@ export default async function SettingsPage({
             <ImageUpload
               currentUrl={tenant?.logo_url ?? null}
               shape="circle"
-              label="Logo / avatar (≤2MB, PNG/JPEG/WebP) — hiện tròn trên trang chào bàn"
+              label="Logo / avatar (≤10MB, PNG/JPEG/WebP) — hiện tròn trên trang chào bàn"
             />
             <ImageUpload
               name="cover"
               currentUrl={tenant?.cover_url ?? null}
               shape="cover"
-              label="Ảnh bìa (≤2MB, PNG/JPEG/WebP) — ảnh ngang, để trống thì dùng dải gradient mặc định"
+              label="Ảnh bìa (≤10MB, PNG/JPEG/WebP) — ảnh ngang, để trống thì dùng dải gradient mặc định"
             />
             <div>
               <SubmitButton size="sm" pendingLabel="Đang lưu…">
