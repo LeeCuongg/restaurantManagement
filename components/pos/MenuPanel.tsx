@@ -128,8 +128,10 @@ export function MenuPanel({
                           </span>
                         </span>
                         <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-md border border-hairline-soft bg-surface">
+                          {/* sizes = 2× bề rộng ô (xem admin/menu/page.tsx): tránh ảnh ngang
+                              bị phóng to khi object-cover crop theo chiều cao. */}
                           {it.image_url ? (
-                            <Image src={it.image_url} alt="" fill sizes="64px" className="object-cover" />
+                            <Image src={it.image_url} alt="" fill sizes="128px" className="object-cover" />
                           ) : (
                             <span className="grid h-full w-full place-items-center text-stone/70">
                               <UtensilsCrossed className="h-5 w-5" aria-hidden />
