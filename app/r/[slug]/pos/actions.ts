@@ -20,7 +20,7 @@ import {
   getOnlineOrder,
   listTakeawayHistory,
   type OnlineOrderView,
-  type TakeawayHistory,
+  type TakeawayHistoryPage,
 } from "@/lib/orders/online";
 import { resolveGroupRoot, groupOrderIds, groupIsPaid } from "@/lib/orders/order-group";
 import { verifyPinForRoles } from "@/lib/auth/pin-gate";
@@ -539,8 +539,9 @@ export async function getOnlineOrderAction(
 export async function listTakeawayHistoryAction(
   slug: string,
   fromDay: string,
-  toDay: string
-): Promise<{ ok: true; history: TakeawayHistory } | { ok: false; error: string }> {
+  toDay: string,
+  opts: { cursor?: string | null; query?: string } = {}
+): Promise<{ ok: true; history: TakeawayHistoryPage } | { ok: false; error: string }> {
   const auth = await authorizePos(slug);
   if ("error" in auth) return { ok: false, error: auth.error };
 
@@ -552,7 +553,10 @@ export async function listTakeawayHistoryAction(
   if (days > MAX_HISTORY_DAYS)
     return { ok: false, error: `Chỉ xem được tối đa ${MAX_HISTORY_DAYS} ngày một lần.` };
 
-  const history = await listTakeawayHistory(auth.tenantId, fromDay, toDay);
+  const history = await listTakeawayHistory(auth.tenantId, fromDay, toDay, {
+    cursor: opts.cursor ?? null,
+    query: opts.query ?? "",
+  });
   return { ok: true, history };
 }
 

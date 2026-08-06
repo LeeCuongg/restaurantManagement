@@ -50,7 +50,7 @@ export default async function PosHome({
   const allowDiscount = tenantSettings.allow_discount;
 
   return (
-    <StationScreen slug={slug} surface="pos">
+    <StationScreen slug={slug} surface="pos" fill>
       <PosBoard
         slug={slug}
         tenantId={session.tenant.id}

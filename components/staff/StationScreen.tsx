@@ -3,6 +3,7 @@ import { getSessionMembership } from "@/lib/auth/session";
 import { canAccess, defaultRouteForRole, type Section } from "@/lib/auth/rbac";
 import { stationSignOut } from "@/app/r/[slug]/station-actions";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const ROLE_LABEL: Record<string, string> = {
   owner: "Chủ quán",
@@ -21,10 +22,24 @@ const ROLE_LABEL: Record<string, string> = {
 export async function StationScreen({
   slug,
   surface,
+  fill = false,
   children,
 }: {
   slug: string;
   surface: "pos" | "kds";
+  /**
+   * `true` cho các BẢNG chiếm trọn màn (PosBoard, KdsBoard): khóa khung ở đúng một màn hình để
+   * các cột bên trong tự cuộn.
+   *
+   * Vì sao cần: `min-h-screen` KHÔNG phải chiều cao xác định, nên `h-full` của bảng con rơi về
+   * `auto` → mọi `overflow-y-auto` bên trong thành vô hiệu và cả TÀI LIỆU dài ra theo cột dài
+   * nhất (thực đơn 200 món hay lịch sử 400 đơn là trang cao vài chục nghìn px, toolbar và tiêu đề
+   * danh mục dính trôi mất). `h-dvh` (không phải `h-screen`) để thanh URL trên máy tính bảng thu
+   * vào không cắt mất đáy.
+   *
+   * Để `false` cho trang đọc thường (/pos/online, /pos/reservations) — chúng cần cuộn tài liệu.
+   */
+  fill?: boolean;
   children?: React.ReactNode;
 }) {
   const session = await getSessionMembership(slug);
@@ -38,8 +53,13 @@ export async function StationScreen({
   const signOut = stationSignOut.bind(null, slug, surface);
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface">
-      <header className="flex items-center justify-between border-b border-hairline-soft bg-canvas px-lg py-md">
+    <div
+      className={cn(
+        "flex flex-col bg-surface",
+        fill ? "h-dvh overflow-hidden" : "min-h-screen"
+      )}
+    >
+      <header className="flex shrink-0 items-center justify-between border-b border-hairline-soft bg-canvas px-lg py-md">
         <div className="flex items-baseline gap-sm">
           <span className="text-base font-medium text-ink">{label}</span>
           <span className="text-sm text-steel">· {session.tenant.name}</span>
@@ -56,7 +76,7 @@ export async function StationScreen({
         </div>
       </header>
       {children ? (
-        <main className="min-h-0 flex-1">{children}</main>
+        <main className={cn("min-h-0 flex-1", fill && "overflow-hidden")}>{children}</main>
       ) : (
         <main className="flex-1 p-xl">
           <h1 className="text-2xl font-medium text-ink">
