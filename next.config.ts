@@ -15,11 +15,11 @@ const nextConfig: NextConfig = {
   experimental: {
     /**
      * Server Action mặc định chỉ nhận body 1MB → form "Nhận diện nhà hàng" gửi logo + ảnh bìa
-     * (mỗi ảnh tới 2MB theo validate ở ImageUpload) bị Next CHẶN TRƯỚC khi action chạy: trả 500,
-     * không flash, người dùng tưởng bấm hụt. Đặt 8MB để bao 2 ảnh 2MB + overhead multipart,
-     * vẫn còn ngưỡng 2MB/ảnh chặn ở cả client lẫn server (lib/storage/images.ts).
+     * (mỗi ảnh tới 10MB theo validate ở ImageUpload) bị Next CHẶN TRƯỚC khi action chạy: trả 500,
+     * không flash, người dùng tưởng bấm hụt. Đặt 25MB để bao 2 ảnh 10MB + overhead multipart,
+     * vẫn còn ngưỡng 10MB/ảnh chặn ở cả client lẫn server (lib/storage/images.ts).
      */
-    serverActions: { bodySizeLimit: "8mb" },
+    serverActions: { bodySizeLimit: "25mb" },
   },
   // Repo con nằm trong E:\externalProjects (có lockfile cha) — chốt root ở đây
   // để tắt cảnh báo "inferred workspace root".

@@ -4,11 +4,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 /**
  * Tiện ích ảnh (CHỈ server). Ghi/xóa Storage qua service role; đọc public.
  * Bucket dùng chung: menu-images (ảnh món + logo tenant). Validate 2 lớp: client
- * (trước upload) + server (ở đây, trước khi ghi Storage). QD-005 §4 / 00-TongQuan P2.
+ * (trước upload) + server (ở đây, trước khi ghi Storage). Ngưỡng 10MB/ảnh.
+ * QD-005 §4 / 00-TongQuan P2.
  */
 
 export const MENU_BUCKET = "menu-images";
-export const MAX_IMAGE_BYTES = 2 * 1024 * 1024; // 2MB
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
 
 const MIME_EXT: Record<string, string> = {
   "image/png": "png",
@@ -20,7 +21,7 @@ export type ImageValidation =
   | { ok: true; ext: string; type: string }
   | { ok: false; error: string };
 
-/** Validate loại + kích thước ảnh (≤2MB, png/jpeg/webp). Dùng ở server trước khi ghi. */
+/** Validate loại + kích thước ảnh (≤10MB, png/jpeg/webp). Dùng ở server trước khi ghi. */
 export function validateImage(file: File): ImageValidation {
   if (!file || file.size === 0) return { ok: false, error: "Chưa chọn tệp ảnh." };
   const ext = MIME_EXT[file.type];
@@ -28,7 +29,7 @@ export function validateImage(file: File): ImageValidation {
     return { ok: false, error: "Chỉ chấp nhận ảnh PNG, JPEG hoặc WebP." };
   }
   if (file.size > MAX_IMAGE_BYTES) {
-    return { ok: false, error: "Ảnh vượt quá 2MB." };
+    return { ok: false, error: "Ảnh vượt quá 10MB." };
   }
   return { ok: true, ext, type: file.type };
 }
