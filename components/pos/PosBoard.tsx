@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, BellRing, Check, CalendarClock, ShoppingBag } from "lucide-react";
+import { Bell, BellRing, Check, CalendarClock, Loader2, Printer, ShoppingBag } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { CustomerMenu, CustomerMenuItem } from "@/lib/orders/customer-menu";
@@ -90,6 +90,8 @@ export function PosBoard({
   const [billBusy, setBillBusy] = useState(false);
   const [billError, setBillError] = useState<string | null>(null);
   const [resolvingCall, setResolvingCall] = useState<string | null>(null);
+  /** Đơn đang gửi lệnh in từ banner "Đơn cần in phiếu" — chỉ để hiện spinner trên đúng chip đó. */
+  const [printingOrderId, setPrintingOrderId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -161,6 +163,20 @@ export function PosBoard({
     await resolveCallAction(slug, callId);
     router.refresh();
     setResolvingCall(null);
+  };
+
+  /**
+   * In phiếu bếp cho một đơn từ banner "Đơn cần in phiếu" (ORDER-16). Route in tự ghi print_jobs
+   * khi nạp, nên chỉ cần refresh sau một nhịp là chip tự rời banner — không cần state lạc quan
+   * (bấm nhầm/hủy hộp thoại vẫn coi là đã in, giống mọi nút in khác trên POS).
+   */
+  const handlePrintUnprinted = (orderId: string) => {
+    setPrintingOrderId(orderId);
+    getPrintAdapter().printKitchenTicket({ slug, orderId });
+    setTimeout(() => {
+      setPrintingOrderId(null);
+      router.refresh();
+    }, 1500);
   };
 
   const itemMap = useMemo(() => {
@@ -572,6 +588,46 @@ export function PosBoard({
           >
             Xem &amp; duyệt
           </button>
+        </div>
+      )}
+
+      {/* Banner ĐƠN CẦN IN PHIẾU (ORDER-16) — đơn nhân viên gõ (từ điện thoại tại bàn hoặc từ
+          chính POS) vào thẳng confirmed, KHÔNG qua hàng chờ duyệt. Quán không có màn KDS thì quên
+          in = món không bao giờ xuống bếp, nên viền đỏ: hậu quả nặng hơn cả đơn chờ duyệt.
+          Bấm chip là in luôn — không có bước xem trước, vì món do chính nhân viên gõ. */}
+      {initial.unprinted.length > 0 && (
+        <div className="flex flex-wrap items-center gap-sm border-b-2 border-status-late bg-cream-soft px-lg py-sm">
+          <span className="inline-flex items-center gap-xs text-sm font-bold text-ink">
+            <Printer className="h-4 w-4 text-status-late" />
+            Đơn cần in phiếu ({initial.unprinted.length})
+          </span>
+          {initial.unprinted.map((u) => (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => handlePrintUnprinted(u.id)}
+              disabled={printingOrderId === u.id}
+              title={`Bàn ${u.tableName} · ${u.itemCount} món · bấm để in phiếu bếp`}
+              className="inline-flex min-h-[44px] items-center gap-xs rounded-2xl border border-status-late/40 bg-canvas px-md py-xs text-left text-sm font-semibold text-ink shadow-card transition-transform hover:bg-status-late/5 active:scale-[0.98] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              {printingOrderId === u.id ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-status-late" aria-hidden />
+              ) : (
+                <Printer className="h-4 w-4 shrink-0 text-status-late" aria-hidden />
+              )}
+              <span className="shrink-0">Bàn {u.tableName}</span>
+              {u.kitchenNo != null && (
+                <span className="font-normal text-steel">#{u.kitchenNo}</span>
+              )}
+              <span className="font-normal text-slate">{u.itemCount} món</span>
+              <span className="font-normal tabular-nums text-steel">
+                {new Date(u.created_at).toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </button>
+          ))}
         </div>
       )}
 
