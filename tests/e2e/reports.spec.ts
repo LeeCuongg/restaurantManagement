@@ -83,7 +83,7 @@ test("tham số hỏng không làm sập trang (REPORT-05)", async ({ page }) =>
   for (const qs of ["?from=2026-08-20&to=2026-08-01", "?from=2024-01-01&to=2026-08-12", "?from=xx&to=yy"]) {
     await page.goto(`${REPORTS}${qs}`);
     await expect(page.getByRole("heading", { name: "Báo cáo dòng tiền" })).toBeVisible();
-    await expect(page.getByText(/^Tháng \d+\/\d{4} · giờ Việt Nam$/)).toBeVisible();
+    await expect(page.getByText(/^Tháng \d+\/\d{4} · đến \d{2}\/\d{2} · giờ Việt Nam$/)).toBeVisible();
   }
 });
 

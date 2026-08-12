@@ -13,22 +13,29 @@ import {
 const NOW = new Date("2026-08-12T05:00:00.000Z");
 
 describe("resolveRange — preset (REPORT-05)", () => {
-  it("mặc định (không tham số) = tháng này, đủ 31 mốc ngày", () => {
+  it("mặc định (không tham số) = tháng này, cắt tới hôm nay", () => {
     const r = resolveRange({}, NOW);
     expect(r.preset).toBe("month");
     expect(r.fromDay).toBe("2026-08-01");
-    expect(r.toDay).toBe("2026-08-31");
-    expect(r.dayCount).toBe(31);
+    expect(r.toDay).toBe("2026-08-12"); // không kéo tới 31/08 — ngày chưa tới chỉ là cột 0
+    expect(r.dayCount).toBe(12);
     expect(r.grain).toBe("day");
-    expect(r.buckets).toHaveLength(31);
-    expect(r.label).toBe("Tháng 8/2026");
+    expect(r.buckets).toHaveLength(12);
+    expect(r.label).toBe("Tháng 8/2026 · đến 12/08");
     expect(r.canGoNext).toBe(false); // kỳ hiện tại — không có tương lai để xem
+  });
+
+  it("tháng đã trôi qua vẫn lấy trọn tháng", () => {
+    const r = resolveRange({ preset: "month", offset: "-1" }, NOW);
+    expect([r.fromDay, r.toDay]).toEqual(["2026-07-01", "2026-07-31"]);
+    expect(r.dayCount).toBe(31);
+    expect(r.label).toBe("Tháng 7/2026");
   });
 
   it("mốc UTC của tháng lệch đúng 7h (nửa mở)", () => {
     const r = resolveRange({ preset: "month" }, NOW);
     expect(r.fromUtc).toBe("2026-07-31T17:00:00.000Z");
-    expect(r.toUtc).toBe("2026-08-31T17:00:00.000Z");
+    expect(r.toUtc).toBe("2026-08-12T17:00:00.000Z");
   });
 
   it("today → 1 ngày, độ mịn theo giờ, 24 cột", () => {
@@ -62,10 +69,16 @@ describe("resolveRange — preset (REPORT-05)", () => {
     expect(r.dayCount).toBe(30);
   });
 
-  it("week = thứ Hai → Chủ nhật của tuần hiện tại", () => {
+  it("week = từ thứ Hai tới hôm nay (tuần đang dở)", () => {
     const r = resolveRange({ preset: "week" }, NOW);
-    expect([r.fromDay, r.toDay]).toEqual(["2026-08-10", "2026-08-16"]);
-    expect(r.label).toBe("Tuần 10/08 – 16/08/2026");
+    expect([r.fromDay, r.toDay]).toEqual(["2026-08-10", "2026-08-12"]);
+    expect(r.label).toBe("Tuần 10/08 – 12/08/2026");
+  });
+
+  it("tuần đã trôi qua vẫn lấy trọn 7 ngày", () => {
+    const r = resolveRange({ preset: "week", offset: "-1" }, NOW);
+    expect([r.fromDay, r.toDay]).toEqual(["2026-08-03", "2026-08-09"]);
+    expect(r.dayCount).toBe(7);
   });
 
   it("giữ tương thích tham số cũ ?bucket=&offset=", () => {
@@ -133,15 +146,20 @@ describe("pickGrain (REPORT-06)", () => {
 });
 
 describe("previousRange (REPORT-07)", () => {
-  it("tháng → tháng trước theo lịch (không phải 31 ngày trước)", () => {
+  it("tháng đang dở → cùng số ngày đầu tháng trước (12 ngày so 12 ngày)", () => {
     const prev = previousRange(resolveRange({ preset: "month" }, NOW), NOW);
-    expect([prev.fromDay, prev.toDay]).toEqual(["2026-07-01", "2026-07-31"]);
-    expect(prev.label).toBe("Tháng 7/2026");
+    expect([prev.fromDay, prev.toDay]).toEqual(["2026-07-01", "2026-07-12"]);
+    expect(prev.dayCount).toBe(12);
   });
 
-  it("tuần → tuần trước", () => {
+  it("tháng trọn vẹn → tháng trước trọn vẹn theo lịch (không phải 31 ngày trước)", () => {
+    const prev = previousRange(resolveRange({ preset: "month", offset: "-1" }, NOW), NOW);
+    expect([prev.fromDay, prev.toDay]).toEqual(["2026-06-01", "2026-06-30"]);
+  });
+
+  it("tuần đang dở → cùng số ngày đầu tuần trước", () => {
     const prev = previousRange(resolveRange({ preset: "week" }, NOW), NOW);
-    expect([prev.fromDay, prev.toDay]).toEqual(["2026-08-03", "2026-08-09"]);
+    expect([prev.fromDay, prev.toDay]).toEqual(["2026-08-03", "2026-08-05"]);
   });
 
   it("custom → lùi đúng độ dài kỳ", () => {

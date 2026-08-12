@@ -138,7 +138,7 @@ function buildBuckets(startVn: number, endVn: number, grain: Grain): Bucket[] {
 
 // ---- Nhãn kỳ ----------------------------------------------------------------
 
-function buildLabel(preset: Preset, startVn: number, endVn: number, todayVn: number): string {
+function buildLabel(preset: Preset, startVn: number, endVn: number, todayVn: number, truncated: boolean): string {
   const lastVn = endVn - DAY_MS;
   if (preset === "today" || startVn === lastVn) {
     if (startVn === todayVn) return `Hôm nay · ${ddmmyyyy(startVn)}`;
@@ -148,7 +148,8 @@ function buildLabel(preset: Preset, startVn: number, endVn: number, todayVn: num
   if (preset === "week") return `Tuần ${ddmm(startVn)} – ${ddmmyyyy(lastVn)}`;
   if (preset === "month") {
     const d = new Date(startVn);
-    return `Tháng ${d.getUTCMonth() + 1}/${d.getUTCFullYear()}`;
+    const name = `Tháng ${d.getUTCMonth() + 1}/${d.getUTCFullYear()}`;
+    return truncated ? `${name} · đến ${ddmm(lastVn)}` : name;
   }
   return `${ddmm(startVn)} – ${ddmmyyyy(lastVn)}`;
 }
@@ -181,7 +182,8 @@ function build(
   endVn: number,
   todayVn: number,
   offset: number,
-  input: RangeInput
+  input: RangeInput,
+  truncated = false
 ): ReportRange {
   const dayCount = Math.round((endVn - startVn) / DAY_MS);
   const grain = pickGrain(dayCount);
@@ -196,7 +198,7 @@ function build(
     dayCount,
     grain,
     buckets: buildBuckets(startVn, endVn, grain),
-    label: buildLabel(preset, startVn, endVn, todayVn),
+    label: buildLabel(preset, startVn, endVn, todayVn, truncated),
     canGoNext: endVn <= todayVn,
   };
 }
@@ -249,7 +251,15 @@ export function resolveRange(input: RangeInput, now: Date = new Date()): ReportR
       endVn = Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + offset + 1, 1);
   }
 
-  return build(preset, startVn, endVn, todayVn, offset, input);
+  // "Tuần này"/"Tháng này" cắt tới hôm nay: ngày chưa tới chỉ tạo cột 0 vô nghĩa.
+  // Kỳ đã trôi qua giữ nguyên trọn tuần/tháng.
+  let truncated = false;
+  if ((preset === "week" || preset === "month") && startVn <= todayVn && endVn > todayVn + DAY_MS) {
+    endVn = todayVn + DAY_MS;
+    truncated = true;
+  }
+
+  return build(preset, startVn, endVn, todayVn, offset, input, truncated);
 }
 
 /** Ngày VN hôm nay (YYYY-MM-DD) — dùng cho thuộc tính `max` của ô chọn ngày. */
@@ -257,9 +267,19 @@ export function vnToday(now: Date = new Date()): string {
   return toDayStr(startOfVnDay(vnNow(now)));
 }
 
-/** Kỳ liền trước cùng loại (tháng → tháng trước theo lịch, không phải "31 ngày trước"). */
+/**
+ * Kỳ liền trước cùng loại (tháng → tháng trước theo lịch, không phải "31 ngày trước").
+ * Khi kỳ này đang dở (tháng/tuần cắt tới hôm nay), kỳ trước cũng bị cắt cho bằng số ngày —
+ * so 12 ngày đầu tháng 8 với 12 ngày đầu tháng 7, không phải với trọn tháng 7.
+ */
 export function previousRange(range: ReportRange, now: Date = new Date()): ReportRange {
-  return resolveRange({ ...range.input, offset: String(range.offset - 1) }, now);
+  const prev = resolveRange({ ...range.input, offset: String(range.offset - 1) }, now);
+  if (prev.dayCount <= range.dayCount) return prev;
+
+  const startVn = parseDayStr(prev.fromDay);
+  if (startVn === null) return prev;
+  const todayVn = startOfVnDay(vnNow(now));
+  return build(prev.preset, startVn, startVn + range.dayCount * DAY_MS, todayVn, prev.offset, prev.input, true);
 }
 
 /** Query string của kỳ sau khi dịch `delta` kỳ (dùng cho nút ‹ ›). */

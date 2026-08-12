@@ -68,7 +68,9 @@ Tách khỏi `reports.ts` để **thuần hàm, không `server-only`** → unit 
 | 93 – 366 | `week` | `10/08` (thứ Hai đầu tuần) |
 | > 366 | `month` | `T8/26` |
 
-**Kỳ so sánh:** kỳ liền trước.
+**Kỳ đang dở cắt tới hôm nay:** preset `week`/`month` của kỳ **hiện tại** kết thúc ở hôm nay, không kéo tới hết tuần/tháng — ngày chưa tới chỉ tạo cột 0 vô nghĩa. Nhãn ghi rõ `Tháng 8/2026 · đến 12/08`. Tuần/tháng đã trôi qua (offset < 0) vẫn lấy trọn kỳ.
+
+**Kỳ so sánh:** kỳ liền trước. Khi kỳ này đang dở thì kỳ trước cũng cắt cho bằng số ngày — so 12 ngày đầu tháng 8 với 12 ngày đầu tháng 7, không so với trọn tháng 7.
 - Preset `today/yesterday` → ngày trước đó; `week` → tuần trước; `month` → tháng trước (theo lịch, không phải "31 ngày trước"); `last_month` → tháng trước nữa.
 - `7d/30d`/custom → lùi đúng số ngày của kỳ.
 
