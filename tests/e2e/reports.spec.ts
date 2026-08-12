@@ -36,7 +36,7 @@ test.beforeAll(async ({ baseURL }) => {
 
 test.use({ storageState: statePath });
 
-test("mặc định = tháng này, đủ KPI và 6 khối phân tích", async ({ page }) => {
+test("mặc định = tháng này, đủ KPI và các khối phân tích", async ({ page }) => {
   await page.goto(REPORTS);
   await expect(page.getByRole("heading", { name: "Báo cáo dòng tiền" })).toBeVisible();
 
@@ -45,21 +45,37 @@ test("mặc định = tháng này, đủ KPI và 6 khối phân tích", async ({
   }
   for (const panel of [
     "Cơ cấu theo nhóm món",
-    "Theo kênh bán",
-    "Món bán chạy",
+    "Theo nơi phục vụ",
+    "Cơ cấu theo từng món",
     "Theo phương thức thanh toán",
-    "Theo khu vực & bàn",
     "Khung giờ cao điểm",
   ]) {
     await expect(page.getByRole("heading", { name: panel })).toBeVisible();
   }
 });
 
-test("preset Hôm nay chuyển biểu đồ sang mốc giờ (REPORT-06)", async ({ page }) => {
+test("quán bán tại quầy: đơn không bàn là 'Tại quán', không phải 'Mang về' (REPORT-08)", async ({ page }) => {
+  await page.goto(`${REPORTS}?preset=30d`);
+  const place = page.getByRole("heading", { name: "Theo nơi phục vụ" }).locator("xpath=..");
+
+  await expect(place.getByText("Tại quán")).toBeVisible();
+  await expect(place.getByText("Mang về")).toHaveCount(0);
+  // Quán không gắn bàn → khối khu vực/bàn bị ẩn hẳn thay vì hiện "Không gắn bàn 100%".
+  await expect(page.getByRole("heading", { name: "Theo khu vực & bàn" })).toHaveCount(0);
+});
+
+test("preset Hôm nay đổi kỳ sang 1 ngày, mốc theo giờ (REPORT-06)", async ({ page }) => {
   await page.goto(REPORTS);
   await page.getByRole("button", { name: "Hôm nay" }).click();
   await page.waitForURL(/preset=today/);
-  await expect(page.getByRole("heading", { name: "Doanh thu theo giờ" })).toBeVisible();
+  await expect(page.getByText(/^(Hôm nay · )?\d{2}\/\d{2}\/\d{4} · giờ Việt Nam$/)).toBeVisible();
+
+  // Quán chưa bán gì hôm nay (chạy test lúc sáng sớm) thì trang hiện trạng thái rỗng thay vì
+  // biểu đồ — chấp nhận cả hai, đừng để test đỏ vì lý do ngoài code. Việc chọn mốc theo giờ
+  // đã có 33 unit test của report-range phủ.
+  const byHour = page.getByRole("heading", { name: "Doanh thu theo giờ" });
+  const empty = page.getByText("Chưa có hóa đơn đã thanh toán trong kỳ này.");
+  await expect(byHour.or(empty)).toBeVisible();
 });
 
 test("khoảng tùy chọn từ URL render đúng nhãn kỳ (REPORT-05)", async ({ page }) => {

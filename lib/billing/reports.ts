@@ -11,6 +11,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentMethod } from "./types";
 import type { ReportRange } from "./report-range";
+import { parseSettings, type ServiceMode } from "@/lib/tenant/settings";
 
 export type { Grain, Preset, ReportRange } from "./report-range";
 
@@ -18,7 +19,14 @@ export type RevenueSummary = { totalRevenue: number; billCount: number; avgPerBi
 export type RevenuePoint = { label: string; revenue: number; billCount: number };
 export type TopItem = { name: string; qty: number; revenue: number };
 export type CategorySlice = { name: string; qty: number; revenue: number };
-export type ChannelSlice = { channel: OrderChannel; source: OrderSource; revenue: number; itemCount: number };
+export type ChannelSlice = {
+  channel: OrderChannel;
+  source: OrderSource;
+  /** Đơn có gắn bàn hay không — cần để dán đúng nhãn nơi phục vụ ở quán chế độ quầy. */
+  hasTable: boolean;
+  revenue: number;
+  itemCount: number;
+};
 export type AreaSlice = { areaName: string; tableName: string; revenue: number; billCount: number };
 export type PaymentSlice = { method: PaymentMethod; amount: number; count: number };
 export type HourCell = { dow: number; hour: number; revenue: number; billCount: number };
@@ -37,6 +45,8 @@ export type ReportData = {
   hourDow: HourCell[];
   /** Giờ VN có doanh thu cao nhất trong kỳ; null khi kỳ chưa có hóa đơn. */
   peakHour: number | null;
+  /** Chế độ phục vụ của quán — quyết định đơn không bàn là "Tại quán" hay "Mang về". */
+  serviceMode: ServiceMode;
 };
 
 export type ComparisonData = { summary: RevenueSummary; series: number[] };
@@ -89,19 +99,26 @@ export async function getReportData(tenantId: string, range: ReportRange): Promi
   const client = await createClient();
   const args = baseArgs(tenantId, range);
 
-  const [summaryRows, seriesRows, itemRows, catRows, chanRows, areaRows, payRows, hourRows] = await Promise.all([
-    rpc<{ total_revenue: number; bill_count: number; avg_per_bill: number }>(client, "report_summary", args),
-    rpc<{ bucket_start: string; revenue: number; bill_count: number }>(client, "report_series", {
-      ...args,
-      p_grain: range.grain,
-    }),
-    rpc<{ name: string; qty: number; revenue: number }>(client, "report_top_items", { ...args, p_limit: 10 }),
-    rpc<{ name: string; qty: number; revenue: number }>(client, "report_by_category", args),
-    rpc<{ channel: string; source: string; revenue: number; item_count: number }>(client, "report_by_channel", args),
-    rpc<{ area_name: string; table_name: string; revenue: number; bill_count: number }>(client, "report_by_area", args),
-    rpc<{ method: string; amount: number; count: number }>(client, "report_payments", args),
-    rpc<{ dow: number; hour: number; revenue: number; bill_count: number }>(client, "report_hour_dow", args),
-  ]);
+  const [summaryRows, seriesRows, itemRows, catRows, chanRows, areaRows, payRows, hourRows, tenantRow] =
+    await Promise.all([
+      rpc<{ total_revenue: number; bill_count: number; avg_per_bill: number }>(client, "report_summary", args),
+      rpc<{ bucket_start: string; revenue: number; bill_count: number }>(client, "report_series", {
+        ...args,
+        p_grain: range.grain,
+      }),
+      // Lấy TẤT CẢ món (không phải top 10) — khối "Cơ cấu theo từng món" cần đủ để tính tỷ trọng.
+      rpc<{ name: string; qty: number; revenue: number }>(client, "report_top_items", { ...args, p_limit: 1000 }),
+      rpc<{ name: string; qty: number; revenue: number }>(client, "report_by_category", args),
+      rpc<{ channel: string; source: string; has_table: boolean; revenue: number; item_count: number }>(
+        client,
+        "report_by_channel",
+        args
+      ),
+      rpc<{ area_name: string; table_name: string; revenue: number; bill_count: number }>(client, "report_by_area", args),
+      rpc<{ method: string; amount: number; count: number }>(client, "report_payments", args),
+      rpc<{ dow: number; hour: number; revenue: number; bill_count: number }>(client, "report_hour_dow", args),
+      client.from("tenants").select("settings").eq("id", tenantId).maybeSingle(),
+    ]);
 
   const hourDow: HourCell[] = hourRows.map((r) => ({
     dow: Number(r.dow),
@@ -143,6 +160,7 @@ export async function getReportData(tenantId: string, range: ReportRange): Promi
     channels: chanRows.map((r) => ({
       channel: r.channel as OrderChannel,
       source: r.source as OrderSource,
+      hasTable: !!r.has_table,
       revenue: Number(r.revenue),
       itemCount: Number(r.item_count),
     })),
@@ -155,6 +173,7 @@ export async function getReportData(tenantId: string, range: ReportRange): Promi
     payments: [...payMap.values()],
     hourDow,
     peakHour,
+    serviceMode: parseSettings(tenantRow.data?.settings).service_mode,
   };
 }
 

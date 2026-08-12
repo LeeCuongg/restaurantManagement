@@ -25,3 +25,18 @@ export function orderPlaceLabel(args: {
   }
   return "Tại quán";
 }
+
+/**
+ * Nhãn NHÓM cho báo cáo (REPORT-08): mọi đơn có bàn gộp thành "Tại bàn" thay vì tách ra
+ * "Bàn B1", "Bàn B2"… Còn lại dùng đúng quy tắc của `orderPlaceLabel` để báo cáo, phiếu bếp
+ * và hóa đơn không bao giờ gọi khác nhau về cùng một đơn.
+ */
+export function orderPlaceGroup(args: {
+  serviceMode: ServiceMode;
+  hasTable: boolean;
+  channel: OrderChannel;
+  source?: OrderSource | null;
+}): string {
+  if (args.hasTable) return "Tại bàn";
+  return orderPlaceLabel({ ...args, tableName: null });
+}

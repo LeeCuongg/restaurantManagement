@@ -97,10 +97,13 @@ function makePaidVisit(paidAtMs, billNo) {
   const roll = rnd();
   const channel = roll < 0.72 ? "dine_in" : roll < 0.9 ? "takeaway" : "delivery";
   const source = channel === "dine_in" && rnd() < 0.55 ? "qr" : "staff";
-  const table = pick(tables);
-
-  const sessionId = uuid();
-  rows.sessions.push([sessionId, tenantId, table.id, "closed", openedAt, at]);
+  // Chỉ đơn ăn tại chỗ mới gắn bàn; mang về / giao tận nơi không có phiên bàn (giống thật,
+  // và để khối "Theo nơi phục vụ" của báo cáo phân loại đúng).
+  let sessionId = null;
+  if (channel === "dine_in") {
+    sessionId = uuid();
+    rows.sessions.push([sessionId, tenantId, pick(tables).id, "closed", openedAt, at]);
+  }
 
   const orderId = uuid();
   rows.orders.push([orderId, tenantId, sessionId, channel, source, "completed", MARK, openedAt, at, null, null]);

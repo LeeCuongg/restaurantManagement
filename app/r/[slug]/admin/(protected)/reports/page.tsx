@@ -7,10 +7,10 @@ import { formatVnd } from "@/lib/orders/cart";
 import { RangePicker } from "@/components/admin/reports/RangePicker";
 import { KpiCard } from "@/components/admin/reports/KpiCard";
 import { RevenueChart } from "@/components/admin/reports/RevenueChart";
-import { TopItemsTable } from "@/components/admin/reports/TopItemsTable";
+import { ItemStructure } from "@/components/admin/reports/ItemStructure";
 import { PaymentBreakdown } from "@/components/admin/reports/PaymentBreakdown";
 import { CategoryBreakdown } from "@/components/admin/reports/CategoryBreakdown";
-import { ChannelBreakdown } from "@/components/admin/reports/ChannelBreakdown";
+import { PlaceBreakdown } from "@/components/admin/reports/PlaceBreakdown";
 import { AreaBreakdown } from "@/components/admin/reports/AreaBreakdown";
 import { HourHeatmap } from "@/components/admin/reports/HourHeatmap";
 
@@ -61,7 +61,7 @@ export default async function ReportsPage({
     );
   }
 
-  const { summary, series, topItems, categories, channels, areas, payments, hourDow, peakHour } = data;
+  const { summary, series, topItems, categories, channels, areas, payments, hourDow, peakHour, serviceMode } = data;
   const hasData = summary.billCount > 0;
 
   return (
@@ -107,18 +107,22 @@ export default async function ReportsPage({
             <Panel title="Cơ cấu theo nhóm món">
               <CategoryBreakdown categories={categories} />
             </Panel>
-            <Panel title="Theo kênh bán">
-              <ChannelBreakdown channels={channels} />
+            <Panel title="Theo nơi phục vụ">
+              <PlaceBreakdown channels={channels} serviceMode={serviceMode} />
             </Panel>
-            <Panel title="Món bán chạy">
-              <TopItemsTable items={topItems} />
+            <Panel title="Cơ cấu theo từng món">
+              <ItemStructure items={topItems} total={summary.totalRevenue} />
             </Panel>
             <Panel title="Theo phương thức thanh toán">
               <PaymentBreakdown payments={payments} total={summary.totalRevenue} />
             </Panel>
-            <Panel title="Theo khu vực & bàn">
-              <AreaBreakdown areas={areas} />
-            </Panel>
+            {/* Quán bán tại quầy không gắn bàn → khối này chỉ có mỗi dòng "Không gắn bàn 100%",
+                không nói lên gì. Ẩn hẳn thay vì bắt người xem đọc một ô vô nghĩa. */}
+            {areas.some((a) => a.tableName !== "—") && (
+              <Panel title="Theo khu vực & bàn">
+                <AreaBreakdown areas={areas} />
+              </Panel>
+            )}
             {range.dayCount >= 7 && (
               <Panel title="Khung giờ cao điểm">
                 <HourHeatmap cells={hourDow} />
