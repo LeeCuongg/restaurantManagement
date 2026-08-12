@@ -101,5 +101,12 @@
 | REPORT-08 | Cơ cấu doanh thu đa chiều | Tách doanh thu theo nhóm món, theo kênh (tại bàn/mang về/giao + QR vs nhân viên), theo khu vực & bàn. Σ mỗi chiều = tổng doanh thu KPI | P4 | ◐ code+kiểm xong (0023 RPC; unit 30/30, e2e 6/6 trên tenant thật); chờ checkpoint |
 | REPORT-09 | Khung giờ cao điểm | Heatmap 7 × 24 (thứ × giờ) khi kỳ ≥ 7 ngày; KPI "Giờ cao điểm" hiện khung giờ doanh thu cao nhất | P4 | ◐ code+kiểm xong (0023 RPC; unit 30/30, e2e 6/6 trên tenant thật); chờ checkpoint |
 
+## MKT — Trang giới thiệu & khách quan tâm
+| Mã | Yêu cầu | Tiêu chí chấp nhận | GĐ | TT |
+|---|---|---|---|---|
+| MKT-01 | Trang `/` giới thiệu sản phẩm | 7 khối: hero · 3 nỗi đau · ảnh báo cáo · 4 bề mặt · lưới 10 tính năng · vì sao tin được · CTA cuối. Ảnh chụp màn thật từ tenant demo (không dùng dữ liệu tenant thật). Mọi luận điểm truy được về tính năng đã chạy. KHÔNG còn liên kết `/style-guide` hay `/r/pho-viet` trên trang. Không vỡ ở 360px | P6 | ◐ code+kiểm xong (14 unit + 4 e2e; ảnh chụp từ tenant demo); chờ checkpoint |
+| MKT-02 | Form nhận khách quan tâm | Gửi tên (≥2 ký tự) + SĐT VN hợp lệ → ghi bảng `leads`, form hiện lời cảm ơn. SĐT sai → báo lỗi tại ô nhập, không ghi DB. Gửi 2 lần cùng số trong 60s → chỉ 1 bản ghi. Dùng lại `normalizePhone`/`isValidPhone` của `guest-contact.ts` | P6 | ◐ code+kiểm xong (14 unit + 4 e2e; ảnh chụp từ tenant demo); chờ checkpoint |
+| MKT-03 | Lead khóa kín + màn quản lý | `leads` bật RLS và KHÔNG có policy nào → anon key `select * from leads` trả 0 dòng và insert bị từ chối; ghi/đọc chỉ qua service role sau khi xác thực. `/super/leads` liệt kê tên · SĐT (`tel:`) · ghi chú · thời điểm, nút "Đã gọi" đổi `status` | P6 | ◐ code+kiểm xong (14 unit + 4 e2e; ảnh chụp từ tenant demo); chờ checkpoint |
+
 ## Tiêu chí phát hành V1 (map từ `00-TongThe.md` §7)
 Onboard ≤15' (TENANT-03) · KDS ≤3s (ORDER-04) · đóng bill ≤5s (BILL-04) · doanh thu khớp 100% (BILL-05) · RLS test (TENANT-02) · 2 tenant demo prod (P6) · mobile 360px ≤6 chạm (ORDER-01) · hóa đơn 80mm đủ (PRINT-03) · phiếu bếp (PRINT-02; nghiệm thu "tự in ≤5s" hoãn tới khi có cầu in cục bộ + phần cứng — V1 nghiệm thu bấm-in + PDF preview).

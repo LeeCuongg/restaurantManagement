@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "node scripts/seed.mjs",
+    "seed:demo": "node scripts/seed-demo-data.mjs",
     "print:scan": "node scripts/print-scan.mjs",
     "print:bridge": "node scripts/print-bridge.mjs",
     "print:bridge:test": "node scripts/print-bridge.mjs --test",

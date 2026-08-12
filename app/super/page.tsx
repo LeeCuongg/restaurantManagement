@@ -52,6 +52,9 @@ export default async function SuperHome({
           </p>
         </div>
         <div className="flex items-center gap-sm">
+          <Button asChild variant="secondary">
+            <Link href="/super/leads">Khách quan tâm</Link>
+          </Button>
           <Button asChild>
             <Link href="/super/new">+ Nhà hàng mới</Link>
           </Button>
