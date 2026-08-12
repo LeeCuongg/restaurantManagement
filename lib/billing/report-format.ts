@@ -3,21 +3,27 @@
  * (vitest không parse .tsx vì tsconfig đặt `jsx: preserve`).
  */
 
+/** Số chữ số thập phân của tỷ trọng — giữ tỷ lệ thật, không làm tròn về số nguyên. */
+const SHARE_DECIMALS = 2;
+
 /**
- * Tỷ trọng dạng chữ, LUÔN ra số đúng. Làm tròn về số nguyên như thường, nhưng nếu phần
- * quá nhỏ khiến nó thành "0%" thì tự nới thêm chữ số thập phân cho tới khi ra số khác 0.
+ * Tỷ trọng dạng chữ, 2 chữ số thập phân: 3.440.000đ trong 12.135.000đ → "28,35%".
  *
- * Ví dụ thật: Rượu 50.000đ trong kỳ 12.135.000đ = 0,412% — trước đây hiện "0%", đọc như
- * món đó không bán được đồng nào. Giờ hiện "0,4%". Chỉ đúng 0đ mới là "0%".
+ * Làm tròn về số nguyên gây hai vấn đề: dòng nhỏ bị bóp thành "0%" (Rượu 0,412%), và các
+ * dòng lệch đủ nhiều để người xem cộng tay ra con số khác 100%. Giữ 2 số lẻ thì mỗi dòng
+ * đúng với chính nó và tổng cộng lại sát 100%.
+ *
+ * Trường hợp cực nhỏ mà 2 số lẻ vẫn thành "0,00%" thì tự nới thêm chữ số — không bao giờ
+ * in ra số 0 cho một dòng có tiền.
  */
 export function formatShare(value: number, total: number): string {
-  if (total <= 0 || value <= 0) return "0%";
+  if (total <= 0) return "0%"; // không có cơ sở để tính tỷ lệ
+  if (value <= 0) return `0,${"0".repeat(SHARE_DECIMALS)}%`;
 
   const pct = (value / total) * 100;
-  for (const decimals of [0, 1, 2]) {
+  for (const decimals of [SHARE_DECIMALS, 4, 6]) {
     const text = pct.toFixed(decimals);
     if (Number(text) > 0) return `${text.replace(".", ",")}%`;
   }
-  // Nhỏ hơn 0,005% — thà nói "nhỏ hơn ngưỡng" còn hơn in ra một số 0 sai.
-  return "<0,01%";
+  return "<0,000001%";
 }
