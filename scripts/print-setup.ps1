@@ -179,8 +179,15 @@ $printers = @(Get-Printer | Where-Object {
   $_.Name -notmatch 'OneNote|Microsoft Print to PDF|Microsoft XPS|Fax'
 })
 
+# Windows 11 mac dinh TU DOI may in mac dinh thanh cai vua dung gan nhat. Nhan vien in mot
+# file PDF la hom sau hoa don lai chui vao "Microsoft Print to PDF" va hien hop thoai luu file.
+# Khoa lai (HKCU cua chinh user dang cai - UAC nang quyen van giu nguyen user).
+New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Windows" `
+  -Name LegacyDefaultPrinterMode -Value 1 -PropertyType DWord -Force | Out-Null
+
 if ($printers.Count -eq 0) {
-  Warn "Windows chua cai may in nao. Cai driver may in QUAY roi dat lam mac dinh sau."
+  Warn "Windows chua cai may in nao (may in USB o muc 'Unspecified' = CHUA CO DRIVER)."
+  Warn "Cai driver may in QUAY theo hang (Xprinter/SPRT/Gprinter...) roi chay lai script nay."
 } else {
   Write-Host ""
   for ($i = 0; $i -lt $printers.Count; $i++) {

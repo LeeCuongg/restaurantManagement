@@ -1,0 +1,95 @@
+========================================================================
+ HƯỚNG DẪN LẮP MÁY IN CHO QUÁN
+ (đọc hết trang này trước khi bấm gì — mất 2 phút)
+========================================================================
+
+CHUẨN BỊ — làm đủ 3 việc này rồi mới cài:
+
+  [ ] Laptop của quán CẮM ĐIỆN (không chạy pin) và nối vào Wi-Fi/mạng
+      của quán — không phải Wi-Fi khách, không bật VPN.
+  [ ] Máy in BẾP cắm dây mạng (LAN) vào cùng router với laptop, đã bật nguồn.
+  [ ] Máy in QUẦY (in hóa đơn) đã cắm vào laptop và cài driver xong.
+  [ ] Đã cài trình duyệt Chrome.
+
+  Không biết IP máy in bếp cũng không sao — lúc cài máy tự dò.
+
+
+CÀI ĐẶT — một lần bấm:
+
+  1. Chép cả thư mục này vào Desktop của laptop quán.
+  2. Double-click file  CAI-DAT.bat
+  3. Windows hỏi "Do you want to allow..." → bấm YES.
+  4. Ngồi đợi. Máy tự cài Node (vài phút, ĐỪNG tắt cửa sổ).
+
+  Trong lúc cài chỉ phải trả lời 2 câu:
+
+  Câu 1 — "Giấy ra ở đâu? (b = bếp, q = quầy, k = không ra gì)"
+     Máy in một phiếu thử rồi hỏi. PHẢI ĐI XUỐNG BẾP NHÌN TẬN MẮT,
+     đừng đoán. Quán có 2 máy in rất dễ nhầm máy quầy thành máy bếp;
+     nhầm là bếp không nhận được phiếu nào mà không ai hiểu tại sao.
+        - Giấy ra ở BẾP  → gõ  b
+        - Giấy ra ở QUẦY → gõ  q   (máy tự thử tiếp máy khác)
+        - Không ra gì    → gõ  k
+
+  Câu 2 — "Máy in QUẦY (in hóa đơn) là số mấy?"
+     Nhìn danh sách rồi gõ số tương ứng. Đây là máy in hóa đơn cho khách.
+
+  Xong sẽ hiện "CAI DAT XONG" màu xanh.
+
+
+KIỂM TRA — làm đủ 4 phép thử mới coi là xong:
+
+  1. Mở lối tắt "POS" trên Desktop, bấm "Phiếu bếp"
+     → giấy phải ra ở BẾP, chip trên POS chuyển xanh.
+
+  2. In 1 hóa đơn
+     → giấy ra ở QUẦY, KHÔNG hiện hộp thoại chọn máy in.
+
+  3. Tắt hẳn laptop, bật lại, KHÔNG bấm gì, đợi 1 phút rồi bấm "Phiếu bếp"
+     → vẫn ra giấy ở bếp. (Phép thử này quan trọng nhất: nó chứng minh
+        cầu in tự chạy khi quán mở cửa sáng hôm sau.)
+
+  4. Rút dây mạng máy in bếp, bấm "Phiếu bếp"
+     → POS hiện chip ĐỎ "Bếp CHƯA in". Cắm dây lại, bấm vào chip đỏ
+     → giấy ra.
+
+
+NHỮNG ĐIỀU KHÔNG ĐƯỢC LÀM:
+
+  - Không xóa / đổi tên thư mục  C:\cau-in-...  trên ổ C.
+  - Không đóng cửa sổ đen "CAU IN BEP DANG CHAY" nếu thấy nó mở
+    (đóng = bếp ngừng nhận phiếu). Bình thường nó chạy ẩn, không thấy.
+  - Không gửi thư mục này / file .env.local cho ai khác:
+    trong đó có khóa truy cập máy chủ.
+  - Không mở POS bằng cửa sổ Chrome thường — phải mở bằng lối tắt "POS",
+    nếu không mỗi lần in sẽ hiện hộp thoại chọn máy in.
+
+
+HỎNG THÌ LÀM GÌ:
+
+  Máy in bếp có vấn đề (lúc cài báo "Khong tim thay may in nao trong mang",
+  hoặc đang chạy tự nhiên bếp mất phiếu):
+     → Double-click  KIEM-TRA-MAY-IN.bat
+       Nó dò cả mạng, in ra danh sách máy in tìm thấy và lý do nếu không thấy.
+       Biết IP rồi thì gõ IP vào để in một phiếu thử — giấy ra và tự cắt là máy in ổn.
+
+     LƯU Ý: file đuôi .ps1 double-click sẽ mở ra Notepad chứ KHÔNG chạy —
+     đó là Windows chặn sẵn, không phải hỏng. Chỉ bấm các file .bat.
+
+  Bếp không ra phiếu, POS hiện chip đỏ:
+     → Kiểm tra máy in bếp còn điện và còn cắm dây mạng không.
+     → Cắm lại, rồi bấm thẳng vào chip đỏ trên POS để in lại.
+
+  Cả bếp lẫn quầy đều không in:
+     → Khởi động lại laptop. Đợi 1 phút rồi thử lại.
+
+  Vẫn không được — chạy lại  CAI-DAT.bat  (chạy lại nhiều lần vô hại).
+
+  Muốn xem lỗi: double-click  print-bridge.bat  (có cửa sổ hiện log).
+  Xem xong NHỚ ĐÓNG cửa sổ đó lại — để hai cầu in chạy cùng lúc sẽ in
+  trùng phiếu, bếp nhận 2 tờ giống nhau.
+
+  Máy in bếp mới thay / đổi IP:
+     → Chạy lại  CAI-DAT.bat, nó sẽ dò lại từ đầu.
+
+========================================================================

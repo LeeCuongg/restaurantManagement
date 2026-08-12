@@ -38,6 +38,8 @@ export function CartSheet({
   address = "",
   onAddressChange,
   onEditContact,
+  staff = false,
+  title = "Giỏ của bạn",
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -63,13 +65,21 @@ export function CartSheet({
   onAddressChange?: (v: string) => void;
   /** Dine-in: mở lại modal tên/SĐT để sửa (không nhập lại trong giỏ). */
   onEditContact?: () => void;
+  /**
+   * Chế độ NHÂN VIÊN gõ hộ khách (ORDER-15, màn /pos/m): không hỏi tên/SĐT — danh tính đơn là
+   * membership của người đăng nhập, còn "khách nào" thì đã có số bàn trả lời.
+   */
+  staff?: boolean;
+  /** Tiêu đề sheet — staff cần thấy đang gõ cho bàn nào. */
+  title?: string;
 }) {
   // Điều kiện gửi: luôn cần tên; SĐT chỉ bắt buộc với đơn online (dine-in tùy chọn nhưng nhập
-  // thì phải đúng định dạng); giao cần địa chỉ.
+  // thì phải đúng định dạng); giao cần địa chỉ. Nhân viên gõ hộ thì không có bước liên hệ nào.
   const contactReady =
-    isValidName(customerName) &&
-    (online ? isValidPhone(customerPhone) : isPhoneAcceptable(customerPhone)) &&
-    (!online || channel !== "delivery" || !!address.trim());
+    staff ||
+    (isValidName(customerName) &&
+      (online ? isValidPhone(customerPhone) : isPhoneAcceptable(customerPhone)) &&
+      (!online || channel !== "delivery" || !!address.trim()));
   const total = lines.reduce((sum, l) => {
     const item = itemMap.get(l.itemId);
     if (!item) return sum;
@@ -94,7 +104,7 @@ export function CartSheet({
         <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[88vh] max-w-md flex-col rounded-t-xl bg-canvas shadow-modal outline-none">
           <div className="mx-auto mt-sm h-1.5 w-10 shrink-0 rounded-full bg-hairline-strong" />
           <Drawer.Title className="shrink-0 px-lg pt-sm font-display text-xl text-ink">
-            Giỏ của bạn
+            {title}
           </Drawer.Title>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-lg py-sm">
@@ -180,7 +190,7 @@ export function CartSheet({
               </div>
             )}
 
-            {lines.length > 0 && (
+            {lines.length > 0 && !staff && (
               <div className="mt-md">
                 {/* Ăn tại bàn: tên/SĐT đã lấy ở modal khi vào bàn (ORDER-10) → KHÔNG bắt nhập
                     lại, chỉ hiện lại kèm nút sửa. Đơn online không có bước đó nên vẫn nhập. */}
@@ -298,7 +308,7 @@ export function CartSheet({
                   <span>Đang gửi…</span>
                 </>
               ) : (
-                <span>{online ? "Đặt đơn" : "Gửi order"}</span>
+                <span>{staff ? "Gửi về quầy" : online ? "Đặt đơn" : "Gửi order"}</span>
               )}
             </button>
           </div>

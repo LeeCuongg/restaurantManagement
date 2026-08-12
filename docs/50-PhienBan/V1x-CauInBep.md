@@ -106,8 +106,18 @@ Bẫy hay gặp với Xprinter/Sapo là máy in giữ IP tĩnh mặc định `19
 phát dải khác — hai bên không thấy nhau dù dây cắm đúng. Sửa: cắm USB → `Printer Test Tool` của
 Xprinter → tab Ethernet → chuyển **DHCP**.
 
-**3. Cài cầu in lên laptop quán — một lệnh.** Chép thư mục triển khai sang laptop quán rồi
-double-click `print-setup.bat` (hoặc chạy `print-setup.ps1` nếu thích gõ lệnh):
+**3a. Đóng gói bộ cài — trên máy dev, một lần bấm.** Double-click `scripts/print-pack.bat`.
+Script đọc `.env.local` của repo, lấy đúng 2 khóa cầu in cần (`NEXT_PUBLIC_SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY` — **không** chép cả file, vì `.env.local` repo còn
+`POSTGRES_PASSWORD`/`STAFF_PIN_PEPPER` mà laptop quán không cần), rồi ghép thư mục
+`cau-in-<slug>/` + file `.zip` cùng tên ở gốc repo. Cả hai bị `.gitignore` chặn.
+
+Quán khác thì đổi tham số: `print-pack.bat -Slug bun-bo -Chars 32` (58mm) — mặc định là
+`qt-food`, khổ 80mm, POS `https://restaurant-management-zeta.vercel.app/r/<slug>/pos`.
+
+**3b. Cài lên laptop quán — một lần bấm.** Chép thư mục (hoặc giải nén file zip) sang laptop
+quán rồi double-click `CAI-DAT.bat`. URL POS và thư mục cài đã nhúng sẵn lúc đóng gói nên tại
+quán không phải gõ gì. Muốn gõ tay thì vẫn chạy được:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File print-setup.ps1 -AppUrl "https://<ten-mien>/r/qt-food/pos"
@@ -121,14 +131,16 @@ Chỉ hỏi người cài 3 câu: giấy phiếu thử **ra ở bếp hay ở qu
 Câu đầu bắt buộc phải xuống bếp nhìn tận mắt — quán 2 máy in rất dễ cấu hình nhầm IP máy quầy
 thành máy bếp, và triệu chứng là bếp không nhận được gì mà không ai hiểu vì sao.
 
-Thư mục triển khai gồm:
+Thư mục triển khai (`print-pack.bat` sinh ra, không ghép tay) gồm:
 
 | File | Vai trò |
 | --- | --- |
-| `print-setup.bat` / `print-setup.ps1` | **Cài đặt tự động** — chạy cái này |
+| `CAI-DAT.bat` | **Cài đặt tự động** — chạy cái này. Nhúng sẵn `-AppUrl` + `-InstallDir`, có `%*` để chạy lại kèm `-KitchenIp` |
+| `KIEM-TRA-MAY-IN.bat` | **Dò máy in + in phiếu thử** — dùng khi bước 4 không tìm thấy máy in |
+| `print-setup.ps1` | Ruột của bước cài (7 bước), `CAI-DAT.bat` gọi vào đây |
 | `print-bridge.mjs` | Cầu in (không phụ thuộc npm: chỉ `net`/`fs` + `fetch` sẵn của Node) |
 | `print-bridge.bat` | Chạy cầu in, tự khởi động lại khi chết |
-| `print-scan.ps1` | Dò máy in / in phiếu thử — dùng khi có sự cố |
+| `print-scan.ps1` | Ruột của bước dò máy in (Windows mở `.ps1` bằng Notepad khi double-click, nên phải bọc qua `.bat`) |
 | `.env.local` | Cấu hình (nội dung bên dưới; `PRINTER_HOST` do script tự ghi) |
 | `HUONG-DAN.txt` | Hướng dẫn cho người lắp, viết cho người không biết kỹ thuật |
 
@@ -197,6 +209,8 @@ là bỏ sót). Trạng thái đọc từ `print_jobs` nên F5 hay đổi ca v�
 | --- | --- |
 | `lib/print/adapter.ts` | `BridgePrintAdapter` + chọn adapter theo `NEXT_PUBLIC_PRINT_MODE` |
 | `app/r/[slug]/print/kitchen/actions.ts` | `queueKitchenTicketPrint` — ghi job pending (guard POS/KDS) |
+| `scripts/print-pack.ps1` · `.bat` | **Đóng gói bộ cài** `cau-in-<slug>/` + `.zip` (chạy trên máy dev) |
+| `scripts/print-huongdan.txt` | Bản mẫu `HUONG-DAN.txt` cho người lắp — `print-pack` chép vào bộ cài |
 | `scripts/print-setup.ps1` · `.bat` | **Cài đặt tự động một lệnh** cho laptop quán |
 | `scripts/print-bridge.mjs` | Cầu in: poll → ESC/POS → TCP 9100 → printed/failed (không cần npm) |
 | `scripts/print-bridge.bat` | Chạy cầu in trên laptop quán, tự khởi động lại khi chết |

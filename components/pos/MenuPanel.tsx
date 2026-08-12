@@ -24,11 +24,17 @@ export function MenuPanel({
   menu,
   canAdd,
   onAddLine,
+  emptyHint = "Chọn bàn để thêm món",
+  modifierPresentation = "dialog",
 }: {
   slug: string;
   menu: CustomerMenu | null;
   canAdd: boolean;
   onAddLine: (line: PendingLine) => void;
+  /** Chữ nhắc khi chưa thêm được — POS quầy nhắc chọn bàn, màn điện thoại có ngữ cảnh khác. */
+  emptyHint?: string;
+  /** Điện thoại (ORDER-15) dùng bottom sheet; POS quầy màn rộng dùng dialog giữa màn hình. */
+  modifierPresentation?: "dialog" | "sheet";
 }) {
   const [activeItem, setActiveItem] = useState<CustomerMenuItem | null>(null);
   const [modifierOpen, setModifierOpen] = useState(false);
@@ -67,7 +73,7 @@ export function MenuPanel({
       <header className="shrink-0 border-b border-hairline-soft px-md py-sm">
         <div className="flex items-center justify-between gap-sm">
           <h2 className="font-display text-lg text-ink">Thực đơn</h2>
-          {!canAdd && <span className="text-xs text-steel">Chọn bàn để thêm món</span>}
+          {!canAdd && <span className="text-xs text-steel">{emptyHint}</span>}
         </div>
         <div className="relative mt-sm">
           <Search className="pointer-events-none absolute left-sm top-1/2 h-4 w-4 -translate-y-1/2 text-stone" />
@@ -177,7 +183,7 @@ export function MenuPanel({
         open={modifierOpen}
         onOpenChange={setModifierOpen}
         onAdd={onAddLine}
-        presentation="dialog"
+        presentation={modifierPresentation}
       />
     </div>
   );

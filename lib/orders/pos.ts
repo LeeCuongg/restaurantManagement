@@ -71,10 +71,25 @@ export type PosReservation = {
   partySize: number;
 };
 
+/**
+ * Đơn đã xác nhận nhưng CHƯA in phiếu bếp lần nào (ORDER-16). Đơn nhân viên gõ — nhất là từ điện
+ * thoại tại bàn (/pos/m) — vào thẳng `confirmed`, không đi qua hàng chờ duyệt, nên quầy không có
+ * tín hiệu nào để biết phải in. Bếp không có màn KDS thì đơn quên in = món không bao giờ xuống bếp.
+ */
+export type PosUnprinted = {
+  id: string;
+  kitchenNo: number | null;
+  tableId: string;
+  tableName: string;
+  created_at: string;
+  itemCount: number;
+};
+
 export type PosSnapshot = {
   areas: PosArea[];
   tables: PosTable[];
   pending: PosPending[];
+  unprinted: PosUnprinted[];
   sessions: PosSession[];
   reservations: PosReservation[];
   takeawayOrders: OnlineOrderView[];
@@ -123,7 +138,7 @@ export async function getPosSnapshot(tenantId: string): Promise<PosSnapshot> {
   const dayStartUtc = new Date(Date.parse(`${dayStr}T00:00:00Z`) - VN_OFFSET).toISOString();
   const dayEndUtc = new Date(Date.parse(`${dayStr}T00:00:00Z`) - VN_OFFSET + 86400000).toISOString();
 
-  const [{ data: areas }, { data: tables }, { data: sessions }, { data: orders }, { data: openBills }, { data: reservationRows }, takeawayOrders, calls] =
+  const [{ data: areas }, { data: tables }, { data: sessions }, { data: orders }, { data: openBills }, { data: reservationRows }, { data: printJobs }, takeawayOrders, calls] =
     await Promise.all([
       supabase
         .from("areas")
@@ -162,6 +177,14 @@ export async function getPosSnapshot(tenantId: string): Promise<PosSnapshot> {
         .gte("reserved_at", dayStartUtc)
         .lt("reserved_at", dayEndUtc)
         .order("reserved_at", { ascending: true }),
+      // Phiếu bếp đã gửi đi trong ngày — để biết đơn nào CHƯA in (ORDER-16). Lấy cả job `pending`
+      // (đã đẩy sang cầu in, không phải bấm lại); job `failed` do chip đỏ ở panel bàn lo.
+      supabase
+        .from("print_jobs")
+        .select("payload")
+        .eq("tenant_id", tenantId)
+        .eq("type", "kitchen_ticket")
+        .gte("created_at", dayStartUtc),
       listTakeawayOrders(tenantId),
       getPendingCalls(tenantId),
     ]);
@@ -202,6 +225,41 @@ export async function getPosSnapshot(tenantId: string): Promise<PosSnapshot> {
       };
     });
 
+  // Banner: đơn CÓ BÀN đã xác nhận hôm nay mà chưa có phiếu bếp nào (ORDER-16). Chỉ lấy đúng
+  // `confirmed` — bếp đã bấm nhận (preparing trở đi) thì món đã tới bếp bằng đường khác, nhắc
+  // in nữa là nhiễu. Đơn KHÔNG bàn không vào đây: hàng đợi mang về/tại quầy vốn đã hiện thường
+  // trực trên màn quầy kèm nút in riêng.
+  const printedOrderIds = new Set(
+    (printJobs ?? [])
+      .map((j) => (j.payload as { orderId?: string } | null)?.orderId)
+      .filter((id): id is string => !!id)
+  );
+  const dayStartMs = Date.parse(dayStartUtc);
+  const unprinted: PosUnprinted[] = allOrders
+    .filter(
+      (o) =>
+        o.status === "confirmed" &&
+        !!o.table_session_id &&
+        !printedOrderIds.has(o.id) &&
+        Date.parse(o.created_at) >= dayStartMs
+    )
+    .map((o) => {
+      const sess = sessionById.get(o.table_session_id as string);
+      const tbl = sess ? tableById.get(sess.table_id) : null;
+      return {
+        id: o.id,
+        kitchenNo: o.kitchen_no,
+        tableId: sess?.table_id ?? "",
+        tableName: tbl?.name ?? "—",
+        created_at: o.created_at,
+        itemCount: o.items
+          .filter((i) => i.status !== "cancelled")
+          .reduce((n, i) => n + i.qty, 0),
+      };
+    })
+    // Phiên đã đóng mà đơn còn `confirmed` thì không còn bàn để bưng tới — bỏ, tránh chip "—".
+    .filter((u) => !!u.tableId);
+
   // Panel: phiên mở + order đã confirmed trở đi (không gồm pending — pending ở drawer).
   const ordersBySession = new Map<string, PosOrder[]>();
   for (const o of allOrders) {
@@ -241,6 +299,7 @@ export async function getPosSnapshot(tenantId: string): Promise<PosSnapshot> {
       seats: t.seats,
     })),
     pending,
+    unprinted,
     sessions: posSessions,
     reservations,
     takeawayOrders,
