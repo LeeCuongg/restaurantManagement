@@ -91,9 +91,15 @@
 ## REPORT — Báo cáo
 | Mã | Yêu cầu | Tiêu chí chấp nhận | GĐ | TT |
 |---|---|---|---|---|
-| REPORT-01 | Doanh thu ngày/tuần/tháng | Tổng doanh thu, số bill, TB/bill theo mốc thời gian | P4 | ☐ |
-| REPORT-02 | Món bán chạy | Xếp hạng món theo số lượng/doanh thu trong kỳ | P4 | ☐ |
-| REPORT-03 | Theo phương thức TT | Tách tiền mặt vs chuyển khoản để đối soát chốt ca | P4 | ☐ |
+| REPORT-01 | Doanh thu ngày/tuần/tháng | Tổng doanh thu, số bill, TB/bill theo mốc thời gian | P4 | ◐ code+kiểm xong (0023 RPC; unit 30/30, e2e 6/6 trên tenant thật); chờ checkpoint |
+| REPORT-02 | Món bán chạy | Xếp hạng món theo số lượng/doanh thu trong kỳ | P4 | ◐ code+kiểm xong (0023 RPC; unit 30/30, e2e 6/6 trên tenant thật); chờ checkpoint |
+| REPORT-03 | Theo phương thức TT | Tách tiền mặt vs chuyển khoản để đối soát chốt ca | P4 | ◐ code+kiểm xong (0023 RPC; unit 30/30, e2e 6/6 trên tenant thật); chờ checkpoint |
+| REPORT-04 | Doanh thu khớp 100% ở mọi quy mô | Toàn bộ tổng hợp chạy bằng hàm SQL aggregate (`0023_report_rpcs.sql`), không fetch từng dòng. Tenant có > 1000 hóa đơn/kỳ: `summary.bill_count` khớp `select count(*)` chạy thẳng trên Postgres (trước đây dừng ở đúng 1000 — giới hạn PostgREST) | P4 | ◐ code+kiểm xong (0023 RPC; unit 30/30, e2e 6/6 trên tenant thật); chờ checkpoint |
+| REPORT-05 | Chọn khoảng thời gian tùy chọn | Preset nhanh (Hôm nay/Hôm qua/7 ngày/30 ngày/Tháng này/Tháng trước) + lịch "Tùy chọn" từ ngày → đến ngày. `?from=2026-07-01&to=2026-08-12` render đúng 43 cột ngày; `from > to` hoặc kỳ > 400 ngày → tự về tháng này, không lỗi 500 | P4 | ◐ code+kiểm xong (0023 RPC; unit 30/30, e2e 6/6 trên tenant thật); chờ checkpoint |
+| REPORT-06 | Độ mịn biểu đồ thích ứng | Kỳ ≤ 2 ngày → theo giờ (24 cột); 3–92 ngày → theo ngày; 93–366 ngày → theo tuần (mốc thứ Hai, khớp `date_trunc('week')`); > 366 ngày → theo tháng | P4 | ◐ code+kiểm xong (0023 RPC; unit 30/30, e2e 6/6 trên tenant thật); chờ checkpoint |
+| REPORT-07 | So sánh kỳ trước | Mỗi KPI hiện delta % đúng dấu so kỳ liền trước (tháng → tháng trước theo lịch); kỳ trước = 0 → hiện "–", không chia 0. Biểu đồ chồng cột mờ của kỳ trước | P4 | ◐ code+kiểm xong (0023 RPC; unit 30/30, e2e 6/6 trên tenant thật); chờ checkpoint |
+| REPORT-08 | Cơ cấu doanh thu đa chiều | Tách doanh thu theo nhóm món, theo kênh (tại bàn/mang về/giao + QR vs nhân viên), theo khu vực & bàn. Σ mỗi chiều = tổng doanh thu KPI | P4 | ◐ code+kiểm xong (0023 RPC; unit 30/30, e2e 6/6 trên tenant thật); chờ checkpoint |
+| REPORT-09 | Khung giờ cao điểm | Heatmap 7 × 24 (thứ × giờ) khi kỳ ≥ 7 ngày; KPI "Giờ cao điểm" hiện khung giờ doanh thu cao nhất | P4 | ◐ code+kiểm xong (0023 RPC; unit 30/30, e2e 6/6 trên tenant thật); chờ checkpoint |
 
 ## Tiêu chí phát hành V1 (map từ `00-TongThe.md` §7)
 Onboard ≤15' (TENANT-03) · KDS ≤3s (ORDER-04) · đóng bill ≤5s (BILL-04) · doanh thu khớp 100% (BILL-05) · RLS test (TENANT-02) · 2 tenant demo prod (P6) · mobile 360px ≤6 chạm (ORDER-01) · hóa đơn 80mm đủ (PRINT-03) · phiếu bếp (PRINT-02; nghiệm thu "tự in ≤5s" hoãn tới khi có cầu in cục bộ + phần cứng — V1 nghiệm thu bấm-in + PDF preview).

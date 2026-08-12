@@ -1,162 +1,181 @@
 /**
- * Tổng hợp báo cáo dòng tiền (04-05, REPORT-01..03, BILL-05). Chạy SERVER phiên admin RLS (cách
- * ly tenant). Mốc thời gian theo NGÀY VIỆT NAM (UTC+7). Doanh thu = bills.status='paid' AND
- * split_count IS NULL (loại "vỏ" chia đều, đếm phần con — khớp 100% với tiền đã thu).
+ * Tổng hợp báo cáo dòng tiền (REPORT-01..09). Chạy SERVER dưới phiên admin ⇒ RLS cách ly tenant.
+ *
+ * Toàn bộ SUM/GROUP BY nằm trong Postgres (`0023_report_rpcs.sql`). Bản trước fetch từng dòng
+ * `bills` rồi cộng trong JS nên dính trần 1000 dòng của PostgREST — tenant đông khách bị báo
+ * thiếu doanh thu (REPORT-04). Ở đây chỉ còn việc điền mốc trống và định dạng.
+ *
+ * Quy ước doanh thu giữ nguyên BILL-05: bill 'paid' + `split_count IS NULL` (loại "vỏ" chia đều).
  */
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { PaymentMethod } from "./types";
+import type { ReportRange } from "./report-range";
 
-const VN_OFFSET = 7 * 3600 * 1000;
+export type { Grain, Preset, ReportRange } from "./report-range";
 
-export type Bucket = "day" | "week" | "month";
-
-export type ReportRange = { fromUtc: string; toUtc: string; days: string[]; label: string };
 export type RevenueSummary = { totalRevenue: number; billCount: number; avgPerBill: number };
-export type RevenuePoint = { date: string; label: string; revenue: number; billCount: number };
+export type RevenuePoint = { label: string; revenue: number; billCount: number };
 export type TopItem = { name: string; qty: number; revenue: number };
+export type CategorySlice = { name: string; qty: number; revenue: number };
+export type ChannelSlice = { channel: OrderChannel; source: OrderSource; revenue: number; itemCount: number };
+export type AreaSlice = { areaName: string; tableName: string; revenue: number; billCount: number };
 export type PaymentSlice = { method: PaymentMethod; amount: number; count: number };
+export type HourCell = { dow: number; hour: number; revenue: number; billCount: number };
+
+export type OrderChannel = "dine_in" | "takeaway" | "delivery";
+export type OrderSource = "qr" | "staff";
+
 export type ReportData = {
   summary: RevenueSummary;
   series: RevenuePoint[];
   topItems: TopItem[];
+  categories: CategorySlice[];
+  channels: ChannelSlice[];
+  areas: AreaSlice[];
   payments: PaymentSlice[];
+  hourDow: HourCell[];
+  /** Giờ VN có doanh thu cao nhất trong kỳ; null khi kỳ chưa có hóa đơn. */
+  peakHour: number | null;
 };
 
-/** VN date string (YYYY-MM-DD) của 1 mốc UTC. */
-function vnDate(iso: string): string {
-  return new Date(new Date(iso).getTime() + VN_OFFSET).toISOString().slice(0, 10);
-}
+export type ComparisonData = { summary: RevenueSummary; series: number[] };
 
-/** dd/mm từ YYYY-MM-DD. */
-function ddmm(day: string): string {
-  const [, m, d] = day.split("-");
-  return `${d}/${m}`;
-}
+type Client = Awaited<ReturnType<typeof createClient>>;
 
 /**
- * Khoảng thời gian theo ngày VN cho bucket + offset (0 = kỳ hiện tại, −1 = kỳ trước…).
- * Trả mốc UTC [from,to) + danh sách ngày VN + nhãn kỳ. Dùng `new Date()` (server component OK).
+ * Gọi RPC và NÉM khi lỗi. Bản cũ dùng `const { data } = await ...` nên lỗi DB âm thầm
+ * biến thành doanh thu 0 — sai còn tệ hơn báo lỗi.
  */
-export function computeVnRange(bucket: Bucket, offset: number): ReportRange {
-  const now = new Date();
-  const vn = new Date(now.getTime() + VN_OFFSET);
-  const y = vn.getUTCFullYear();
-  const mo = vn.getUTCMonth();
-  const d = vn.getUTCDate();
-  const DAY = 86400000;
+async function rpc<T>(client: Client, fn: string, args: Record<string, unknown>): Promise<T[]> {
+  const { data, error } = await client.rpc(fn, args);
+  if (error) throw new Error(`Báo cáo: lỗi khi gọi ${fn} — ${error.message}`);
+  return (data ?? []) as T[];
+}
 
-  let startVn: number;
-  let endVn: number;
-  let label: string;
+const EMPTY_SUMMARY: RevenueSummary = { totalRevenue: 0, billCount: 0, avgPerBill: 0 };
 
-  if (bucket === "day") {
-    startVn = Date.UTC(y, mo, d) + offset * DAY;
-    endVn = startVn + DAY;
-    label = ddmm(new Date(startVn).toISOString().slice(0, 10)) + "/" + new Date(startVn).getUTCFullYear();
-  } else if (bucket === "week") {
-    const dow = new Date(Date.UTC(y, mo, d)).getUTCDay(); // 0=CN..6=T7
-    const toMonday = dow === 0 ? -6 : 1 - dow;
-    startVn = Date.UTC(y, mo, d) + toMonday * DAY + offset * 7 * DAY;
-    endVn = startVn + 7 * DAY;
-    label = `Tuần ${ddmm(new Date(startVn).toISOString().slice(0, 10))}–${ddmm(new Date(endVn - DAY).toISOString().slice(0, 10))}`;
-  } else {
-    startVn = Date.UTC(y, mo + offset, 1);
-    endVn = Date.UTC(y, mo + offset + 1, 1);
-    label = `Tháng ${new Date(startVn).getUTCMonth() + 1}/${new Date(startVn).getUTCFullYear()}`;
-  }
-
-  const days: string[] = [];
-  for (let e = startVn; e < endVn; e += DAY) days.push(new Date(e).toISOString().slice(0, 10));
-
+function toSummary(rows: { total_revenue: number; bill_count: number; avg_per_bill: number }[]): RevenueSummary {
+  const r = rows[0];
+  if (!r) return EMPTY_SUMMARY;
   return {
-    fromUtc: new Date(startVn - VN_OFFSET).toISOString(),
-    toUtc: new Date(endVn - VN_OFFSET).toISOString(),
-    days,
-    label,
+    totalRevenue: Number(r.total_revenue),
+    billCount: Number(r.bill_count),
+    avgPerBill: Number(r.avg_per_bill),
   };
+}
+
+/** Đổ kết quả RPC vào đúng mốc của `range.buckets` — mốc không có hóa đơn giữ giá trị 0. */
+function fillSeries(
+  range: ReportRange,
+  rows: { bucket_start: string; revenue: number; bill_count: number }[]
+): RevenuePoint[] {
+  const byMs = new Map<number, { revenue: number; billCount: number }>();
+  for (const r of rows) {
+    byMs.set(Date.parse(r.bucket_start), { revenue: Number(r.revenue), billCount: Number(r.bill_count) });
+  }
+  return range.buckets.map((b) => ({
+    label: b.label,
+    revenue: byMs.get(b.ms)?.revenue ?? 0,
+    billCount: byMs.get(b.ms)?.billCount ?? 0,
+  }));
+}
+
+function baseArgs(tenantId: string, range: ReportRange) {
+  return { p_tenant: tenantId, p_from: range.fromUtc, p_to: range.toUtc };
 }
 
 export async function getReportData(tenantId: string, range: ReportRange): Promise<ReportData> {
   const client = await createClient();
+  const args = baseArgs(tenantId, range);
 
-  // Doanh thu: bill 'paid', loại vỏ chia đều (split_count null).
-  const { data: bills } = await client
-    .from("bills")
-    .select("total, paid_at")
-    .eq("tenant_id", tenantId)
-    .eq("status", "paid")
-    .is("split_count", null)
-    .gte("paid_at", range.fromUtc)
-    .lt("paid_at", range.toUtc);
+  const [summaryRows, seriesRows, itemRows, catRows, chanRows, areaRows, payRows, hourRows] = await Promise.all([
+    rpc<{ total_revenue: number; bill_count: number; avg_per_bill: number }>(client, "report_summary", args),
+    rpc<{ bucket_start: string; revenue: number; bill_count: number }>(client, "report_series", {
+      ...args,
+      p_grain: range.grain,
+    }),
+    rpc<{ name: string; qty: number; revenue: number }>(client, "report_top_items", { ...args, p_limit: 10 }),
+    rpc<{ name: string; qty: number; revenue: number }>(client, "report_by_category", args),
+    rpc<{ channel: string; source: string; revenue: number; item_count: number }>(client, "report_by_channel", args),
+    rpc<{ area_name: string; table_name: string; revenue: number; bill_count: number }>(client, "report_by_area", args),
+    rpc<{ method: string; amount: number; count: number }>(client, "report_payments", args),
+    rpc<{ dow: number; hour: number; revenue: number; bill_count: number }>(client, "report_hour_dow", args),
+  ]);
 
-  const totalRevenue = (bills ?? []).reduce((s, b) => s + (b.total as number), 0);
-  const billCount = (bills ?? []).length;
-  const summary: RevenueSummary = {
-    totalRevenue,
-    billCount,
-    avgPerBill: billCount > 0 ? Math.round(totalRevenue / billCount) : 0,
-  };
-
-  // Series theo ngày VN.
-  const byDay = new Map<string, { revenue: number; billCount: number }>();
-  for (const b of bills ?? []) {
-    const day = vnDate(b.paid_at as string);
-    const acc = byDay.get(day) ?? { revenue: 0, billCount: 0 };
-    acc.revenue += b.total as number;
-    acc.billCount += 1;
-    byDay.set(day, acc);
-  }
-  const series: RevenuePoint[] = range.days.map((day) => ({
-    date: day,
-    label: ddmm(day),
-    revenue: byDay.get(day)?.revenue ?? 0,
-    billCount: byDay.get(day)?.billCount ?? 0,
+  const hourDow: HourCell[] = hourRows.map((r) => ({
+    dow: Number(r.dow),
+    hour: Number(r.hour),
+    revenue: Number(r.revenue),
+    billCount: Number(r.bill_count),
   }));
 
-  // Món bán chạy: bill_items của bill 'paid' (giữ món = normal/gộp/vỏ; con không có món → không đếm trùng).
-  const { data: bi } = await client
-    .from("bill_items")
-    .select("qty_allocated, amount, order_items(name_snapshot), bills!inner(status, paid_at)")
-    .eq("tenant_id", tenantId)
-    .eq("bills.status", "paid")
-    .gte("bills.paid_at", range.fromUtc)
-    .lt("bills.paid_at", range.toUtc);
-
-  const itemMap = new Map<string, { qty: number; revenue: number }>();
-  for (const r of bi ?? []) {
-    const oi = r.order_items as { name_snapshot?: string } | null;
-    const name = oi?.name_snapshot ?? "—";
-    const acc = itemMap.get(name) ?? { qty: 0, revenue: 0 };
-    acc.qty += r.qty_allocated as number;
-    acc.revenue += r.amount as number;
-    itemMap.set(name, acc);
-  }
-  const topItems: TopItem[] = [...itemMap.entries()]
-    .map(([name, v]) => ({ name, qty: v.qty, revenue: v.revenue }))
-    .sort((a, b) => b.qty - a.qty || b.revenue - a.revenue)
-    .slice(0, 10);
-
-  // Theo phương thức TT: payments trong kỳ (Σ = doanh thu — mỗi bill thu 1 payment, vỏ không thu).
-  const { data: pays } = await client
-    .from("payments")
-    .select("method, amount")
-    .eq("tenant_id", tenantId)
-    .gte("received_at", range.fromUtc)
-    .lt("received_at", range.toUtc);
-
-  const payMap = new Map<PaymentMethod, { amount: number; count: number }>([
-    ["cash", { amount: 0, count: 0 }],
-    ["transfer", { amount: 0, count: 0 }],
-  ]);
-  for (const p of pays ?? []) {
-    const acc = payMap.get(p.method as PaymentMethod);
-    if (acc) {
-      acc.amount += p.amount as number;
-      acc.count += 1;
+  // Giờ cao điểm = giờ có tổng doanh thu lớn nhất (cộng dồn mọi thứ trong kỳ).
+  const byHour = new Map<number, number>();
+  for (const c of hourDow) byHour.set(c.hour, (byHour.get(c.hour) ?? 0) + c.revenue);
+  let peakHour: number | null = null;
+  let peakRevenue = 0;
+  for (const [hour, revenue] of byHour) {
+    if (revenue > peakRevenue) {
+      peakRevenue = revenue;
+      peakHour = hour;
     }
   }
-  const payments: PaymentSlice[] = [...payMap.entries()].map(([method, v]) => ({ method, amount: v.amount, count: v.count }));
 
-  return { summary, series, topItems, payments };
+  // payments: luôn hiện đủ 2 phương thức để đối soát, kể cả khi kỳ không có giao dịch loại đó.
+  const payMap = new Map<PaymentMethod, PaymentSlice>([
+    ["cash", { method: "cash", amount: 0, count: 0 }],
+    ["transfer", { method: "transfer", amount: 0, count: 0 }],
+  ]);
+  for (const p of payRows) {
+    const slice = payMap.get(p.method as PaymentMethod);
+    if (slice) {
+      slice.amount = Number(p.amount);
+      slice.count = Number(p.count);
+    }
+  }
+
+  return {
+    summary: toSummary(summaryRows),
+    series: fillSeries(range, seriesRows),
+    topItems: itemRows.map((r) => ({ name: r.name, qty: Number(r.qty), revenue: Number(r.revenue) })),
+    categories: catRows.map((r) => ({ name: r.name, qty: Number(r.qty), revenue: Number(r.revenue) })),
+    channels: chanRows.map((r) => ({
+      channel: r.channel as OrderChannel,
+      source: r.source as OrderSource,
+      revenue: Number(r.revenue),
+      itemCount: Number(r.item_count),
+    })),
+    areas: areaRows.map((r) => ({
+      areaName: r.area_name,
+      tableName: r.table_name,
+      revenue: Number(r.revenue),
+      billCount: Number(r.bill_count),
+    })),
+    payments: [...payMap.values()],
+    hourDow,
+    peakHour,
+  };
+}
+
+/**
+ * Số liệu kỳ liền trước để tính biến động (REPORT-07). Chỉ lấy tổng quan + chuỗi doanh thu —
+ * đủ cho delta KPI và cột mờ chồng sau biểu đồ.
+ */
+export async function getComparison(tenantId: string, prevRange: ReportRange): Promise<ComparisonData> {
+  const client = await createClient();
+  const args = baseArgs(tenantId, prevRange);
+
+  const [summaryRows, seriesRows] = await Promise.all([
+    rpc<{ total_revenue: number; bill_count: number; avg_per_bill: number }>(client, "report_summary", args),
+    rpc<{ bucket_start: string; revenue: number; bill_count: number }>(client, "report_series", {
+      ...args,
+      p_grain: prevRange.grain,
+    }),
+  ]);
+
+  return {
+    summary: toSummary(summaryRows),
+    series: fillSeries(prevRange, seriesRows).map((p) => p.revenue),
+  };
 }
