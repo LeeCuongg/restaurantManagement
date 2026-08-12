@@ -1,6 +1,7 @@
 import type { CategorySlice } from "@/lib/billing/reports";
 import { formatVnd } from "@/lib/orders/cart";
 import { BarRow } from "./BarRow";
+import { formatShare } from "@/lib/billing/report-format";
 
 /** Cơ cấu doanh thu theo nhóm món (REPORT-08). Σ các nhóm = tổng doanh thu. */
 export function CategoryBreakdown({ categories }: { categories: CategorySlice[] }) {
@@ -11,12 +12,11 @@ export function CategoryBreakdown({ categories }: { categories: CategorySlice[] 
   return (
     <ul className="flex flex-col gap-sm">
       {categories.map((c) => {
-        const pct = total > 0 ? Math.round((c.revenue / total) * 100) : 0;
         return (
           <BarRow
             key={c.name}
             label={c.name}
-            value={`${formatVnd(c.revenue)} · ${pct}%`}
+            value={`${formatVnd(c.revenue)} · ${formatShare(c.revenue, total)}`}
             pct={total > 0 ? (c.revenue / total) * 100 : 0}
             sub={`${c.qty} phần`}
           />

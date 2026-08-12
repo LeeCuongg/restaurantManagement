@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 
+
 /** Dòng "nhãn — số tiền — thanh tỷ trọng" dùng chung cho các khối cơ cấu doanh thu. */
 export function BarRow({
   label,

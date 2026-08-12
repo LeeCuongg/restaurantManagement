@@ -1,6 +1,7 @@
 import type { TopItem } from "@/lib/billing/reports";
 import { formatVnd } from "@/lib/orders/cart";
 import { BarRow } from "./BarRow";
+import { formatShare } from "@/lib/billing/report-format";
 
 /** Số món hiện chi tiết; phần còn lại gộp vào "Món khác" để tổng vẫn đủ 100%. */
 const SHOWN = 20;
@@ -26,7 +27,7 @@ export function ItemStructure({ items, total }: { items: TopItem[]; total: numbe
         <BarRow
           key={it.name}
           label={it.name}
-          value={`${formatVnd(it.revenue)} · ${Math.round(pct(it.revenue))}%`}
+          value={`${formatVnd(it.revenue)} · ${formatShare(it.revenue, total)}`}
           pct={pct(it.revenue)}
           sub={`${it.qty} phần`}
         />
@@ -34,7 +35,7 @@ export function ItemStructure({ items, total }: { items: TopItem[]; total: numbe
       {restRevenue > 0 && (
         <BarRow
           label={`Món khác (${sorted.length - shown.length})`}
-          value={`${formatVnd(restRevenue)} · ${Math.round(pct(restRevenue))}%`}
+          value={`${formatVnd(restRevenue)} · ${formatShare(restRevenue, total)}`}
           pct={pct(restRevenue)}
           sub={restQty > 0 ? `${restQty} phần` : undefined}
           tone="steel"

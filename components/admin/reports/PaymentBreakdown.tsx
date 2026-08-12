@@ -1,5 +1,6 @@
 import type { PaymentSlice } from "@/lib/billing/reports";
 import { formatVnd } from "@/lib/orders/cart";
+import { formatShare } from "@/lib/billing/report-format";
 
 const LABEL: Record<string, string> = { cash: "Tiền mặt", transfer: "Chuyển khoản" };
 
@@ -10,13 +11,13 @@ export function PaymentBreakdown({ payments, total }: { payments: PaymentSlice[]
   return (
     <div className="flex flex-col gap-md">
       {payments.map((p) => {
-        const pct = sum > 0 ? Math.round((p.amount / sum) * 100) : 0;
+        const pct = sum > 0 ? (p.amount / sum) * 100 : 0;
         return (
           <div key={p.method}>
             <div className="flex items-baseline justify-between">
               <span className="text-sm text-ink">{LABEL[p.method] ?? p.method}</span>
               <span className="text-sm font-medium tabular-nums text-ink">
-                {formatVnd(p.amount)} <span className="text-xs font-normal text-steel">· {p.count} HĐ · {pct}%</span>
+                {formatVnd(p.amount)} <span className="text-xs font-normal text-steel">· {p.count} HĐ · {formatShare(p.amount, sum)}</span>
               </span>
             </div>
             <div className="mt-xxs h-2 w-full overflow-hidden rounded-full bg-surface">

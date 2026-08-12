@@ -3,6 +3,7 @@ import type { ServiceMode } from "@/lib/tenant/settings";
 import { orderPlaceGroup } from "@/lib/orders/place-label";
 import { formatVnd } from "@/lib/orders/cart";
 import { BarRow } from "./BarRow";
+import { formatShare } from "@/lib/billing/report-format";
 
 /** Thứ tự hiển thị cố định để kỳ này với kỳ khác không nhảy hàng lung tung. */
 const ORDER = ["Tại bàn", "Tại quán", "Mang về", "Giao tận nơi"];
@@ -45,13 +46,12 @@ export function PlaceBreakdown({
   return (
     <ul className="flex flex-col gap-sm">
       {rows.map(([label, g]) => {
-        const pct = total > 0 ? Math.round((g.revenue / total) * 100) : 0;
         const qrPct = g.revenue > 0 ? Math.round((g.qr / g.revenue) * 100) : 0;
         return (
           <BarRow
             key={label}
             label={label}
-            value={`${formatVnd(g.revenue)} · ${pct}%`}
+            value={`${formatVnd(g.revenue)} · ${formatShare(g.revenue, total)}`}
             pct={total > 0 ? (g.revenue / total) * 100 : 0}
             // Chỉ nói tới QR khi thực sự có khách tự gọi — quán chưa bật QR khỏi phải đọc "QR 0%".
             sub={g.qr > 0 ? `Khách tự gọi QR ${qrPct}% · nhân viên nhập ${100 - qrPct}%` : undefined}

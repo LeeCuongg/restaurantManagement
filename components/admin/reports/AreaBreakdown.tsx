@@ -1,6 +1,7 @@
 import type { AreaSlice } from "@/lib/billing/reports";
 import { formatVnd } from "@/lib/orders/cart";
 import { BarRow } from "./BarRow";
+import { formatShare } from "@/lib/billing/report-format";
 
 /**
  * Doanh thu theo khu vực, kèm 3 bàn mạnh nhất trong khu (REPORT-08).
@@ -24,7 +25,6 @@ export function AreaBreakdown({ areas }: { areas: AreaSlice[] }) {
   return (
     <ul className="flex flex-col gap-sm">
       {rows.map(([areaName, g]) => {
-        const pct = total > 0 ? Math.round((g.revenue / total) * 100) : 0;
         const top = g.tables
           .sort((a, b) => b.revenue - a.revenue)
           .slice(0, 3)
@@ -34,7 +34,7 @@ export function AreaBreakdown({ areas }: { areas: AreaSlice[] }) {
           <BarRow
             key={areaName}
             label={areaName}
-            value={`${formatVnd(g.revenue)} · ${pct}%`}
+            value={`${formatVnd(g.revenue)} · ${formatShare(g.revenue, total)}`}
             pct={total > 0 ? (g.revenue / total) * 100 : 0}
             sub={top || `${g.billCount} hóa đơn`}
           />
