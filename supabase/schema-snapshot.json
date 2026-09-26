@@ -70,6 +70,15 @@
    "online_order_id uuid null",
    "business_at timestamp with time zone null"
   ],
+  "bridge_activation_codes": [
+   "id uuid not null gen_random_uuid()",
+   "tenant_id uuid not null",
+   "code_hash text not null",
+   "created_by uuid null",
+   "created_at timestamp with time zone not null now()",
+   "expires_at timestamp with time zone not null",
+   "used_at timestamp with time zone null"
+  ],
   "daily_closes": [
    "id uuid not null gen_random_uuid()",
    "tenant_id uuid not null",
@@ -438,6 +447,8 @@
   "areas_pkey": "CREATE UNIQUE INDEX areas_pkey ON public.areas USING btree (id)",
   "bill_items_pkey": "CREATE UNIQUE INDEX bill_items_pkey ON public.bill_items USING btree (id)",
   "bills_pkey": "CREATE UNIQUE INDEX bills_pkey ON public.bills USING btree (id)",
+  "bridge_activation_codes_code_hash_key": "CREATE UNIQUE INDEX bridge_activation_codes_code_hash_key ON public.bridge_activation_codes USING btree (code_hash)",
+  "bridge_activation_codes_pkey": "CREATE UNIQUE INDEX bridge_activation_codes_pkey ON public.bridge_activation_codes USING btree (id)",
   "daily_closes_one_per_day": "CREATE UNIQUE INDEX daily_closes_one_per_day ON public.daily_closes USING btree (tenant_id, business_date)",
   "daily_closes_pkey": "CREATE UNIQUE INDEX daily_closes_pkey ON public.daily_closes USING btree (id)",
   "idx_areas_tenant_sort": "CREATE INDEX idx_areas_tenant_sort ON public.areas USING btree (tenant_id, sort_order)",
@@ -449,6 +460,7 @@
   "idx_bills_tenant_paid_at": "CREATE INDEX idx_bills_tenant_paid_at ON public.bills USING btree (tenant_id, paid_at)",
   "idx_bills_tenant_session": "CREATE INDEX idx_bills_tenant_session ON public.bills USING btree (tenant_id, table_session_id)",
   "idx_bills_tenant_status": "CREATE INDEX idx_bills_tenant_status ON public.bills USING btree (tenant_id, status)",
+  "idx_bridge_activation_codes_tenant": "CREATE INDEX idx_bridge_activation_codes_tenant ON public.bridge_activation_codes USING btree (tenant_id, created_at DESC)",
   "idx_ingredients_tenant": "CREATE INDEX idx_ingredients_tenant ON public.ingredients USING btree (tenant_id)",
   "idx_leads_created_at": "CREATE INDEX idx_leads_created_at ON public.leads USING btree (created_at DESC)",
   "idx_leads_phone_created": "CREATE INDEX idx_leads_phone_created ON public.leads USING btree (phone, created_at DESC)",
@@ -553,6 +565,8 @@
   "bills.bills_total_check": "CHECK ((total >= 0))",
   "bills.bills_vat_amount_check": "CHECK ((vat_amount >= 0))",
   "bills.bills_vat_pct_check": "CHECK (((vat_pct >= 0) AND (vat_pct <= 100)))",
+  "bridge_activation_codes.bridge_activation_codes_code_hash_key": "UNIQUE (code_hash)",
+  "bridge_activation_codes.bridge_activation_codes_tenant_id_fkey": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE",
   "daily_closes.daily_closes_one_per_day": "UNIQUE (tenant_id, business_date)",
   "daily_closes.daily_closes_tenant_id_fkey": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE",
   "ingredients.ingredients_base_unit_check": "CHECK ((base_unit = ANY (ARRAY['g'::text, 'ml'::text, 'cai'::text])))",

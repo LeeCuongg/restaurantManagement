@@ -385,7 +385,7 @@ if (!url || !anonKey || !bridgeEmail || !bridgePassword) {
     `Thiếu NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY / PRINT_BRIDGE_EMAIL / ` +
       `PRINT_BRIDGE_PASSWORD${envFile ? ` trong ${envFile}` : " (không tìm thấy .env.local)"}.
 ` +
-      `Tài khoản cầu in cấp ở /super → hàng nhà hàng → "Tài khoản cầu in".`
+      `Chạy lại CAI-DAT.bat và nhập MÃ KÍCH HOẠT (tạo ở /super → hàng nhà hàng → "Mã cài cầu in").`
   );
   process.exit(1);
 }

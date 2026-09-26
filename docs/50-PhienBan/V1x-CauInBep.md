@@ -96,53 +96,59 @@ Bẫy hay gặp với Xprinter/Sapo là máy in giữ IP tĩnh mặc định `19
 phát dải khác — hai bên không thấy nhau dù dây cắm đúng. Sửa: cắm USB → `Printer Test Tool` của
 Xprinter → tab Ethernet → chuyển **DHCP**.
 
-**3a‑0. Cấp tài khoản cầu in — làm TRƯỚC khi đóng gói.** Vào `/super` → hàng nhà hàng →
-**Tài khoản cầu in** → **Cấp tài khoản**. Khối kết quả hiện `PRINT_BRIDGE_EMAIL` và
-`PRINT_BRIDGE_PASSWORD`; mật khẩu **chỉ hiện một lần**, mất thì cấp lại (mật khẩu cũ hết hiệu lực
-ngay, chỉ ảnh hưởng quán đó).
+> **Từ 27/09/2026 (P11 · 11-05 · PRINT-11): MỘT bộ cài chung cho mọi quán, KHÔNG mang mật khẩu.**
+> Quy trình cũ (đóng gói riêng từng quán kèm `-BridgePassword`) đã bỏ.
 
-**3a. Đóng gói bộ cài — trên máy dev.** Chạy `print-pack.bat -BridgePassword "<mật khẩu vừa cấp>"`.
-Script đọc `.env.local` của repo, lấy đúng 2 khóa **công khai** (`NEXT_PUBLIC_SUPABASE_URL`,
-`NEXT_PUBLIC_SUPABASE_ANON_KEY`), ghép với tài khoản cầu in, rồi sinh thư mục `cau-in-<slug>/` +
-file `.zip` cùng tên ở gốc repo. Cả hai bị `.gitignore` chặn.
+**3a. Đóng gói bộ cài — trên máy dev, làm một lần cho mọi quán.** `powershell -ExecutionPolicy Bypass
+-File scripts\print-pack.ps1`. Script tải Node LTS chính thức cho Windows (kiểm SHA-256 theo
+`SHASUMS256.txt` của nodejs.org), ghép `cau-in\` + `cau-in.zip` ở gốc repo (bị `.gitignore` chặn), và
+**tự chặn** nếu trong bộ cài lọt dòng mật khẩu/khóa bí mật nào. Bộ cài gửi qua Zalo/USB được.
 
-Quán khác thì đổi tham số: `print-pack.bat -Slug bun-bo -Chars 32 -BridgePassword "…"` (58mm) —
-mặc định là `qt-food`, khổ 80mm, POS `https://restaurant-management-zeta.vercel.app/r/<slug>/pos`.
+**3b. Tạo mã kích hoạt — lúc người lắp đã ngồi trước laptop quán.** `/super` → hàng nhà hàng →
+**Mã cài cầu in** → **Tạo mã kích hoạt**. Mã 8 ký tự (vd `ABCD-EFGH`), **dùng một lần**, hết hạn sau
+30 phút, chỉ lưu bản băm. Đổi mã = xoay mật khẩu tài khoản `printer` của quán (máy cũ mất quyền ngay)
+và đặt quán sang **Cách in phiếu = Cầu in**.
 
-**3b. Cài lên laptop quán — một lần bấm.** Chép thư mục (hoặc giải nén file zip) sang laptop
-quán rồi double-click `CAI-DAT.bat`. URL POS và thư mục cài đã nhúng sẵn lúc đóng gói nên tại
-quán không phải gõ gì. Muốn gõ tay thì vẫn chạy được:
+**3c. Cài lên laptop quán — một lần bấm.** Giải nén `cau-in.zip`, double-click `CAI-DAT.bat`, gõ mã.
+Script tự xin quyền Administrator rồi làm hết: tắt cầu in cũ (nếu có) → chép file + `node
+ode.exe`
+vào `C:\cau-in` → **đổi mã lấy tài khoản** (hoặc dùng lại tài khoản của lần cài trước / bộ cài cũ
+`C:\cau-in-<quán>` nếu còn đăng nhập được) → **dò và in thử máy in bếp** → ghi `PRINTER_HOST` →
+đặt máy in quầy làm mặc định → tạo lối tắt POS kèm `--kiosk-printing` → đăng ký tác vụ `CauInBep`
+chạy nền lúc khởi động → chỉnh nguồn điện chống ngủ.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File print-setup.ps1 -AppUrl "https://<ten-mien>/r/qt-food/pos"
-```
-
-Script tự xin quyền Administrator rồi làm hết: cài Node → chép file → **dò và in thử máy in bếp** →
-ghi `PRINTER_HOST` → đặt máy in quầy làm mặc định → tạo lối tắt POS kèm `--kiosk-printing` →
-đăng ký tác vụ `CauInBep` chạy nền lúc khởi động → chỉnh nguồn điện chống ngủ.
-
-Chỉ hỏi người cài 3 câu: giấy phiếu thử **ra ở bếp hay ở quầy**, máy in quầy là cái nào, và URL POS.
-Câu đầu bắt buộc phải xuống bếp nhìn tận mắt — quán 2 máy in rất dễ cấu hình nhầm IP máy quầy
+Chỉ hỏi người cài: **mã kích hoạt**, giấy phiếu thử **ra ở bếp hay ở quầy**, và máy in quầy là cái nào.
+Câu về giấy bắt buộc phải xuống bếp nhìn tận mắt — quán 2 máy in rất dễ cấu hình nhầm IP máy quầy
 thành máy bếp, và triệu chứng là bếp không nhận được gì mà không ai hiểu vì sao.
 
-Thư mục triển khai (`print-pack.bat` sinh ra, không ghép tay) gồm:
+**Gỡ:** `GO-CAI-DAT.bat` (xóa tác vụ, lối tắt, thư mục). Máy mất → `/super` → **Mã cài cầu in** →
+**Thu hồi cầu in của quán** (cầu in mất quyền ngay, quán về in trình duyệt).
+
+Bộ cài (`print-pack.ps1` sinh ra, không ghép tay) gồm:
 
 | File | Vai trò |
 | --- | --- |
-| `CAI-DAT.bat` | **Cài đặt tự động** — chạy cái này. Nhúng sẵn `-AppUrl` + `-InstallDir`, có `%*` để chạy lại kèm `-KitchenIp` |
-| `KIEM-TRA-MAY-IN.bat` | **Dò máy in + in phiếu thử** — dùng khi bước 4 không tìm thấy máy in |
-| `print-setup.ps1` | Ruột của bước cài (7 bước), `CAI-DAT.bat` gọi vào đây |
+| `CAI-DAT.bat` | **Cài đặt tự động** — chạy cái này. Nhúng sẵn `-ApiBase`, có `%*` để chạy lại kèm `-KitchenIp` / `-ActivationCode` |
+| `KIEM-TRA-MAY-IN.bat` | **Dò máy in + in phiếu thử** — dùng khi không tìm thấy máy in |
+| `GO-CAI-DAT.bat` · `go-cai-dat.ps1` | Gỡ cầu in khỏi máy (hỏi xác nhận) |
+| `print-setup.ps1` | Ruột của bước cài, `CAI-DAT.bat` gọi vào đây |
+| `print-activate.ps1` | Đổi mã kích hoạt → ghi `.env.local` (tách riêng để chạy thử được) |
 | `print-bridge.mjs` | Cầu in (không phụ thuộc npm: chỉ `net`/`fs` + `fetch` sẵn của Node) |
-| `print-bridge.bat` | Chạy cầu in, tự khởi động lại khi chết |
-| `print-scan.ps1` | Ruột của bước dò máy in (Windows mở `.ps1` bằng Notepad khi double-click, nên phải bọc qua `.bat`) |
-| `.env.local` | Cấu hình (nội dung bên dưới; `PRINTER_HOST` do script tự ghi) |
+| `print-bridge.bat` | Chạy cầu in bằng `node
+ode.exe` đi kèm, tự khởi động lại khi chết |
+| `print-scan.ps1` | Ruột của bước dò máy in |
+| `node
+ode.exe` | Node LTS chính thức (đã kiểm SHA-256) — máy quán không cần cài Node |
 | `HUONG-DAN.txt` | Hướng dẫn cho người lắp, viết cho người không biết kỹ thuật |
+
+`.env.local` **không** có trong bộ cài — bước kích hoạt sinh ra nó trong `C:\cau-in`:
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...          # khóa CÔNG KHAI, không phải service-role
 PRINT_BRIDGE_EMAIL=print-qt-food@bridge.local
-PRINT_BRIDGE_PASSWORD=...                  # cấp ở /super, hiện một lần
+PRINT_BRIDGE_PASSWORD=...                  # do bước kích hoạt ghi (đổi mã → tài khoản)
+POS_URL=https://<ten-mien>/r/<slug>/pos    # bộ cài dùng để tạo lối tắt POS
 PRINTER_HOST=192.168.1.234       # IP máy in bếp
 PRINTER_PORT=9100
 PRINTER_CHARS=48                 # 80mm=48, 58mm=32
@@ -333,7 +339,7 @@ là bỏ sót). Trạng thái đọc từ `print_jobs` nên F5 hay đổi ca v�
 | --- | --- |
 | `lib/print/adapter.ts` · `lib/print/print-mode.tsx` | `BridgePrintAdapter` + chọn adapter theo `tenants.settings.print_mode` của quán |
 | `app/r/[slug]/print/kitchen/actions.ts` | `queueKitchenTicketPrint` — ghi job pending (guard POS/KDS) |
-| `scripts/print-pack.ps1` · `.bat` | **Đóng gói bộ cài** `cau-in-<slug>/` + `.zip` (chạy trên máy dev) |
+| `scripts/print-pack.ps1` | **Đóng gói bộ cài CHUNG** `cau-in/` + `cau-in.zip`, kèm Node đã kiểm SHA-256 (chạy trên máy dev) |
 | `scripts/print-huongdan.txt` | Bản mẫu `HUONG-DAN.txt` cho người lắp — `print-pack` chép vào bộ cài |
 | `scripts/print-setup.ps1` · `.bat` | **Cài đặt tự động một lệnh** cho laptop quán |
 | `scripts/print-bridge.mjs` | Cầu in: poll → ESC/POS → TCP 9100 → printed/failed (không cần npm) |

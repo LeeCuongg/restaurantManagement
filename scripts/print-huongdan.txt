@@ -3,8 +3,11 @@
  (đọc hết trang này trước khi bấm gì — mất 2 phút)
 ========================================================================
 
-CHUẨN BỊ — làm đủ 3 việc này rồi mới cài:
+CHUẨN BỊ — làm đủ các việc này rồi mới cài:
 
+  [ ] Gọi người quản lý hệ thống xin MÃ KÍCH HOẠT (8 ký tự, vd ABCD-EFGH).
+      Mã dùng MỘT lần, hết hạn sau 30 phút — xin lúc đã ngồi trước laptop.
+      (Máy đã cài cầu in trước đây thì không cần mã, bộ cài tự dùng lại.)
   [ ] Laptop của quán CẮM ĐIỆN (không chạy pin) và nối vào Wi-Fi/mạng
       của quán — không phải Wi-Fi khách, không bật VPN.
   [ ] Máy in BẾP cắm dây mạng (LAN) vào cùng router với laptop, đã bật nguồn.
@@ -16,12 +19,13 @@ CHUẨN BỊ — làm đủ 3 việc này rồi mới cài:
 
 CÀI ĐẶT — một lần bấm:
 
-  1. Chép cả thư mục này vào Desktop của laptop quán.
+  1. Giải nén cau-in.zip vào Desktop của laptop quán.
   2. Double-click file  CAI-DAT.bat
   3. Windows hỏi "Do you want to allow..." → bấm YES.
-  4. Ngồi đợi. Máy tự cài Node (vài phút, ĐỪNG tắt cửa sổ).
+  4. Gõ MÃ KÍCH HOẠT khi được hỏi (chữ hoa/thường, có gạch hay không đều được).
+     Sai 3 lần → xin mã mới rồi chạy lại CAI-DAT.bat.
 
-  Trong lúc cài chỉ phải trả lời 2 câu:
+  Sau đó chỉ phải trả lời 2 câu:
 
   Câu 1 — "Giấy ra ở đâu? (b = bếp, q = quầy, k = không ra gì)"
      Máy in một phiếu thử rồi hỏi. PHẢI ĐI XUỐNG BẾP NHÌN TẬN MẮT,
@@ -56,11 +60,12 @@ KIỂM TRA — làm đủ 4 phép thử mới coi là xong:
 
 NHỮNG ĐIỀU KHÔNG ĐƯỢC LÀM:
 
-  - Không xóa / đổi tên thư mục  C:\cau-in-...  trên ổ C.
+  - Không xóa / đổi tên thư mục  C:\cau-in  trên ổ C.
   - Không đóng cửa sổ đen "CAU IN BEP DANG CHAY" nếu thấy nó mở
     (đóng = bếp ngừng nhận phiếu). Bình thường nó chạy ẩn, không thấy.
-  - Không gửi thư mục này / file .env.local cho ai khác:
-    trong đó có khóa truy cập máy chủ.
+  - Không gửi file  C:\cau-in\.env.local  cho ai khác: sau khi cài,
+    trong đó có mật khẩu cầu in của quán. (Bộ cài cau-in.zip thì KHÔNG có
+    mật khẩu nào — gửi qua Zalo/USB được.)
   - Không mở POS bằng cửa sổ Chrome thường — phải mở bằng lối tắt "POS",
     nếu không mỗi lần in sẽ hiện hộp thoại chọn máy in.
 
@@ -91,5 +96,15 @@ HỎNG THÌ LÀM GÌ:
 
   Máy in bếp mới thay / đổi IP:
      → Chạy lại  CAI-DAT.bat, nó sẽ dò lại từ đầu.
+
+  Cài lại báo "Can MA KICH HOAT" dù máy đã cài trước đây:
+     → Tài khoản cầu in cũ đã bị thu hồi hoặc thay. Xin mã mới rồi gõ vào.
+
+
+GỠ CẦU IN KHỎI MÁY (quán ngừng dùng, đổi sang máy khác):
+
+  Double-click  GO-CAI-DAT.bat  → bấm YES → gõ  co  để xác nhận.
+  Máy mất hoặc không dùng nữa: báo người quản lý THU HỒI cầu in của quán
+  (ở /super) — để máy đó không in được phiếu của quán nữa.
 
 ========================================================================

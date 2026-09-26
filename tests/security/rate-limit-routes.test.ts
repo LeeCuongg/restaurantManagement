@@ -132,3 +132,59 @@ describe("submitLead", () => {
     expect(createLead).not.toHaveBeenCalled();
   });
 });
+
+const redeemActivationCode = vi.fn();
+vi.mock("@/lib/print/activation", () => ({
+  redeemActivationCode: (...a: unknown[]) => redeemActivationCode(...a),
+}));
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({}) }));
+
+describe("POST api/bridge/activate", () => {
+  const kichHoat = (body: unknown) =>
+    new Request("https://app.example/api/bridge/activate", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-real-ip": "203.0.113.7" },
+      body: JSON.stringify(body),
+    });
+
+  it("vượt ngưỡng → 429, không đổi mã; khóa theo IP", async () => {
+    checkRateLimit.mockResolvedValue({ ok: false, retryAfterS: 60 });
+    const { POST } = await import("@/app/api/bridge/activate/route");
+    const res = await POST(kichHoat({ code: "ABCDEFGH" }));
+    expect(res.status).toBe(429);
+    expect(redeemActivationCode).not.toHaveBeenCalled();
+    expect(checkRateLimit.mock.calls[0][1]).toEqual(["203.0.113.7"]);
+  });
+
+  it("mã sai → 400 kèm thông báo, không lộ gì thêm", async () => {
+    checkRateLimit.mockResolvedValue({ ok: true, retryAfterS: 0 });
+    redeemActivationCode.mockResolvedValue({ error: "Mã không hợp lệ hoặc đã hết hạn." });
+    const { POST } = await import("@/app/api/bridge/activate/route");
+    const res = await POST(kichHoat({ code: "SAI" }));
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "Mã không hợp lệ hoặc đã hết hạn." });
+  });
+
+  it("mã đúng → trả đủ cấu hình cho cầu in, không cache", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://x.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-cong-khai");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-bi-mat");
+    checkRateLimit.mockResolvedValue({ ok: true, retryAfterS: 0 });
+    redeemActivationCode.mockResolvedValue({ slug: "pho-viet", email: "print-pho-viet@bridge.local", password: "mk" });
+    const { POST } = await import("@/app/api/bridge/activate/route");
+    const res = await POST(kichHoat({ code: "ABCDEFGH" }));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    const body = await res.json();
+    expect(body).toMatchObject({
+      slug: "pho-viet",
+      email: "print-pho-viet@bridge.local",
+      password: "mk",
+      appUrl: "https://app.example/r/pho-viet/pos",
+    });
+    expect(body.supabaseUrl).toBeTruthy();
+    expect(body.anonKey).toBeTruthy();
+    expect(JSON.stringify(body)).not.toContain("service-bi-mat");
+    vi.unstubAllEnvs();
+  });
+});

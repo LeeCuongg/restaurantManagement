@@ -3,6 +3,9 @@ node_modules/
 # Bộ triển khai cầu in cho từng quán (thư mục cau-in-<slug> + file .zip do scripts/print-pack.ps1
 # sinh ra): chứa SUPABASE_SERVICE_ROLE_KEY. Mang đi lắp máy, KHÔNG commit.
 /cau-in-*
+# Bộ cài cầu in CHUNG (P11 11-05): không mật khẩu, nhưng kèm node.exe ~80 MB — sinh lại bằng print-pack.ps1.
+/cau-in/
+/cau-in.zip
 .env*
 !.env.example
 !.env.local.example

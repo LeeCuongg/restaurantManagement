@@ -8,6 +8,7 @@ import {
   ResetPasswordForm,
   DeleteTenantForm,
   PrintBridgeForm,
+  BridgeActivationForm,
 } from "./tenant-actions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -138,6 +139,7 @@ export default async function SuperHome({
               <div className="mt-md flex flex-wrap items-start gap-xs border-t border-hairline-soft pt-md">
                 {ownerEmail && <ResetPasswordForm tenantId={t.id} />}
                 <PrintBridgeForm tenantId={t.id} />
+                <BridgeActivationForm tenantId={t.id} />
                 <StatusToggleForm tenantId={t.id} isSuspended={isSuspended} />
                 {isSuspended && <DeleteTenantForm tenantId={t.id} slug={t.slug} />}
               </div>
