@@ -25,6 +25,12 @@ const nextConfig: NextConfig = {
   // Repo con nằm trong E:\externalProjects (có lockfile cha) — chốt root ở đây
   // để tắt cảnh báo "inferred workspace root".
   outputFileTracingRoot: __dirname,
+  // Cầu in tự cập nhật (PRINT-12): route đọc `scripts/print-bridge.mjs` bằng fs — Next không tự dò
+  // được, thiếu dòng này thì hàm trên Vercel không có tệp để công bố.
+  outputFileTracingIncludes: {
+    "/api/bridge/latest": ["./scripts/print-bridge.mjs"],
+    "/api/bridge/latest/file": ["./scripts/print-bridge.mjs"],
+  },
   // next/image được phép tải ảnh menu/logo từ Supabase Storage (bucket public).
   images: {
     remotePatterns: [

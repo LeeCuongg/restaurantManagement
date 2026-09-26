@@ -11,6 +11,7 @@ import {
   BridgeActivationForm,
 } from "./tenant-actions";
 import { Button } from "@/components/ui/button";
+import { BridgeTable } from "./BridgeTable";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -76,6 +77,8 @@ export default async function SuperHome({
           Đã tạo nhà hàng “{created}”. Owner có thể đăng nhập tại /r/{created}/admin/login.
         </p>
       )}
+
+      {list.length > 0 && <BridgeTable tenants={list} />}
 
       <div className="mt-lg divide-y divide-hairline-soft overflow-hidden rounded-lg border border-hairline-soft bg-canvas shadow-card">
         {list.map((t) => {

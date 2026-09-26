@@ -20,6 +20,9 @@ let admin: SupabaseClient;
 let tenantA: string;
 let tenantB: string;
 let chuA: SupabaseClient;
+/** Fixture A/B là hai quán DEMO dùng chung (pho-viet, bun-bo): đổi mã/thu hồi đổi `print_mode` của
+ *  chúng ⇒ phải trả lại đúng như cũ, nếu không các E2E sau chạy trên chế độ in sai. */
+const settingsCu = new Map<string, unknown>();
 
 const LOI = "Mã không hợp lệ hoặc đã hết hạn.";
 
@@ -29,9 +32,13 @@ beforeAll(async () => {
   tenantB = ids.tenantB;
   admin = adminClient();
   chuA = await signInAs(OWNER_A.email, OWNER_A.password);
+  const { data } = await admin.from("tenants").select("id, settings").in("id", [tenantA, tenantB]);
+  for (const r of data ?? []) settingsCu.set(r.id, r.settings);
 }, 120_000);
 
 afterAll(async () => {
+  for (const [id, settings] of settingsCu) await admin.from("tenants").update({ settings }).eq("id", id);
+  await admin.from("printer_heartbeats").delete().in("tenant_id", [tenantA, tenantB]);
   await admin.from("bridge_activation_codes").delete().in("tenant_id", [tenantA, tenantB]);
   for (const slug of [OWNER_A.slug, OWNER_B.slug]) {
     const email = bridgeEmailForSlug(slug);

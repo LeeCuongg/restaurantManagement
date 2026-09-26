@@ -20,6 +20,7 @@
 //
 // CHỈ chạy MỘT tiến trình cầu in cho mỗi quán — hai tiến trình sẽ in trùng phiếu.
 import net from "node:net";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -329,6 +330,37 @@ export const CONG_KHOA = 47291;
 /** Mã thoát khi đã có cầu in khác chạy. Khác 1 để print-bridge.bat không coi là "chết, chạy lại". */
 export const MA_THOAT_DA_CHAY = 3;
 
+// ── Tự cập nhật (PRINT-12, QD-019 D8) ─────────────────────────────────────────
+/**
+ * Phiên bản cầu in — số nguyên, TĂNG MỖI LẦN SỬA TỆP NÀY. Server đọc chính hằng này từ tệp được
+ * deploy (`lib/print/bridge-release.ts`) để công bố bản mới; cầu in ở quán so với nó để biết có bản
+ * mới. Bản 1 = mọi cầu in trước 11-06 (không báo phiên bản).
+ */
+export const BRIDGE_VERSION = 2;
+
+/** Mã thoát sau khi đã thay tệp bằng bản mới — print-bridge.bat chạy lại NGAY, không tính là chết. */
+export const MA_THOAT_DA_CAP_NHAT = 4;
+
+/** Kiểm bản mới lúc khởi động và mỗi giờ. Đổi được qua env chỉ để thử nghiệm. */
+export const KIEM_CAP_NHAT_MS = Number(process.env.UPDATE_CHECK_MS || 60 * 60_000);
+
+/** Chạy khỏe liên tục chừng này → xóa bộ đếm "chết liên tiếp" mà bat dùng để quay về bản cũ. */
+export const KHOE_SAU_MS = 5 * 60_000;
+
+/**
+ * Có nên cập nhật không. Đang in thì KHÔNG: thoát giữa lúc gửi máy in là mất phiếu đang gửi. Phản
+ * hồi rác từ server (không phải số nguyên) cũng không — cầu in không được chết vì một bản deploy lỗi.
+ */
+export function nenCapNhat({ hienTai, moiNhat, dangIn }) {
+  return Number.isInteger(moiNhat) && moiNhat > hienTai && !dangIn;
+}
+
+/** Nội dung tải về có đúng SHA-256 server công bố không. Thiếu SHA → không. */
+export function khopSha(buf, sha) {
+  if (typeof sha !== "string" || !sha) return false;
+  return crypto.createHash("sha256").update(buf).digest("hex") === sha.toLowerCase();
+}
+
 // ── Thử máy in (PRINT-09) ──────────────────────────────────────────────────────
 /**
  * Máy in có phản hồi không: mở kết nối TCP rồi đóng NGAY, KHÔNG gửi byte nào — máy in không ra
@@ -489,7 +521,11 @@ async function baoSong() {
   try {
     await rest(`/rpc/printer_heartbeat`, {
       method: "POST",
-      body: JSON.stringify({ p_printer_ok: mayInPhanHoi, p_printer_host: `${HOST}:${PORT}` }),
+      body: JSON.stringify({
+        p_printer_ok: mayInPhanHoi,
+        p_printer_host: `${HOST}:${PORT}`,
+        p_version: BRIDGE_VERSION,
+      }),
     });
     if (nhipTimDangLoi) log("Nhịp tim đã nối lại — POS quay về gửi phiếu bếp qua cầu in.");
     nhipTimDangLoi = false;
@@ -540,8 +576,84 @@ if (!khoa) {
 
 // Timer riêng, không nằm trong vòng poll: đang kẹt gửi máy in mà ngừng báo sống thì POS tưởng cầu
 // in chết, chuyển sang in trình duyệt, rồi cầu in gửi xong → bếp nhận hai tờ.
-baoSong();
-setInterval(baoSong, NHIP_TIM_MS);
+// Giữ lượt nhịp tim đang chạy (gồm cả bước thử máy in mở/đóng socket) để lúc thoát chờ nó xong.
+let nhipDangChay = null;
+function henNhipTim() {
+  nhipDangChay = baoSong().finally(() => {
+    nhipDangChay = null;
+  });
+}
+henNhipTim();
+const henNhip = setInterval(henNhipTim, NHIP_TIM_MS);
+
+// ── Tự cập nhật (PRINT-12) ──
+// Địa chỉ app lấy từ POS_URL do bước kích hoạt ghi (11-05). Bộ cài cũ không có dòng này → không tự
+// cập nhật được, phải cài lại bằng bộ cài chung một lần.
+const APP_BASE = (() => {
+  try {
+    return process.env.POS_URL ? new URL(process.env.POS_URL).origin : null;
+  } catch {
+    return null;
+  }
+})();
+const TEP_NAY = fileURLToPath(import.meta.url);
+const TEP_CU = path.join(path.dirname(TEP_NAY), "print-bridge.old.mjs");
+const TEP_DEM_LOI = path.join(path.dirname(TEP_NAY), "loi-lien-tiep.txt");
+
+/**
+ * Mã thoát đang chờ (đã thay tệp xong). KHÔNG `process.exit` ngay trong lúc tải: trên Windows, thoát
+ * khi một socket khác đang đóng dở (bước thử máy in của nhịp tim) làm libuv hủy ngang tiến trình
+ * ("Assertion failed … UV_HANDLE_CLOSING") với mã 127 thay vì 4 → bat tưởng cầu in chết. Thoát ở điểm
+ * an toàn trong vòng poll — xem `thoatNeuCanThoat`.
+ */
+let yeuCauThoat = null;
+
+/**
+ * Tải bản mới nếu có: kiểm SHA → giữ bản đang chạy làm `print-bridge.old.mjs` (bat quay về nó nếu bản
+ * mới chết liên tục) → thay tệp → hẹn thoát `MA_THOAT_DA_CAP_NHAT`. Lỗi bất kỳ → giữ bản hiện tại, thử
+ * lại lần sau. Tệp đã thay trước khi thoát: tiến trình có chết kiểu gì thì bat cũng chạy bản mới.
+ */
+async function capNhatNeuCo() {
+  if (!APP_BASE) return;
+  try {
+    const r = await fetch(`${APP_BASE}/api/bridge/latest`, { signal: AbortSignal.timeout(15_000) });
+    if (!r.ok) return;
+    const ban = await r.json();
+    if (!nenCapNhat({ hienTai: BRIDGE_VERSION, moiNhat: ban.version, dangIn: inFlight.size > 0 })) return;
+
+    const tai = await fetch(new URL(ban.url, APP_BASE), { signal: AbortSignal.timeout(60_000) });
+    if (!tai.ok) return;
+    const noiDung = Buffer.from(await tai.arrayBuffer());
+    if (!khopSha(noiDung, ban.sha256)) {
+      log(`Bản cầu in ${ban.version} tải về KHÔNG khớp SHA-256 — bỏ qua, giữ bản ${BRIDGE_VERSION}.`);
+      return;
+    }
+    if (inFlight.size > 0) return;
+    fs.writeFileSync(`${TEP_NAY}.moi`, noiDung);
+    fs.copyFileSync(TEP_NAY, TEP_CU);
+    fs.renameSync(`${TEP_NAY}.moi`, TEP_NAY);
+    log(`Đã tải cầu in bản ${ban.version} (đang chạy bản ${BRIDGE_VERSION}) — khởi động lại bằng bản mới.`);
+    yeuCauThoat = MA_THOAT_DA_CAP_NHAT;
+  } catch (err) {
+    log(`Không kiểm được bản cập nhật (${err.message}) — thử lại sau.`);
+  }
+}
+capNhatNeuCo();
+const henCapNhat = setInterval(capNhatNeuCo, KIEM_CAP_NHAT_MS);
+
+/** Gọi giữa hai lượt poll (không phiếu nào đang gửi): dừng nhịp định kỳ, chờ nhịp tim dở dang, rồi thoát. */
+async function thoatNeuCanThoat() {
+  if (yeuCauThoat === null) return;
+  clearInterval(henNhip);
+  clearInterval(henCapNhat);
+  await nhipDangChay;
+  process.exit(yeuCauThoat);
+}
+
+// Chạy khỏe đủ lâu (nhịp tim đang thông) → bản này ổn: xóa bộ đếm chết liên tiếp của bat.
+setTimeout(() => {
+  if (!nhipTimDangLoi) fs.rmSync(TEP_DEM_LOI, { force: true });
+}, KHOE_SAU_MS);
 
 let tenantId = await resolveTenantId();
 
@@ -602,6 +714,8 @@ log(
 );
 let emptyStreak = 0;
 for (;;) {
+  // Điểm an toàn duy nhất để thoát: lượt poll trước đã xong, không phiếu nào đang gửi dở.
+  await thoatNeuCanThoat();
   const ketQua = await pollOnce();
   if (ketQua === "rong") emptyStreak += 1;
   else if (ketQua === "co-phieu") emptyStreak = 0;

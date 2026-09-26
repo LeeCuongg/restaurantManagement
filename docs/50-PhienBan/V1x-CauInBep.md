@@ -121,6 +121,15 @@ Chỉ hỏi người cài: **mã kích hoạt**, giấy phiếu thử **ra ở b
 Câu về giấy bắt buộc phải xuống bếp nhìn tận mắt — quán 2 máy in rất dễ cấu hình nhầm IP máy quầy
 thành máy bếp, và triệu chứng là bếp không nhận được gì mà không ai hiểu vì sao.
 
+**Tự cập nhật (P11 · 11-06 · PRINT-12).** Cầu in hỏi `GET /api/bridge/latest` lúc khởi động và mỗi
+giờ. Server công bố đúng tệp `scripts/print-bridge.mjs` đang deploy (phiên bản đọc từ hằng
+`BRIDGE_VERSION`, SHA-256 tính từ nội dung — không có bản sao nào để lệch). Có bản mới **và không đang
+in** → tải, **kiểm SHA**, giữ bản đang chạy làm `print-bridge.old.mjs`, thay tệp, thoát mã 4 →
+`print-bridge.bat` chạy lại ngay. SHA sai / tải hỏng → giữ bản cũ, vẫn in. Bản mới **chết 3 lần liên
+tiếp** → bat tự quay về `print-bridge.old.mjs`. **Sửa cầu in = tăng `BRIDGE_VERSION`** rồi deploy; mọi
+quán tự lên trong ≤ 1 giờ. `/super` → bảng **Cầu in các quán** cho biết quán nào còn bản cũ.
+Cầu in cài bằng bộ cài trước 11-05 (không có `POS_URL`) **không** tự cập nhật — cài lại một lần.
+
 **Gỡ:** `GO-CAI-DAT.bat` (xóa tác vụ, lối tắt, thư mục). Máy mất → `/super` → **Mã cài cầu in** →
 **Thu hồi cầu in của quán** (cầu in mất quyền ngay, quán về in trình duyệt).
 
