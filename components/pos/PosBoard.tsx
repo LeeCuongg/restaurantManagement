@@ -45,6 +45,8 @@ import type { CancelStaff } from "./CancelItemDialog";
 import { gioVn } from "@/lib/time/vn";
 import { CauInBanner, ThietBiInChip, useCauIn } from "@/components/pos/CauInBanner";
 import { TablePickerDrawer } from "@/components/pos/TablePickerDrawer";
+import { conLaiSauKhiGui } from "@/lib/orders/cart";
+import { MobileTabBar, type MobileTab } from "@/components/pos/MobileTabBar";
 
 const STATUS_VN: Record<string, string> = {
   available: "Trống",
@@ -92,6 +94,8 @@ export function PosBoard({
   // Một lần hỏi server cho cả chip thiết bị in trên thanh công cụ lẫn băng sự cố (PRINT-07/08/09).
   const cauIn = useCauIn(slug);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  /** Điện thoại (< 640 px) chỉ hiện MỘT cột — tab đang mở (ORDER-20). Khổ lớn hơn bỏ qua state này. */
+  const [mobileTab, setMobileTab] = useState<MobileTab>(counter ? "mon" : "ban");
   const [pendingOpen, setPendingOpen] = useState(false);
   const [takeawayMode, setTakeawayMode] = useState(counter);
   /**
@@ -168,12 +172,14 @@ export function PosBoard({
   const selectTable = (id: string) => {
     setTakeawayMode(false);
     setSelectedTableId(id);
+    setMobileTab("mon"); // điện thoại: chọn bàn xong là gọi món
   };
   const enterTakeaway = () => {
     setSelectedTableId(null);
     setTakeawayMode(true);
     setCart([]);
     setAddError(null);
+    setMobileTab("mon");
   };
   const exitTakeaway = () => {
     if (counter) return; // Chế độ quầy: không có bàn để quay về, giữ nguyên màn bán quầy.
@@ -509,7 +515,8 @@ export function PosBoard({
     if (!selectedTableId || cart.length === 0) return;
     setAdding(true);
     setAddError(null);
-    const lines = cart.map((l) => ({ itemId: l.itemId, qty: l.qty, note: l.note, optionIds: l.optionIds }));
+    const guiDi = cart; // ảnh chụp giỏ lúc bấm gửi — món thêm vào trong lúc chờ không thuộc lượt này
+    const lines = guiDi.map((l) => ({ itemId: l.itemId, qty: l.qty, note: l.note, optionIds: l.optionIds }));
     // Mất mạng thì máy POS KHÔNG biết đơn đã sang bếp hay chưa. Khóa idempotent (0034) khiến lượt
     // bấm lại an toàn: cùng bàn + cùng giỏ ⇒ cùng khóa ⇒ server trả lại đơn cũ thay vì tạo đơn hai.
     const key = orderKey.keyFor(actionSignature([selectedTableId, lines]));
@@ -521,7 +528,7 @@ export function PosBoard({
     else {
       // Xong một hành động — bàn kế tiếp gọi y hệt món này vẫn phải ra đơn riêng.
       orderKey.done();
-      setCart([]);
+      setCart((hienTai) => conLaiSauKhiGui(hienTai, guiDi));
       router.refresh();
     }
   };
@@ -550,7 +557,7 @@ export function PosBoard({
         onChange={setQuery}
         placeholder={searchPlaceholder}
         ariaLabel={historyTab ? "Tìm trong lịch sử đơn" : counter ? "Tìm số đơn" : "Tìm bàn hoặc số đơn"}
-        className={cn("shrink-0", counter ? "w-56 lg:w-64" : "w-40 md:w-56 lg:w-[22rem]")}
+        className={cn("shrink-0 max-sm:w-0 max-sm:min-w-0 max-sm:flex-1", counter ? "w-56 lg:w-64" : "w-40 md:w-56 lg:w-[22rem]")}
       >
         {results && (
           <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 max-h-80 overflow-y-auto rounded-lg border border-hairline-soft bg-canvas p-xs shadow-modal">
@@ -690,7 +697,9 @@ export function PosBoard({
       {initial.pending.length > 0 && (
         // Nền kem + chữ mực (như banner "Bàn đang gọi"): chữ trắng trên nền cam đặc chỉ đạt
         // tương phản 3.3:1, dưới AA cho chữ 14px. Nổi bật bằng viền primary dày + chuông rung.
-        <div className="flex flex-wrap items-center gap-sm border-b-2 border-primary bg-cream-deeper px-lg py-sm">
+        // Điện thoại (ORDER-20): mỗi băng gọn thành MỘT dòng chip cuộn ngang — xuống dòng như máy quầy thì
+        // ba băng chiếm nửa màn hình, vùng đơn/thực đơn còn một khe.
+        <div className="flex flex-wrap items-center gap-sm border-b-2 border-primary bg-cream-deeper px-lg py-sm max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:whitespace-nowrap max-sm:px-md max-sm:[&>*]:shrink-0">
           <span className="inline-flex items-center gap-xs text-sm font-bold text-ink">
             <BellRing className="h-4 w-4 animate-pulse text-primary" />
             Đơn khách chờ duyệt ({initial.pending.length})
@@ -727,7 +736,7 @@ export function PosBoard({
           in = món không bao giờ xuống bếp, nên viền đỏ: hậu quả nặng hơn cả đơn chờ duyệt.
           Bấm chip là in luôn — không có bước xem trước, vì món do chính nhân viên gõ. */}
       {initial.unprinted.length > 0 && (
-        <div className="flex flex-wrap items-center gap-sm border-b-2 border-status-late bg-cream-soft px-lg py-sm">
+        <div className="flex flex-wrap items-center gap-sm border-b-2 border-status-late bg-cream-soft px-lg py-sm max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:whitespace-nowrap max-sm:px-md max-sm:[&>*]:shrink-0">
           <span className="inline-flex items-center gap-xs text-sm font-bold text-ink">
             <Printer className="h-4 w-4 text-status-late" />
             Đơn cần in phiếu ({initial.unprinted.length})
@@ -761,7 +770,7 @@ export function PosBoard({
 
       {/* Banner "Gọi nhân viên" (CALL-01) — bàn đang gọi, bấm để đánh dấu đã xử lý */}
       {initial.calls.length > 0 && (
-        <div className="flex flex-wrap items-center gap-sm border-b border-hairline-soft bg-cream px-lg py-sm">
+        <div className="flex flex-wrap items-center gap-sm border-b border-hairline-soft bg-cream px-lg py-sm max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:whitespace-nowrap max-sm:px-md max-sm:[&>*]:shrink-0">
           <span className="inline-flex items-center gap-xs text-sm font-semibold text-ink">
             <BellRing className="h-4 w-4 animate-pulse text-primary" />
             Bàn đang gọi ({initial.calls.length})
@@ -797,7 +806,12 @@ export function PosBoard({
       {/* 3 cột: bàn (trái) · thực đơn (giữa) · đơn bàn (phải) */}
       <div className="flex min-h-0 flex-1">
         {!counter && (
-          <aside className="hidden w-80 shrink-0 overflow-y-auto border-r border-hairline-soft p-md lg:block lg:w-96">
+          <aside
+            className={cn(
+              "hidden w-80 shrink-0 overflow-y-auto border-r border-hairline-soft p-md lg:block lg:w-96",
+              mobileTab === "ban" && "max-sm:block max-sm:w-full max-sm:border-r-0"
+            )}
+          >
             <TableMap
               areas={initial.areas}
               tables={initial.tables}
@@ -812,7 +826,7 @@ export function PosBoard({
           </aside>
         )}
 
-        <section className="min-h-0 min-w-0 flex-1">
+        <section className={cn("min-h-0 min-w-0 flex-1", mobileTab !== "mon" && "max-sm:hidden")}>
           <MenuPanel
             slug={slug}
             menu={menu}
@@ -826,7 +840,8 @@ export function PosBoard({
             chỉ nới từ xl trở lên để màn hẹp không bóp mất thực đơn. */}
         <aside
           className={cn(
-            "shrink-0 border-l border-hairline-soft",
+            "shrink-0 border-l border-hairline-soft max-sm:w-full max-sm:border-l-0",
+            mobileTab !== "don" && "max-sm:hidden",
             takeawayMode
               ? "w-80 md:w-[26rem] lg:w-[34rem] xl:w-[52rem] 2xl:w-[60rem]"
               : "w-80 md:w-[26rem] lg:w-[30rem]"
@@ -842,7 +857,7 @@ export function PosBoard({
               onCartRemove={cartRemove}
               onCartEdit={cartEdit}
               onCartNote={cartNote}
-              onClearCart={() => setCart([])}
+              onClearCart={(daGui) => setCart((hienTai) => (daGui ? conLaiSauKhiGui(hienTai, daGui) : []))}
               onClose={exitTakeaway}
               cancelStaff={cancelStaff}
               canCancelWithoutPin={canCancelWithoutPin}
@@ -883,6 +898,8 @@ export function PosBoard({
           )}
         </aside>
       </div>
+
+      <MobileTabBar tab={mobileTab} onTab={setMobileTab} soMonChuaGui={cart.length} counter={counter} />
 
       <PendingOrdersDrawer
         slug={slug}

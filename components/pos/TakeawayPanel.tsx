@@ -121,7 +121,8 @@ export function TakeawayPanel({
   onCartRemove: (lineId: string) => void;
   onCartEdit: (lineId: string, line: PendingLine) => void;
   onCartNote: (lineId: string, note: string) => void;
-  onClearCart: () => void;
+  /** `daGui` = đúng những dòng vừa gửi; bỏ trống = dọn hết giỏ. */
+  onClearCart: (daGui?: CartLine[]) => void;
   onClose: () => void;
   cancelStaff: CancelStaff[];
   canCancelWithoutPin: boolean;
@@ -218,7 +219,8 @@ export function TakeawayPanel({
     if (cart.length === 0) return;
     setCreating(true);
     setError(null);
-    const lines = cart.map((l) => ({ itemId: l.itemId, qty: l.qty, note: l.note, optionIds: l.optionIds }));
+    const guiDi = cart; // món thêm vào trong lúc chờ không thuộc lượt này — không được xóa theo
+    const lines = guiDi.map((l) => ({ itemId: l.itemId, qty: l.qty, note: l.note, optionIds: l.optionIds }));
     // Lượt gọi thêm không hỏi lại tên/SĐT — đã có ở đơn gốc.
     const contact = addToId
       ? undefined
@@ -241,8 +243,8 @@ export function TakeawayPanel({
     }
     // Xong một hành động — khách kế gọi y hệt món này vẫn phải ra đơn riêng.
     orderKey.done();
-    // Đơn vào danh sách chờ; dọn builder cho khách kế.
-    onClearCart();
+    // Đơn vào danh sách chờ; dọn builder cho khách kế (chỉ những dòng đã gửi).
+    onClearCart(guiDi);
     setName("");
     setPhone("");
     setAddToOrderId(null);

@@ -23,7 +23,7 @@ export function TablePickerDrawer({
       <Drawer.Trigger asChild>
         <button
           type="button"
-          className="inline-flex h-11 shrink-0 items-center gap-xs rounded-md border border-hairline-strong bg-canvas px-md text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
+          className="inline-flex h-11 shrink-0 items-center gap-xs rounded-md border border-hairline-strong bg-canvas px-md text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary max-sm:hidden lg:hidden"
         >
           <LayoutGrid className="h-4 w-4" aria-hidden />
           <span className="max-w-[9rem] truncate">{label}</span>
