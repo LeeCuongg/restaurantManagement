@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useResumeRefresh } from "@/components/pos/use-resume-refresh";
 import { Bell, BellRing, Check, CalendarClock, Loader2, Printer, ShoppingBag } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ import type { MergeCandidate } from "./MergeTablesDialog";
 import type { CancelStaff } from "./CancelItemDialog";
 import { gioVn } from "@/lib/time/vn";
 import { CauInBanner, ThietBiInChip, useCauIn } from "@/components/pos/CauInBanner";
+import { TablePickerDrawer } from "@/components/pos/TablePickerDrawer";
 
 const STATUS_VN: Record<string, string> = {
   available: "Trống",
@@ -83,6 +85,8 @@ export function PosBoard({
 }) {
   const printer = usePrintAdapter();
   const router = useRouter();
+  // Máy ngủ dậy / có mạng lại → tải lại: realtime nối lại nhưng không phát lại thay đổi đã lỡ (ORDER-19).
+  useResumeRefresh(() => router.refresh());
   // Chế độ quầy (quán không dùng bàn): ẩn sơ đồ bàn, POS mở thẳng màn bán quầy.
   const counter = serviceMode === "counter";
   // Một lần hỏi server cho cả chip thiết bị in trên thanh công cụ lẫn băng sự cố (PRINT-07/08/09).
@@ -546,7 +550,7 @@ export function PosBoard({
         onChange={setQuery}
         placeholder={searchPlaceholder}
         ariaLabel={historyTab ? "Tìm trong lịch sử đơn" : counter ? "Tìm số đơn" : "Tìm bàn hoặc số đơn"}
-        className={cn("shrink-0", counter ? "w-56 lg:w-64" : "w-72 lg:w-[22rem]")}
+        className={cn("shrink-0", counter ? "w-56 lg:w-64" : "w-40 md:w-56 lg:w-[22rem]")}
       >
         {results && (
           <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 max-h-80 overflow-y-auto rounded-lg border border-hairline-soft bg-canvas p-xs shadow-modal">
@@ -605,6 +609,21 @@ export function PosBoard({
     <div className="flex h-full min-h-0 flex-col bg-surface">
       {/* Toolbar */}
       <div className="flex items-center gap-md border-b border-hairline-soft bg-canvas py-sm pl-md pr-lg">
+        {/* Dưới 1024 px cột sơ đồ bàn ẩn đi — chọn bàn qua ngăn kéo (ORDER-19). Từ lg nút này ẩn. */}
+        {!counter && (
+          <TablePickerDrawer
+            label={takeawayMode ? "Mang về" : selectedTable ? `Bàn ${selectedTable.name}` : "Chọn bàn"}
+            areas={initial.areas}
+            tables={initial.tables}
+            sessions={initial.sessions}
+            reservations={initial.reservations}
+            selectedTableId={selectedTableId}
+            onSelect={selectTable}
+            takeawayActive={takeawayMode}
+            takeawayCount={initial.takeawayOrders.length}
+            onSelectTakeaway={enterTakeaway}
+          />
+        )}
         {!counter && searchBox}
         {!counter && (
           <span className="hidden shrink-0 text-sm text-steel xl:inline">
@@ -618,18 +637,20 @@ export function PosBoard({
           {!counter && (
             <Link
               href={`/r/${slug}/pos/reservations`}
+              aria-label="Đặt bàn"
               className="inline-flex h-11 items-center gap-sm rounded-md border border-hairline-strong bg-canvas px-md text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
               <CalendarClock className="h-4 w-4" />
-              Đặt bàn
+              <span className="hidden lg:inline">Đặt bàn</span>
             </Link>
           )}
           <Link
             href={`/r/${slug}/pos/online`}
+            aria-label="Đơn online"
             className="inline-flex h-11 items-center gap-sm rounded-md border border-hairline-strong bg-canvas px-md text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             <ShoppingBag className="h-4 w-4" />
-            Đơn online
+            <span className="hidden lg:inline">Đơn online</span>
           </Link>
           {/* Có đơn chờ duyệt = việc GẤP NHẤT ở POS → nút đổi sang nền primary + chuông rung,
               không để cùng một sắc độ với các nút phụ (dễ miss đơn khách). */}
@@ -649,7 +670,7 @@ export function PosBoard({
             ) : (
               <Bell className="h-4 w-4" />
             )}
-            Chờ duyệt
+            <span className="hidden md:inline">Chờ duyệt</span>
             {initial.pending.length > 0 && (
               <span className="grid h-6 min-w-[24px] place-items-center rounded-full bg-canvas px-1 text-xs font-bold text-primary">
                 {initial.pending.length}
@@ -776,7 +797,7 @@ export function PosBoard({
       {/* 3 cột: bàn (trái) · thực đơn (giữa) · đơn bàn (phải) */}
       <div className="flex min-h-0 flex-1">
         {!counter && (
-          <aside className="w-80 shrink-0 overflow-y-auto border-r border-hairline-soft p-md lg:w-96">
+          <aside className="hidden w-80 shrink-0 overflow-y-auto border-r border-hairline-soft p-md lg:block lg:w-96">
             <TableMap
               areas={initial.areas}
               tables={initial.tables}
@@ -807,8 +828,8 @@ export function PosBoard({
           className={cn(
             "shrink-0 border-l border-hairline-soft",
             takeawayMode
-              ? "w-[26rem] lg:w-[34rem] xl:w-[52rem] 2xl:w-[60rem]"
-              : "w-[26rem] lg:w-[30rem]"
+              ? "w-80 md:w-[26rem] lg:w-[34rem] xl:w-[52rem] 2xl:w-[60rem]"
+              : "w-80 md:w-[26rem] lg:w-[30rem]"
           )}
         >
           {takeawayMode ? (

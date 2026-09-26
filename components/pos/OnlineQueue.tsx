@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useResumeRefresh } from "@/components/pos/use-resume-refresh";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,8 @@ export function OnlineQueue({
 }) {
   const printer = usePrintAdapter();
   const router = useRouter();
+  // Máy ngủ dậy / có mạng lại → tải lại: realtime nối lại nhưng không phát lại thay đổi đã lỡ (ORDER-19).
+  useResumeRefresh(() => router.refresh());
   const [isPending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);

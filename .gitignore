@@ -24,3 +24,6 @@ supabase/.temp/
 
 # Báo cáo tạm của cổng CI test RLS
 rls-report.json
+
+# Ảnh gốc cổng chặn POS ≥1024 (ORDER-19): phụ thuộc dữ liệu DB dùng chung — chụp lại trước mỗi lần sửa bố cục POS.
+/tests/e2e/pos-kho-lon.spec.ts-snapshots/
