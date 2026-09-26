@@ -25,7 +25,7 @@ import {
 } from "@/app/r/[slug]/pos/actions";
 import type { BillView, PaymentMethod } from "@/lib/billing/types";
 import type { SplitPick } from "@/lib/billing/split";
-import { getPrintAdapter } from "@/lib/print/adapter";
+import { usePrintAdapter } from "@/lib/print/print-mode";
 import type { AdjustPayload } from "./AdjustBillDialog";
 import type { PendingLine } from "@/components/customer/ModifierSheet";
 import { SearchField } from "./SearchField";
@@ -81,6 +81,7 @@ export function PosBoard({
   allowDiscount: boolean;
   serviceMode?: ServiceMode;
 }) {
+  const printer = usePrintAdapter();
   const router = useRouter();
   // Chế độ quầy (quán không dùng bàn): ẩn sơ đồ bàn, POS mở thẳng màn bán quầy.
   const counter = serviceMode === "counter";
@@ -198,7 +199,7 @@ export function PosBoard({
    */
   const handlePrintUnprinted = (orderId: string) => {
     setPrintingOrderId(orderId);
-    getPrintAdapter().printKitchenTicket({ slug, orderId });
+    printer.printKitchenTicket({ slug, orderId });
     setTimeout(() => {
       setPrintingOrderId(null);
       router.refresh();
@@ -498,7 +499,7 @@ export function PosBoard({
       setBillBusy(false);
     }
   };
-  const doPrintReceipt = (billId: string) => getPrintAdapter().printReceipt({ slug, billId });
+  const doPrintReceipt = (billId: string) => printer.printReceipt({ slug, billId });
 
   const confirmAdd = async () => {
     if (!selectedTableId || cart.length === 0) return;

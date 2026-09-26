@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatVnd } from "@/lib/orders/cart";
-import { getPrintAdapter } from "@/lib/print/adapter";
+import { usePrintAdapter } from "@/lib/print/print-mode";
 import { PaymentDialog, PAY_OFFLINE_MSG } from "@/components/pos/PaymentDialog";
 import { ACTION_OFFLINE_MSG } from "@/components/pos/offline-msg";
 import type { BillView, PaymentMethod } from "@/lib/billing/types";
@@ -40,6 +40,7 @@ export function OnlineQueue({
   /** Chủ/quản lý mới được ghi lùi thời điểm nhận tiền khi thu bù đơn tồn. */
   canBackdatePayment?: boolean;
 }) {
+  const printer = usePrintAdapter();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -292,7 +293,7 @@ export function OnlineQueue({
               return { ok: false, error: PAY_OFFLINE_MSG };
             }
           }}
-          onPrint={() => getPrintAdapter().printReceipt({ slug, billId: payBill.id })}
+          onPrint={() => printer.printReceipt({ slug, billId: payBill.id })}
           onClose={() => {
             setPayBill(null);
             router.refresh();

@@ -1,9 +1,11 @@
 /**
  * Lớp in trừu tượng (D1, §7). POS/KDS CHỈ gọi PrintAdapter — đổi cầu in sau không sửa nghiệp vụ.
  * V1: BrowserPrintAdapter (mở route in, route tự window.print + ghi log). V1.x: BridgePrintAdapter
- * (ghi print_jobs pending cho cầu in ESC/POS cục bộ poll) — bật bằng NEXT_PUBLIC_PRINT_MODE=bridge.
+ * (ghi print_jobs pending cho cầu in ESC/POS cục bộ poll) — bật theo TỪNG quán bằng
+ * `tenants.settings.print_mode` (PRINT-10). Component lấy adapter qua `usePrintAdapter()`.
  */
 import { queueKitchenTicketPrint } from "@/app/r/[slug]/print/actions";
+import type { PrintMode } from "@/lib/tenant/settings";
 
 export type KitchenTicketView = {
   orderId: string;
@@ -138,18 +140,16 @@ class BridgePrintAdapter implements PrintAdapter {
   }
 }
 
-let instance: PrintAdapter | null = null;
+const instances: Partial<Record<PrintMode, PrintAdapter>> = {};
 
 /**
- * Adapter theo cấu hình: NEXT_PUBLIC_PRINT_MODE=bridge → cầu in ESC/POS; mặc định = trình duyệt.
- * Nơi gọi (POS/KDS) không đổi.
+ * Adapter theo chế độ in của quán: `bridge` → cầu in ESC/POS; `browser` → trình duyệt. Mỗi chế độ giữ
+ * một adapter (không trạng thái riêng theo quán, nên dùng chung được). Nơi gọi (POS/KDS) không đổi.
  */
-export function getPrintAdapter(): PrintAdapter {
-  if (!instance) {
-    instance =
-      process.env.NEXT_PUBLIC_PRINT_MODE === "bridge"
-        ? new BridgePrintAdapter()
-        : new BrowserPrintAdapter();
-  }
-  return instance;
+export function getPrintAdapter(mode: PrintMode): PrintAdapter {
+  const co = instances[mode];
+  if (co) return co;
+  const moi = mode === "bridge" ? new BridgePrintAdapter() : new BrowserPrintAdapter();
+  instances[mode] = moi;
+  return moi;
 }

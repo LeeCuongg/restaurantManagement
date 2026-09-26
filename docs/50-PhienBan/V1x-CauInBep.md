@@ -13,14 +13,9 @@ hoặc khi muốn phiếu tự xuống bếp lúc khách đặt qua QR.
 Nếu nhân viên **chỉ bấm in trên laptop ở quầy** — trường hợp phổ biến nhất — thì bỏ hẳn cầu in,
 cài máy in bếp vào Windows như máy in thường là xong. Không Node, không script, không token.
 
-**1. Đưa web về chế độ trình duyệt** — Vercel → Settings → Environment Variables:
-
-```
-NEXT_PUBLIC_PRINT_MODE=browser
-```
-
-Rồi **Redeploy** (bắt buộc — biến `NEXT_PUBLIC_*` được nhúng lúc build, đổi không deploy lại thì
-không ăn).
+**1. Chọn chế độ trình duyệt cho quán** — owner vào `/r/<slug>/admin/settings` → **Cách in phiếu** →
+"Trình duyệt" → Lưu. Chỉ quán đó đổi, không phải deploy lại (PRINT-10, từ 27/09/2026 — trước đây là
+biến môi trường chung cho mọi quán).
 
 **2. Cài máy in bếp vào laptop quầy.** Máy in ở bếp, laptop ở quầy, nối qua LAN:
 
@@ -60,7 +55,7 @@ Cách đúng là **tách đường đi theo loại phiếu** — chính là vi�
 | Phiếu bếp | cầu in → ESC/POS thẳng tới IP máy in bếp | bếp |
 | Hóa đơn, phiếu khách | trình duyệt → máy in mặc định của Windows | quầy |
 
-Cấu hình: `NEXT_PUBLIC_PRINT_MODE=bridge` · máy in **quầy** đặt làm mặc định trong Windows ·
+Cấu hình: quán chọn **Cách in phiếu = Cầu in** ở `/admin/settings` · máy in **quầy** đặt làm mặc định trong Windows ·
 Chrome mở kèm `--kiosk-printing` · cầu in chạy nền với `PRINTER_HOST` = IP máy in **bếp**.
 Kết quả: không ai phải chọn máy in bao giờ. Làm theo phần cài đặt bên dưới.
 
@@ -82,14 +77,9 @@ Hóa đơn và phiếu khách **vẫn in qua trình duyệt** (máy in ở quầ
 
 ## Cài đặt
 
-**1. Bật chế độ bridge cho web** — Vercel env (hoặc `.env.local` khi chạy máy):
-
-```
-NEXT_PUBLIC_PRINT_MODE=bridge
-```
-
-Bỏ trống hoặc `browser` = quay lại cách cũ (hộp thoại in của trình duyệt). Đổi biến này phải
-deploy lại vì là biến `NEXT_PUBLIC_*`.
+**1. Bật chế độ cầu in cho quán** — owner vào `/r/<slug>/admin/settings` → **Cách in phiếu** → "Cầu in"
+→ Lưu. Chọn "Trình duyệt" = quay lại hộp thoại in của trình duyệt. Có hiệu lực từ lần tải POS kế tiếp,
+không phải deploy (PRINT-10).
 
 **2. Tìm IP máy in.** Trên laptop của quán (cùng mạng với máy in), chép sang
 `scripts/print-scan.ps1` — một file, chạy bằng PowerShell có sẵn của Windows, không cài gì:
@@ -341,7 +331,7 @@ là bỏ sót). Trạng thái đọc từ `print_jobs` nên F5 hay đổi ca v�
 ## File liên quan
 | File | Vai trò |
 | --- | --- |
-| `lib/print/adapter.ts` | `BridgePrintAdapter` + chọn adapter theo `NEXT_PUBLIC_PRINT_MODE` |
+| `lib/print/adapter.ts` · `lib/print/print-mode.tsx` | `BridgePrintAdapter` + chọn adapter theo `tenants.settings.print_mode` của quán |
 | `app/r/[slug]/print/kitchen/actions.ts` | `queueKitchenTicketPrint` — ghi job pending (guard POS/KDS) |
 | `scripts/print-pack.ps1` · `.bat` | **Đóng gói bộ cài** `cau-in-<slug>/` + `.zip` (chạy trên máy dev) |
 | `scripts/print-huongdan.txt` | Bản mẫu `HUONG-DAN.txt` cho người lắp — `print-pack` chép vào bộ cài |

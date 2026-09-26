@@ -9,7 +9,7 @@ import type { BillView, PaymentMethod } from "@/lib/billing/types";
 import type { OnlineOrderView } from "@/lib/orders/online";
 import { groupTakeawayOrders } from "@/lib/orders/takeaway-group";
 import { formatVnd, unitPrice } from "@/lib/orders/cart";
-import { getPrintAdapter } from "@/lib/print/adapter";
+import { usePrintAdapter } from "@/lib/print/print-mode";
 import { QtyStepper } from "@/components/customer/QtyStepper";
 import { ModifierSheet, type PendingLine } from "@/components/customer/ModifierSheet";
 import { Input } from "@/components/ui/input";
@@ -144,6 +144,7 @@ export function TakeawayPanel({
   /** Chữ đang gõ ở ô tìm DUY NHẤT phía trên — tab lịch sử dùng nó để lọc danh sách. */
   searchQuery: string;
 }) {
+  const printer = usePrintAdapter();
   const title = counter ? "Gọi món cho khách" : "Bán mang về";
   const createLabel = counter ? "Tạo đơn" : "Tạo đơn mang về";
   const hideClose = counter; // chế độ quầy không có bàn để quay về
@@ -649,7 +650,7 @@ export function TakeawayPanel({
               setPaying(false);
             }
           }}
-          onPrint={() => getPrintAdapter().printReceipt({ slug, billId: payBill.id })}
+          onPrint={() => printer.printReceipt({ slug, billId: payBill.id })}
           onClose={() => setPayBill(null)}
         />
       )}
