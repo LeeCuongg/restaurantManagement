@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const supabaseHost = (() => {
   try {
@@ -36,4 +37,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * Sentry (OPS-10). Chưa có `SENTRY_AUTH_TOKEN` thì không upload source map — lỗi vẫn được ghi, chỉ là
+ * stack phía trình duyệt chưa giải mã. Token (bí mật) chỉ đặt ở Vercel env, không bao giờ ở repo.
+ */
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  telemetry: false,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+});
