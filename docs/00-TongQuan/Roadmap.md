@@ -180,13 +180,15 @@ người thật; qt-food chưa bật.
 Chi tiết: `30-KeHoach/P11/00-TongQuan.md` · quyết định `QD-019` · số đo nền `40-KiemTra/PERF-04-DoRealtimeQtFood.md`.
 Đo thật: tải không chặn đường 50–100 quán; thứ chặn đường là vận hành.
 
-- [ ] 11-01 **Sao lưu tự động mỗi đêm**, khóa `age`, ngoài Supabase (OPS-09).
-- [ ] 11-02 **Theo dõi lỗi (Sentry) + sống/chết (`/api/health`)** (OPS-10).
-- [ ] 11-03 **Giới hạn tần suất đường ẩn danh** (TENANT-07).
-- [ ] 11-04 **Chế độ in theo từng quán** (PRINT-10).
-- [ ] 11-05 **Bộ cài cầu in chung + mã kích hoạt + Node portable** (PRINT-11).
-- [ ] 11-06 **Cầu in tự cập nhật + bảng cầu in `/super`** (PRINT-12, 13).
-- [ ] 11-07 **Bộ tài liệu bàn giao** (OPS-11).
+- [~] 11-01 **Sao lưu tự động mỗi đêm**, khóa `age`, ngoài Supabase (OPS-09).
+- [~] 11-02 **Theo dõi lỗi (Sentry) + sống/chết (`/api/health`)** (OPS-10).
+- [~] 11-03 **Giới hạn tần suất đường ẩn danh** (TENANT-07).
+- [~] 11-04 **Chế độ in theo từng quán** (PRINT-10).
+- [~] 11-05 **Bộ cài cầu in chung + mã kích hoạt + Node portable** (PRINT-11).
+- [~] 11-06 **Cầu in tự cập nhật + bảng cầu in `/super`** (PRINT-12, 13).
+- [~] 11-07 **Bộ tài liệu bàn giao** (OPS-11).
+
+*27/09/2026: 7/7 plan code/tài liệu xong, migration 0050–0053 đã áp; từng plan còn phần nghiệm thu cần người/thiết bị thật — xem `P11/11-0x-SUMMARY.md`.*
 
 P11 kết thúc bằng **"nhận quán mới không cần đóng gói riêng, có người được báo khi hệ thống lỗi, có bản
 sao mỗi đêm ngoài Supabase, một quán không kéo chậm quán khác"**.
