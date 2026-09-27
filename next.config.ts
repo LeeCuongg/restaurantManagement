@@ -32,6 +32,8 @@ const nextConfig: NextConfig = {
     "/api/bridge/latest/file": ["./scripts/print-bridge.mjs"],
     // Ảnh hóa đơn có dấu (PRINT-14) đọc font bằng fs.
     "/api/print/jobs/[id]/image": ["./assets/fonts/*.ttf"],
+    // Favicon chữ cái đầu tên quán (chữ có dấu, vd "Đ").
+    "/r/[slug]/favicon.png": ["./assets/fonts/BeVietnamPro-Bold.ttf"],
   },
   // next/image được phép tải ảnh menu/logo từ Supabase Storage (bucket public).
   images: {
