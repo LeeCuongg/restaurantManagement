@@ -32,6 +32,12 @@ các lựa chọn kỹ thuật D4–D6 chờ plan 12-01 đo xong mới CHỐT.
 | D5 | Máy in USB | Cầu in gửi **lệnh thô** qua hàng đợi in của Windows theo **tên máy in** | Máy USB đã cài driver ở quầy (bộ cài hiện hỏi "máy in quầy là số mấy") | Chia sẻ máy in qua mạng — thêm bước cấu hình Windows |
 | D6 | Hai máy in | Cầu in quản **hai vai**: `bếp` (phiếu bếp) và `quầy` (hóa đơn, phiếu khách); mỗi vai là LAN (IP:cổng) **hoặc** USB (tên máy in Windows) | Đủ cho quán nhỏ; đúng cái bộ cài đang hỏi | Danh sách máy in tùy ý + định tuyến theo món (bếp/quầy bar) — để sau |
 
+> **Cập nhật 27/09/2026 — D2 làm sớm.** Chủ dự án yêu cầu "triển khai hết P12": `/pos/m` đã chuyển hướng về
+> `/pos` và `StaffMobileOrder` đã xóa **trước** khi có người thật dùng điện thoại một ca. Bù lại: luồng cũ của
+> `/pos/m` (gọi món tại bàn, vào thẳng quầy) chạy E2E trên `/pos` ở 360px; mọi luồng POS chạy E2E ở 390 và 360.
+> Mất đường lui: nếu POS điện thoại có lỗi chặn việc ở quán, lùi bằng `git revert` commit này, không có màn cũ
+> để chuyển sang. Giữ bản deploy này tới khi thử xong trên điện thoại thật nếu cần đường lui.
+
 **Phiếu bếp giữ in chữ không dấu** như hiện nay: nhanh, đã chạy thật ở qt-food, bếp đọc được. Đổi sang
 ảnh có dấu là việc riêng khi có quán yêu cầu.
 

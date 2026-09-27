@@ -18,3 +18,27 @@ export function thietBiCoMayIn(): boolean {
   }
   return window.innerWidth >= 1024;
 }
+
+export type CheDoKhaiMayIn = "tu-dong" | "co" | "khong";
+
+/** Máy đang tự khai thế nào (màn "Máy in" hiển thị). */
+export function cheDoKhaiMayIn(): CheDoKhaiMayIn {
+  try {
+    const v = localStorage.getItem(KHOA_THIET_BI_CO_MAY_IN);
+    if (v === "1") return "co";
+    if (v === "0") return "khong";
+  } catch {
+    /* không đọc được → tự động */
+  }
+  return "tu-dong";
+}
+
+/** Khai cho CHÍNH máy này: true/false; null = bỏ khai, quay về tự động theo khổ màn hình. */
+export function datThietBiCoMayIn(co: boolean | null): void {
+  try {
+    if (co === null) localStorage.removeItem(KHOA_THIET_BI_CO_MAY_IN);
+    else localStorage.setItem(KHOA_THIET_BI_CO_MAY_IN, co ? "1" : "0");
+  } catch {
+    /* trình duyệt chặn lưu trữ → giữ tự động */
+  }
+}

@@ -59,8 +59,23 @@ email + PIN của họ. Nhân viên nghỉ việc → **Tắt** (giữ lịch s�
 
 - **POS (máy quầy)**: mở lối tắt POS → đăng nhập bằng **email + PIN** của người đang trực ca.
 - **Màn bếp**: mở `<app>/r/<slug>/kds` trên tablet/màn hình bếp → đăng nhập tài khoản vai trò Bếp.
-- **Điện thoại phục vụ**: mở `<app>/r/<slug>/pos/m` (POS **không có nút dẫn tới** trang này — lưu thành
-  dấu trang/lối tắt trên màn hình chính của điện thoại) → đăng nhập email + PIN.
+- **Điện thoại / tablet phục vụ**: mở `<app>/r/<slug>/pos` — **cùng POS với máy quầy**, tự co theo màn
+  hình (điện thoại có thanh tab dưới Bàn · Thực đơn · Đơn) → lưu thành lối tắt trên màn hình chính → đăng
+  nhập email + PIN. Lối tắt cũ `…/pos/m` vẫn mở được (tự chuyển về `/pos`).
+  Phục vụ trên điện thoại làm được **mọi** việc của máy quầy, kể cả thu tiền — muốn phục vụ không thu tiền
+  thì dặn nhân viên, hệ thống chưa chặn theo vai trò.
+
+### Khai máy in cho từng thiết bị (quán dùng cầu in)
+
+Hóa đơn / phiếu khách bấm từ máy **không nối máy in** được gửi ra **máy in quầy** qua cầu in; máy **có** máy in
+in thẳng. Hệ thống tự đoán theo khổ màn hình: màn rộng ≥ 1024 px (laptop, máy POS quầy, **tablet để ngang**)
+coi là **có** máy in; điện thoại, tablet dọc coi là **không**.
+
+Chỉ phải khai tay khi đoán sai — thường gặp nhất: **tablet để ngang không nối máy in**. Trên CHÍNH thiết bị đó:
+đăng nhập bằng tài khoản chủ quán/quản lý → **Admin → Máy in** → thẻ **"Thiết bị này"** → chọn
+**Không có máy in** (hoặc **Có máy in**). Dòng "Hiện: …" cho biết hóa đơn của máy này sẽ đi đường nào.
+Lựa chọn lưu trên trình duyệt của máy: vẫn giữ khi đăng xuất / nhân viên khác đăng nhập; **mất** nếu xóa dữ
+liệu trình duyệt hoặc đổi trình duyệt — khi đó khai lại.
 
 Chưa có chế độ "cài như ứng dụng" (PWA) — lối tắt trên màn hình chính sẽ mở bằng trình duyệt.
 

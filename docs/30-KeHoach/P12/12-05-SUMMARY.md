@@ -1,15 +1,15 @@
 # 12-05 SUMMARY — POS trên điện thoại
 
 > Thực hiện 27/09/2026. Yêu cầu: ORDER-20. Quyết định: QD-020 D1, D2.
-> **Trạng thái: code + E2E 7 luồng xanh ở 390×844 và 360×800. Còn: người thật trên iPhone/Android thật
-> (nghiệm thu 2) → rồi mới cho `/pos/m` về hưu; đo tải ở một quán có ≥ 2 điện thoại (nghiệm thu 4).**
+> **Trạng thái: code + E2E 8 luồng xanh ở 390×844 và 360×800; `/pos/m` đã về hưu (xem "Bổ sung 27/09").
+> Còn: người thật trên iPhone/Android thật (nghiệm thu 2); đo tải ở một quán có ≥ 2 điện thoại (nghiệm thu 4).**
 
 ## Lệch khỏi plan — có chủ đích
 
 | Plan ghi | Làm | Vì sao |
 |---|---|---|
 | Mọi hộp thoại đổi sang ngăn kéo `vaul` | Giữ hộp thoại, thêm `max-sm:` để **toàn màn hình** trên điện thoại | 8 hộp thoại dùng CHUNG một khuôn (`fixed inset-0 … max-w-md`) và đã vừa chiều ngang 360 px. Đạt đúng tiêu chí ("vừa màn hình, không tràn") với 16 thay đổi class thay vì viết lại 8 component; khổ ≥ 640 không đổi |
-| `/pos/m` chuyển hướng về `/pos` trong plan này | **Chưa** — giữ nguyên | Plan tự đặt điều kiện: chỉ sau khi người thật dùng điện thoại thật một ca (nghiệm thu 2). Giữ đường lui cho nhân viên tới lúc đó |
+| `/pos/m` chuyển hướng về `/pos` sau nghiệm thu 2 | Làm **trước** nghiệm thu 2 (bổ sung 27/09) | Chủ dự án yêu cầu "triển khai hết P12". Ghi lệch vào QD-020 D2 |
 
 ## Tệp đã đổi
 
@@ -63,5 +63,26 @@ Và một lần test bắt được đúng việc nó được viết ra để b
 | Nghiệm thu | Chờ |
 |---|---|
 | 2. Người thật, iPhone + Android thật, một ca thử trên quán demo | Thiết bị + người |
-| 3. `/pos/m` → `/pos`, xóa `StaffMobileOrder` | Sau mục 2 |
+| 3. ~~`/pos/m` → `/pos`, xóa `StaffMobileOrder`~~ | Đã làm 27/09 (dưới) |
 | 4. Đo tải: quán có ≥ 2 điện thoại dùng POS trong 2 ngày bán → số lần tải lại/ngày và /đơn, so PERF-04 | Quán thật |
+
+## Bổ sung 27/09 — `/pos/m` về hưu (nghiệm thu 3)
+
+| Tệp | Việc |
+|---|---|
+| `app/r/[slug]/pos/m/page.tsx` | Chỉ còn chuyển hướng về `/pos` — lối tắt cũ trên điện thoại phục vụ vẫn mở đúng chỗ |
+| `components/pos/StaffMobileOrder.tsx` | **Xóa**. Tìm `StaffMobileOrder` trong `app/ components/ lib/ tests/` = 0 |
+| `components/customer/CartSheet.tsx` | Bỏ chế độ `staff` (chỉ `StaffMobileOrder` dùng) |
+| `tests/e2e/order15-mobile.spec.ts` | Viết lại trên `/pos` ở 360 px: `/pos/m` → `/pos`; chọn bàn → thêm món → gửi → đơn vào thẳng (không hỏi tên khách); máy quầy 1366 hiện "Đơn cần in phiếu" |
+| `tests/e2e/pos-dien-thoai.spec.ts` | + luồng 8: trang Đơn online vừa màn hình, nút "Về sơ đồ bàn" về đúng POS |
+| `docs/60-BanGiao/03-CaiDat.md`, `07-HuongDan-PhucVu.md` | Điện thoại mở `/pos`; hướng dẫn phục vụ theo 3 tab; in hóa đơn ra máy quầy |
+
+**Hệ quả cần biết:** phục vụ (vai `waiter`) trên điện thoại giờ làm được **mọi** việc của máy quầy, kể cả thu
+tiền. Quyền này vốn có trên `/pos` từ trước (`canAccess(waiter, "pos")`), chỉ là trước đây điện thoại không
+tới được. Quán muốn phục vụ không thu tiền: hiện chưa chặn theo vai trò — cần một yêu cầu riêng.
+
+```
+E2E order15-mobile 1/1 · pos-dien-thoai 390×844 8/8 · 360×800 8/8 · tablet 4/4 · cổng ảnh ≥1024 6/6
+unit 665 · test:rls 274 · tsc · lint · build (/pos/m 162 B)
+```
+

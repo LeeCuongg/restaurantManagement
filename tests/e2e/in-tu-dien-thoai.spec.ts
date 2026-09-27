@@ -108,7 +108,7 @@ test.afterAll(async () => {
   if (thuMuc) fs.rmSync(thuMuc, { recursive: true, force: true });
 });
 
-test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, screenshot: "only-on-failure" });
 
 async function vaoPos(page: Page) {
   await page.goto(`/r/${SLUG}/admin/login`);
@@ -228,6 +228,40 @@ test("điện thoại bấm Phiếu khách → phiếu khách có dấu ra máy 
   const anh = dungNguocAnh(nhanQuay[nhanQuay.length - 1]);
   fs.writeFileSync("test-results/giay-phieu-khach-tu-dien-thoai.png", anh.png);
   expect(anh.rong).toBe(576);
+});
+
+test("tablet NGANG khai 'Không có máy in' ở màn Máy in → phiếu khách ra máy in quầy (PRINT-16)", async ({ browser }) => {
+  // Khổ ≥1024 mặc định bị coi là CÓ máy in (in trình duyệt) — khai tay trên chính máy đó để đổi đường in.
+  const ctx = await browser.newContext({ viewport: { width: 1366, height: 1024 }, hasTouch: true });
+  const page = await ctx.newPage();
+  try {
+    await vaoPos(page);
+    await page.goto(`/r/${SLUG}/admin/printers`, { waitUntil: "networkidle" });
+    const khai = page.getByRole("radiogroup", { name: "Máy này có nối máy in không" });
+    await expect(khai.getByRole("radio", { name: /^Tự động/ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByText("in thẳng ra máy in của máy này", { exact: true })).toBeVisible();
+    await khai.getByRole("radio", { name: /^Không có máy in/ }).click();
+    await expect(khai.getByRole("radio", { name: /^Không có máy in/ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByText("gửi hóa đơn ra máy in quầy", { exact: true })).toBeVisible();
+    // Nhớ qua lần tải lại (lưu trên máy).
+    await page.reload({ waitUntil: "networkidle" });
+    await expect(khai.getByRole("radio", { name: /^Không có máy in/ })).toHaveAttribute("aria-checked", "true");
+
+    await page.goto(`/r/${SLUG}/pos`, { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: /^T2\b/ }).click();
+    const truoc = nhanQuay.length;
+    await page.getByRole("button", { name: /Phiếu khách/ }).last().click();
+    await expect(page.getByRole("status").filter({ hasText: /máy in quầy/ })).toBeVisible({ timeout: 15_000 });
+    await expect.poll(() => nhanQuay.length, { timeout: 30_000 }).toBeGreaterThan(truoc);
+
+    // Trả về "Tự động" → lại là máy có máy in.
+    await page.goto(`/r/${SLUG}/admin/printers`, { waitUntil: "networkidle" });
+    await khai.getByRole("radio", { name: /^Tự động/ }).click();
+    await expect(page.getByText("in thẳng ra máy in của máy này", { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem("pos-thiet-bi-co-may-in"))).toBeNull();
+  } finally {
+    await ctx.close();
+  }
 });
 
 test("cầu in CHẾT → điện thoại báo lỗi rõ, KHÔNG xếp phiếu nào vào hàng đợi", async ({ page }) => {

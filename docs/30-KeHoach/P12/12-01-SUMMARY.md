@@ -19,7 +19,7 @@
 | D3: quán `bridge` → **mọi** thiết bị in hóa đơn qua cầu in | Chỉ thiết bị **không có máy in** qua cầu in; **máy quầy (≥1024 px) in trình duyệt như cũ** | Chưa in ảnh trên máy thật của quán — không đổi đường in hóa đơn của máy quầy đang bán thật cho tới khi thử. Đổi lại sau chỉ cần một dòng |
 | Route ảnh `/r/[slug]/print/receipt/[billId]/image` | `/api/print/jobs/[id]/image`, dựng từ **bản chụp** trong `print_jobs.payload.anh` | Đúng hóa đơn lúc bấm in; cầu in không cần quyền đọc hóa đơn; `buildReceiptView` chạy theo phiên nhân viên — không dùng được với token cầu in |
 | "Nút in khóa kèm lý do" trên điện thoại ở quán `browser` | Bấm thì báo lý do (thông báo nổi), không mở hộp thoại in | Cùng kết quả cho người dùng, không phải đổi từng nút in |
-| "Máy này có máy in" tự khai trong POS | Mặc định theo khổ (≥1024 = có); `localStorage` ghi đè được; **chưa có nút trong giao diện** | Đủ cho mô hình qt-food; tablet ngang không nối máy in sẽ bị coi là "có" — xem Giới hạn |
+| "Máy này có máy in" tự khai trong POS | Mặc định theo khổ (≥1024 = có); khai tay ở **Admin → Máy in → "Thiết bị này"** (bổ sung 27/09) | Việc làm một lần lúc lắp, không cần nằm trên POS hằng ngày; chủ quán/quản lý đăng nhập trên chính thiết bị để khai |
 
 ## Tệp đã đổi
 
@@ -81,8 +81,9 @@ nên gốc không được làm mới; so sánh dùng gốc cũ (code 12-04, phi
   đường lỗi (máy dev không có máy in thật).
 - **Thời gian ra giấy phụ thuộc nhịp poll:** quán vắng lâu, cầu in giãn nhịp tới 10 giây (PERF-03) ⇒ hóa đơn đầu
   tiên sau lúc vắng có thể mất tới ~12 giây.
-- Tablet **ngang** (≥1024 px) không nối máy in bị coi là "có máy in" → in trình duyệt (hộp thoại vô ích). Cách
-  xử lý tạm: `localStorage["pos-thiet-bi-co-may-in"] = "0"` trên máy đó; nút khai trong POS để sau.
+- Tablet **ngang** (≥1024 px) không nối máy in bị coi là "có máy in" cho tới khi khai tay (Admin → Máy in →
+  "Thiết bị này" → Không có máy in). Lựa chọn lưu trên trình duyệt của máy — xóa dữ liệu trình duyệt là mất,
+  phải khai lại.
 - qt-food phải **cài lại cầu in bằng bộ cài chung** để có `COUNTER_PRINTER` + `POS_URL` (bộ cài cũ không có).
 
 ## Việc tại quán (chủ dự án)
@@ -91,3 +92,20 @@ nên gốc không được làm mới; so sánh dùng gốc cũ (code 12-04, phi
 2. qt-food: chạy `CAI-DAT.bat` của bộ cài chung (tự dùng lại tài khoản cũ), chọn máy in quầy USB.
 3. Điện thoại phục vụ: thu tiền → "In hóa đơn" → hóa đơn ra máy quầy **có dấu, rõ** — chụp tờ giấy; đo thời gian.
 4. Nếu chữ nhòe / máy kẹt: chỉnh `RASTER_BAND` (nhỏ hơn) hoặc ngưỡng đen trắng — báo lại để sửa.
+
+## Bổ sung 27/09 — khai thiết bị trong giao diện
+
+| Tệp | Việc |
+|---|---|
+| `lib/print/device.ts` | `cheDoKhaiMayIn()` (tự động / có / không), `datThietBiCoMayIn(true / false / null)` |
+| `components/admin/ThietBiNayCard.tsx` (mới), `admin/printers/page.tsx` | Thẻ "Thiết bị này": 3 lựa chọn + dòng "Hiện: in thẳng… / gửi ra máy in quầy" |
+| `tests/print/in-tu-thiet-bi.test.ts` | + test khai / bỏ khai (8/8) |
+| `tests/e2e/in-tu-dien-thoai.spec.ts` | + tablet NGANG 1366: mặc định "Tự động = in thẳng" → khai "Không có máy in" → giữ qua tải lại → POS bấm "Phiếu khách" → **máy in quầy nhận byte** → trả về "Tự động" xóa khóa |
+
+```
+E2E in-tu-dien-thoai 4/4 (chạy 2 lần) · cau-in 5/5 · print-mode 2/2 · ảnh thẻ ở 360 và 1366: không tràn
+```
+Ghi đúng như đã xảy ra: lượt chạy đầu đỏ 2 — (1) lỗi của test: chữ "gửi hóa đơn ra máy in quầy" trùng mô tả của
+lựa chọn → sửa bằng `exact`; (2) test "cầu in CHẾT" không thấy nút "Phiếu khách", lượt đó không lưu ảnh. Hai lượt
+sau (có bật chụp ảnh khi lỗi) đều xanh — chưa rõ nguyên nhân lần (2); nghi do chạy sau test (1) hỏng giữa chừng.
+

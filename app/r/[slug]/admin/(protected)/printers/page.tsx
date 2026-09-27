@@ -4,6 +4,7 @@ import { canManage, defaultRouteForRole } from "@/lib/auth/rbac";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardTitle } from "@/components/ui/card";
 import { TuLamMoi } from "@/components/admin/TuLamMoi";
+import { ThietBiNayCard } from "@/components/admin/ThietBiNayCard";
 import { trangThaiMayIn, type NhipTim } from "@/lib/print/cau-in";
 import { demPhieuHomNay } from "@/lib/print/cau-in-db";
 import { resolveRange } from "@/lib/billing/report-range";
@@ -194,6 +195,8 @@ export default async function PrintersPage({ params }: { params: Promise<{ slug:
           )}
         </div>
       </Card>
+
+      <ThietBiNayCard />
 
       <Card className="mt-lg">
         <CardTitle>Phiếu bếp hôm nay</CardTitle>

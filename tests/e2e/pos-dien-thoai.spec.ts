@@ -387,3 +387,12 @@ test("7: duyệt đơn QR của khách + xác nhận đặt bàn", async ({ page
     await admin.from("reservations").delete().eq("id", datBan!.id);
   }
 });
+
+test("8: trang Đơn online vừa màn hình điện thoại", async ({ page }) => {
+  await vaoPos(page);
+  await page.goto(`/r/${SLUG}/pos/online`, { waitUntil: "networkidle" });
+  await expect(page.getByRole("heading", { name: "Đơn online" })).toBeVisible({ timeout: 30_000 });
+  await khongTran(page, "trang Đơn online");
+  await page.getByRole("link", { name: /Về sơ đồ bàn/ }).click();
+  await expect(page.getByRole("navigation", { name: "Chuyển màn POS" })).toBeVisible({ timeout: 30_000 });
+});
