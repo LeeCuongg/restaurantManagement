@@ -109,24 +109,3 @@ describe("quán browser", () => {
     expect(iframe).toHaveLength(1);
   });
 });
-
-describe("datThietBiCoMayIn — máy tự khai", () => {
-  it("ghi '1' / '0'; null = xóa để quay về tự động theo khổ", async () => {
-    const kho: Record<string, string> = {};
-    vi.stubGlobal("window", Object.assign(new EventTarget(), { innerWidth: 1280 }));
-    vi.stubGlobal("localStorage", {
-      getItem: (k: string) => kho[k] ?? null,
-      setItem: (k: string, v: string) => (kho[k] = v),
-      removeItem: (k: string) => delete kho[k],
-    });
-    const { datThietBiCoMayIn, thietBiCoMayIn, cheDoKhaiMayIn } = await import("@/lib/print/device");
-    datThietBiCoMayIn(false);
-    expect(thietBiCoMayIn()).toBe(false);
-    expect(cheDoKhaiMayIn()).toBe("khong");
-    datThietBiCoMayIn(true);
-    expect(cheDoKhaiMayIn()).toBe("co");
-    datThietBiCoMayIn(null);
-    expect(cheDoKhaiMayIn()).toBe("tu-dong");
-    expect(thietBiCoMayIn()).toBe(true); // 1280 px
-  });
-});

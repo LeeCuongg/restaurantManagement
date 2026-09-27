@@ -4,7 +4,6 @@ import { canManage, defaultRouteForRole } from "@/lib/auth/rbac";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardTitle } from "@/components/ui/card";
 import { TuLamMoi } from "@/components/admin/TuLamMoi";
-import { ThietBiNayCard } from "@/components/admin/ThietBiNayCard";
 import { buttonVariants } from "@/components/ui/button";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { thongTinBoCai } from "@/lib/print/bo-cai";
@@ -200,8 +199,6 @@ export default async function PrintersPage({ params }: { params: Promise<{ slug:
           )}
         </div>
       </Card>
-
-      <ThietBiNayCard />
 
       {/* PRINT-17 — tải bộ cài ngay trên laptop quầy, không cần ai gửi qua Zalo/USB. */}
       <Card className="mt-lg">

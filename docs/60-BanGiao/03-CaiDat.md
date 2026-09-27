@@ -68,17 +68,12 @@ email + PIN của họ. Nhân viên nghỉ việc → **Tắt** (giữ lịch s�
   Phục vụ trên điện thoại làm được **mọi** việc của máy quầy, kể cả thu tiền — muốn phục vụ không thu tiền
   thì dặn nhân viên, hệ thống chưa chặn theo vai trò.
 
-### Khai máy in cho từng thiết bị (quán dùng cầu in)
+### Máy nào in hóa đơn ra đâu (quán dùng cầu in)
 
-Hóa đơn / phiếu khách bấm từ máy **không nối máy in** được gửi ra **máy in quầy** qua cầu in; máy **có** máy in
-in thẳng. Hệ thống tự đoán theo khổ màn hình: màn rộng ≥ 1024 px (laptop, máy POS quầy, **tablet để ngang**)
-coi là **có** máy in; điện thoại, tablet dọc coi là **không**.
-
-Chỉ phải khai tay khi đoán sai — thường gặp nhất: **tablet để ngang không nối máy in**. Trên CHÍNH thiết bị đó:
-đăng nhập bằng tài khoản chủ quán/quản lý → **Admin → Máy in** → thẻ **"Thiết bị này"** → chọn
-**Không có máy in** (hoặc **Có máy in**). Dòng "Hiện: …" cho biết hóa đơn của máy này sẽ đi đường nào.
-Lựa chọn lưu trên trình duyệt của máy: vẫn giữ khi đăng xuất / nhân viên khác đăng nhập; **mất** nếu xóa dữ
-liệu trình duyệt hoặc đổi trình duyệt — khi đó khai lại.
+Hệ thống tự quyết theo khổ màn hình, không phải cài gì: màn rộng ≥ 1024 px (laptop, máy POS quầy) **in thẳng**
+ra máy in cắm vào nó; điện thoại, tablet dọc gửi hóa đơn ra **máy in quầy** qua cầu in.
+**Tablet để ngang không cắm máy in** bị coi là có máy in → bấm in sẽ mở hộp thoại in vô ích: cho phục vụ dùng
+tablet **dọc**, hoặc in ở máy quầy.
 
 Chưa có chế độ "cài như ứng dụng" (PWA) — lối tắt trên màn hình chính sẽ mở bằng trình duyệt.
 

@@ -157,3 +157,13 @@ Giải nén bản đã đưa lên: ngoài cùng = bo-cai, CAI-DAT.bat · bo-cai\
 **Chưa chạy thật `CAI-DAT.bat` từ bố cục mới** (tự xin quyền Admin + đăng ký tác vụ nền — không chạy trên máy dev).
 Lần lắp đầu tiên bằng bộ cài này là lần kiểm thật.
 
+## Bổ sung 27/09 (4) — bỏ thẻ "Thiết bị này"
+
+Chủ dự án xem thẻ và yêu cầu bỏ. Đã xóa `ThietBiNayCard`, `cheDoKhaiMayIn` / `datThietBiCoMayIn` và test của chúng,
+E2E "tablet ngang khai Không". Đường in trở lại **tự theo khổ màn hình** (≥ 1024 px = có máy in); khóa
+`localStorage` ghi đè vẫn đọc (như 12-03) nhưng không có giao diện.
+
+Hệ quả, đã ghi vào `60-BanGiao/03-CaiDat.md`: tablet **ngang** không cắm máy in mở hộp thoại in vô ích. Mô hình qt-food
+(laptop quầy + điện thoại) không gặp. Hết hẳn khi làm đủ QD-020 D3 (quán cầu in: mọi máy gửi hóa đơn qua cầu in) —
+việc đó chờ in thử máy thật ở qt-food.
+
