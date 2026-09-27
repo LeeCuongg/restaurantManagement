@@ -5,10 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardTitle } from "@/components/ui/card";
 import { TuLamMoi } from "@/components/admin/TuLamMoi";
 import { ThietBiNayCard } from "@/components/admin/ThietBiNayCard";
+import { buttonVariants } from "@/components/ui/button";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { thongTinBoCai } from "@/lib/print/bo-cai";
+import { MaKichHoatCauIn } from "@/components/admin/MaKichHoatCauIn";
 import { trangThaiMayIn, type NhipTim } from "@/lib/print/cau-in";
 import { demPhieuHomNay } from "@/lib/print/cau-in-db";
 import { resolveRange } from "@/lib/billing/report-range";
-import { cachDay, gioVn } from "@/lib/time/vn";
+import { cachDay, gioNgayNamVn, gioVn } from "@/lib/time/vn";
 
 /**
  * Màn "Máy in" (PRINT-09) — chủ quán mở ra là biết cầu in có chạy không và máy in bếp có phản hồi
@@ -72,13 +76,14 @@ export default async function PrintersPage({ params }: { params: Promise<{ slug:
 
   const supabase = await createClient();
   const tenantId = session.tenant.id;
-  const [{ data: nhipRow }, dem] = await Promise.all([
+  const [{ data: nhipRow }, dem, boCai] = await Promise.all([
     supabase
       .from("printer_heartbeats")
       .select("seen_at, printer_ok, printer_host, printer_checked_at, counter_ok, counter_target, counter_checked_at")
       .eq("tenant_id", tenantId)
       .maybeSingle(),
     demPhieuHomNay(supabase, tenantId, resolveRange({ preset: "today" }).fromUtc),
+    thongTinBoCai(createAdminClient()),
   ]);
 
   const now = Date.now();
@@ -197,6 +202,31 @@ export default async function PrintersPage({ params }: { params: Promise<{ slug:
       </Card>
 
       <ThietBiNayCard />
+
+      {/* PRINT-17 — tải bộ cài ngay trên laptop quầy, không cần ai gửi qua Zalo/USB. */}
+      <Card className="mt-lg">
+        <CardTitle>Cài cầu in trên laptop quầy</CardTitle>
+        <ol className="mt-md list-decimal space-y-xs pl-lg text-sm text-slate">
+          <li>Mở trang này <span className="font-medium text-ink">trên chính laptop quầy</span> → tải bộ cài → giải nén vào Desktop.</li>
+          <li>Bấm <span className="font-medium text-ink">Tạo mã kích hoạt</span> bên dưới (dùng một lần, hết hạn sau 30 phút).</li>
+          <li>Double-click <span className="font-medium text-ink">CAI-DAT.bat</span> → Yes → gõ mã → làm theo HUONG-DAN.txt trong bộ cài.</li>
+        </ol>
+        <div className="mt-md flex flex-wrap items-center gap-md">
+          {boCai ? (
+            <>
+              <a href={`/r/${slug}/admin/printers/bo-cai`} download className={buttonVariants({ variant: "primary" })}>
+                Tải bộ cài cầu in ({Math.max(1, Math.round(boCai.kichThuoc / 1048576))} MB)
+              </a>
+              <span className="text-sm text-steel">Đóng gói lúc {gioNgayNamVn(boCai.capNhatLuc)}</span>
+            </>
+          ) : (
+            <p className="text-sm text-slate">Chưa có bộ cài để tải — liên hệ quản trị hệ thống.</p>
+          )}
+        </div>
+        <div className="mt-lg border-t border-hairline-soft pt-md">
+          <MaKichHoatCauIn slug={slug} laChuQuan={session.role === "owner"} />
+        </div>
+      </Card>
 
       <Card className="mt-lg">
         <CardTitle>Phiếu bếp hôm nay</CardTitle>

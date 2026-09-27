@@ -163,7 +163,7 @@ if (-not $ActivationCode -and (Test-Path $envFile) -and (Test-BridgeAuth)) {
 if (-not $daKichHoat) {
   if (-not $ApiBase) { Die "Thieu -ApiBase (dia chi app). Chay bang CAI-DAT.bat trong bo cai." }
   Write-Host ""
-  Write-Host "      Can MA KICH HOAT: goi nguoi quan ly he thong, ho tao ma o /super -> 'Ma cai cau in'."
+  Write-Host "      Can MA KICH HOAT: chu quan dang nhap Admin -> May in -> 'Tao ma kich hoat'."
   $activateArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $InstallDir "print-activate.ps1"),
     "-ApiBase", $ApiBase, "-EnvFile", $envFile)
   if ($ActivationCode) { $activateArgs += @("-Code", $ActivationCode) }

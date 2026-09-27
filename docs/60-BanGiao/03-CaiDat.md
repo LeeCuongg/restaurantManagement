@@ -47,9 +47,11 @@ email + PIN của họ. Nhân viên nghỉ việc → **Tắt** (giữ lịch s�
 
 ### 5b. Quán chọn "Cầu in"
 
-1. Lấy bộ cài `cau-in.zip` (giống nhau cho mọi quán, không có mật khẩu) — giải nén vào Desktop máy quầy.
-2. Gọi quản trị hệ thống xin **mã kích hoạt** (`/super` → quán → "Mã cài cầu in" → "Tạo mã kích hoạt").
-   Mã dùng một lần, sống 30 phút — xin khi đã ngồi trước máy.
+1. Trên **chính laptop quầy**: chủ quán đăng nhập admin → **Máy in** → **Tải bộ cài cầu in** → giải nén
+   `cau-in.zip` vào Desktop (bộ cài giống nhau cho mọi quán, không có mật khẩu).
+2. Cùng màn đó: **Tạo mã kích hoạt** (chỉ tài khoản chủ quán). Mã dùng một lần, sống 30 phút — tạo khi đã
+   ngồi trước máy. Quản trị hệ thống vẫn tạo hộ được ở `/super` → quán → "Mã cài cầu in".
+   **Cài bằng mã mới thì cầu in đang chạy ở máy khác ngừng in** — chỉ tạo mã khi lắp mới / thay laptop.
 3. Double-click `CAI-DAT.bat` → Yes → gõ mã → làm theo `HUONG-DAN.txt` trong bộ cài (xuống bếp xem giấy thử
    ra ở đâu, chọn máy in quầy).
 4. Làm đủ **4 phép thử** in ở cuối màn cài. Chủ quán mở **Máy in** trong admin: "Cầu in bếp — Đang kết nối",

@@ -1,7 +1,7 @@
 # scripts/print-activate.ps1 - Doi MA KICH HOAT lay cau hinh cau in (PRINT-11, QD-019 D6).
 #
 # Bo cai cau in giong nhau cho moi quan, KHONG mang mat khau nao. Luc cai, nguoi lap go ma 8 ky tu
-# (super-admin tao o /super -> "Ma cai cau in"). Script doi ma lay: tai khoan `printer` cua DUNG
+# (chu quan tao o Admin -> May in, hoac super-admin o /super). Script doi ma lay: tai khoan `printer` cua DUNG
 # quan, khoa CONG KHAI cua Supabase, dia chi POS - roi ghi .env.local canh cau in.
 #
 # Tach rieng khoi print-setup.ps1 de chay thu duoc ma khong phai cai ca bo (bo cai doi cau hinh may:

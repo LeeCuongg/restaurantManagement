@@ -109,3 +109,33 @@ Ghi đúng như đã xảy ra: lượt chạy đầu đỏ 2 — (1) lỗi của
 lựa chọn → sửa bằng `exact`; (2) test "cầu in CHẾT" không thấy nút "Phiếu khách", lượt đó không lưu ảnh. Hai lượt
 sau (có bật chụp ảnh khi lỗi) đều xanh — chưa rõ nguyên nhân lần (2); nghi do chạy sau test (1) hỏng giữa chừng.
 
+## Bổ sung 27/09 (2) — PRINT-17: tải bộ cài + chủ quán tự tạo mã kích hoạt
+
+Chủ dự án: "file zip cài đặt được tải từ màn này luôn để đỡ phải gửi" và "tài khoản được tự kích hoạt luôn
+(không cần xin hệ thống)". Quyết định ghi ở QD-019 D6b.
+
+| Tệp | Việc |
+|---|---|
+| `supabase/migrations/0055_bridge_installer.sql` (**đã áp** DB dùng chung) + `schema-snapshot.json` | Bucket `bridge-installer` **không công khai**, ≤ 50 MB, chỉ `application/zip`, ghi chỉ service role |
+| `lib/print/bo-cai.ts` (mới), `admin/(protected)/printers/bo-cai/route.ts` (mới) | Owner/manager đúng quán → 302 sang link ký hạn 60 giây. File 33 MB không đi qua hàm server (Vercel giới hạn ~4,5 MB mỗi phản hồi) |
+| `admin/(protected)/printers/actions.ts` (mới), `components/admin/MaKichHoatCauIn.tsx` (mới), `lib/security/rate-limit.ts` | `taoMaKichHoat`: **chỉ owner**, quán đang hoạt động, 5 mã/10 phút/quán; dùng chung `createActivationCode` với `/super` |
+| `admin/(protected)/printers/page.tsx` | Thẻ "Cài cầu in trên laptop quầy": 3 bước, nút tải (kích thước + giờ đóng gói), nút tạo mã + cảnh báo máy cũ ngừng in |
+| `scripts/print-upload.mjs` (mới), `print-pack.ps1 -Upload` | Đưa zip lên; **chốt chặn bí mật lần hai** trên chính file zip (đọc từng file, từ chối `.env*` / mật khẩu) + đủ file bắt buộc |
+| `print-huongdan.txt`, `print-setup.ps1`, `print-activate.ps1`, `60-BanGiao/03-CaiDat.md`, chú thích `/super` | "Xin mã từ quản trị hệ thống" → "chủ quán tạo ở Admin → Máy in" |
+
+```
+E2E bo-cai 7/7: tải → cau-in.zip 33 MB bắt đầu "PK" · chưa đăng nhập 401 · owner quán khác 401 · trạm 403
+  · anon tải thẳng bucket bị chặn · owner tạo mã → DB: đúng quán, chưa dùng, hạn 25–30 phút, người tạo có ghi
+  · trạm không thấy nút tạo mã
+unit 10 (taoMaKichHoat): manager/cashier/waiter/kitchen/station/printer bị từ chối — đối chứng âm: cho manager qua → đỏ
+print-upload: zip chứa PRINT_BRIDGE_PASSWORD → từ chối trước khi gửi
+in-tu-dien-thoai 4/4 · unit 675 · test:rls 274 · tsc · lint · build · schema:check
+```
+
+Lỗi của test, bắt được trong lúc làm: `waitForURL(/pos/)` khớp cả `/pos/login` → test "trạm → 403" đọc 401 (chưa kịp
+đăng nhập) và test "trạm không thấy nút" xanh ăn may; spec mới không nạp `.env.local` → chỉ xanh khi chạy chung với
+spec khác. Đã sửa cả hai.
+
+**Rủi ro cần biết:** chủ quán tạo mã và cài trên máy thứ hai → cầu in máy cũ **ngừng in ngay** (mật khẩu xoay). Có
+cảnh báo trên màn; thu hồi cầu in vẫn chỉ ở `/super`.
+

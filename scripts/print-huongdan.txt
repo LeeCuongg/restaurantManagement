@@ -5,8 +5,9 @@
 
 CHUẨN BỊ — làm đủ các việc này rồi mới cài:
 
-  [ ] Gọi người quản lý hệ thống xin MÃ KÍCH HOẠT (8 ký tự, vd ABCD-EFGH).
-      Mã dùng MỘT lần, hết hạn sau 30 phút — xin lúc đã ngồi trước laptop.
+  [ ] Lấy MÃ KÍCH HOẠT (8 ký tự, vd ABCD-EFGH): chủ quán đăng nhập trang
+      quản lý → Máy in → bấm "Tạo mã kích hoạt".
+      Mã dùng MỘT lần, hết hạn sau 30 phút — tạo lúc đã ngồi trước laptop.
       (Máy đã cài cầu in trước đây thì không cần mã, bộ cài tự dùng lại.)
   [ ] Laptop của quán CẮM ĐIỆN (không chạy pin) và nối vào Wi-Fi/mạng
       của quán — không phải Wi-Fi khách, không bật VPN.
@@ -100,7 +101,7 @@ HỎNG THÌ LÀM GÌ:
      → Chạy lại  CAI-DAT.bat, nó sẽ dò lại từ đầu.
 
   Cài lại báo "Can MA KICH HOAT" dù máy đã cài trước đây:
-     → Tài khoản cầu in cũ đã bị thu hồi hoặc thay. Xin mã mới rồi gõ vào.
+     → Tài khoản cầu in cũ đã bị thu hồi hoặc thay. Tạo mã mới rồi gõ vào.
 
 
 GỠ CẦU IN KHỎI MÁY (quán ngừng dùng, đổi sang máy khác):

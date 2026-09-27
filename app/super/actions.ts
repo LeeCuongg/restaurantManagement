@@ -311,8 +311,8 @@ export async function createPrintBridgeAccount(
 
 /**
  * Tạo mã kích hoạt cầu in cho một quán (PRINT-11, QD-019 D6). Người lắp gõ mã này vào bộ cài chung —
- * không còn gói cài riêng từng quán mang sẵn mật khẩu. Chỉ super-admin, cùng lý do với
- * `createPrintBridgeAccount`: cầu in do chúng ta lắp, không để chủ quán tự phát khóa thiết bị.
+ * không còn gói cài riêng từng quán mang sẵn mật khẩu. Từ PRINT-17 chủ quán cũng tự tạo được ở
+ * Admin → Máy in (`taoMaKichHoat`); lối này giữ cho quản trị hệ thống lắp hộ.
  */
 export async function createBridgeActivationCode(
   _prev: SuperActionState,

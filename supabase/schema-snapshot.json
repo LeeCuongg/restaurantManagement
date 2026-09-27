@@ -444,6 +444,7 @@
   "public.tenants.tenants_member_read": "r | ((id IN ( SELECT auth_tenant_ids() AS auth_tenant_ids)) OR is_super_admin()) |",
   "public.tenants.tenants_member_update": "w | ((id IN ( SELECT auth_tenant_ids() AS auth_tenant_ids)) OR is_super_admin()) | ((id IN ( SELECT auth_tenant_ids() AS auth_tenant_ids)) OR is_super_admin())",
   "public.tenants.tenants_super_write": "* | is_super_admin() | is_super_admin()",
+  "storage.objects.bridge_installer_service_all": "* | (bucket_id = 'bridge-installer'::text) | (bucket_id = 'bridge-installer'::text)",
   "storage.objects.menu_images_public_read": "r | (bucket_id = 'menu-images'::text) |",
   "storage.objects.menu_images_service_write": "* | (bucket_id = 'menu-images'::text) | (bucket_id = 'menu-images'::text)"
  },

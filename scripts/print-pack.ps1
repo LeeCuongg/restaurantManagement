@@ -16,6 +16,8 @@
 #   -NodeMajor  Dong Node LTS dong goi kem. Mac dinh 24.
 #   -OutDir     Thu muc xuat. Mac dinh <repo>\cau-in
 #   -NoPause    Khong mo Explorer, khong cho Enter (chay tu dong).
+#   -Upload     Dua cau-in.zip len Storage de chu quan tai o Admin -> May in (PRINT-17). Can
+#               SUPABASE_SERVICE_ROLE_KEY trong .env.local cua repo. Ghi de ban cu.
 #
 # CHI dung ky tu ASCII trong file nay: PowerShell 5.1 doc .ps1 UTF-8 khong BOM theo bang ma ANSI.
 
@@ -23,7 +25,8 @@ param(
   [string]$AppBase = "https://restaurant-management-zeta.vercel.app",
   [int]$NodeMajor = 24,
   [string]$OutDir,
-  [switch]$NoPause
+  [switch]$NoPause,
+  [switch]$Upload
 )
 
 $ErrorActionPreference = "Stop"
@@ -162,6 +165,17 @@ if (Test-Path $zipOut) { Remove-Item $zipOut -Force }
 Compress-Archive -Path (Join-Path $OutDir "*") -DestinationPath $zipOut -Force
 Ok ("Da nen: $zipOut (" + [math]::Round((Get-Item $zipOut).Length / 1MB, 1) + " MB)")
 
+if ($Upload) {
+  Write-Host ""
+  Write-Host "[+] Dua bo cai len Storage (Admin -> May in -> Tai bo cai)" -ForegroundColor Cyan
+  Push-Location $RepoRoot
+  try {
+    & node (Join-Path $PSScriptRoot "print-upload.mjs") $zipOut
+    if ($LASTEXITCODE -ne 0) { Die "Dua bo cai len that bai (xem loi o tren)." }
+  } finally { Pop-Location }
+  Ok "Chu quan tai duoc o Admin -> May in"
+}
+
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Green
 Write-Host " DONG GOI XONG" -ForegroundColor Green
@@ -172,7 +186,7 @@ Write-Host " File zip: $zipOut"
 Write-Host " Node    : $ver"
 Write-Host ""
 Write-Host " TAI QUAN:" -ForegroundColor Yellow
-Write-Host "  1. Chep file zip vao Desktop laptop quan, giai nen"
+Write-Host "  1. Chep file zip vao Desktop laptop quan, giai nen (da -Upload: chu quan tu tai o Admin -> May in)"
 Write-Host "  2. Goi nguoi quan ly lay MA KICH HOAT (tao o /super -> 'Ma cai cau in'), song 30 phut"
 Write-Host "  3. Double-click CAI-DAT.bat -> Yes -> go ma -> tra loi: giay thu ra o BEP hay QUAY, may in quay la cai nao"
 Write-Host ""
