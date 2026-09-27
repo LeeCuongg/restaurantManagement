@@ -209,7 +209,7 @@ export default async function PrintersPage({ params }: { params: Promise<{ slug:
         <ol className="mt-md list-decimal space-y-xs pl-lg text-sm text-slate">
           <li>Mở trang này <span className="font-medium text-ink">trên chính laptop quầy</span> → tải bộ cài → giải nén vào Desktop.</li>
           <li>Bấm <span className="font-medium text-ink">Tạo mã kích hoạt</span> bên dưới (dùng một lần, hết hạn sau 30 phút).</li>
-          <li>Double-click <span className="font-medium text-ink">CAI-DAT.bat</span> → Yes → gõ mã → làm theo HUONG-DAN.txt trong bộ cài.</li>
+          <li>Double-click <span className="font-medium text-ink">CAI-DAT.bat</span> (file duy nhất ở ngoài) → Yes → gõ mã → trả lời 2 câu hỏi trên màn hình.</li>
         </ol>
         <div className="mt-md flex flex-wrap items-center gap-md">
           {boCai ? (

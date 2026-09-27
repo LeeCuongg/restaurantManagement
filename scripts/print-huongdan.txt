@@ -21,7 +21,8 @@ CHUẨN BỊ — làm đủ các việc này rồi mới cài:
 CÀI ĐẶT — một lần bấm:
 
   1. Giải nén cau-in.zip vào Desktop của laptop quán.
-  2. Double-click file  CAI-DAT.bat
+  2. Trong thư mục vừa giải nén chỉ có  CAI-DAT.bat  và thư mục  bo-cai
+     (không cần mở). Double-click  CAI-DAT.bat
   3. Windows hỏi "Do you want to allow..." → bấm YES.
   4. Gõ MÃ KÍCH HOẠT khi được hỏi (chữ hoa/thường, có gạch hay không đều được).
      Sai 3 lần → xin mã mới rồi chạy lại CAI-DAT.bat.
@@ -77,7 +78,8 @@ HỎNG THÌ LÀM GÌ:
 
   Máy in bếp có vấn đề (lúc cài báo "Khong tim thay may in nao trong mang",
   hoặc đang chạy tự nhiên bếp mất phiếu):
-     → Double-click  KIEM-TRA-MAY-IN.bat
+     → Mở thư mục  C:\cau-in  → double-click  KIEM-TRA-MAY-IN.bat
+       (chưa cài xong thì file này nằm trong thư mục  bo-cai  của bộ cài)
        Nó dò cả mạng, in ra danh sách máy in tìm thấy và lý do nếu không thấy.
        Biết IP rồi thì gõ IP vào để in một phiếu thử — giấy ra và tự cắt là máy in ổn.
 
@@ -93,7 +95,7 @@ HỎNG THÌ LÀM GÌ:
 
   Vẫn không được — chạy lại  CAI-DAT.bat  (chạy lại nhiều lần vô hại).
 
-  Muốn xem lỗi: double-click  print-bridge.bat  (có cửa sổ hiện log).
+  Muốn xem lỗi: double-click  C:\cau-in\print-bridge.bat  (có cửa sổ hiện log).
   Xem xong NHỚ ĐÓNG cửa sổ đó lại — để hai cầu in chạy cùng lúc sẽ in
   trùng phiếu, bếp nhận 2 tờ giống nhau.
 
@@ -106,7 +108,7 @@ HỎNG THÌ LÀM GÌ:
 
 GỠ CẦU IN KHỎI MÁY (quán ngừng dùng, đổi sang máy khác):
 
-  Double-click  GO-CAI-DAT.bat  → bấm YES → gõ  co  để xác nhận.
+  Double-click  C:\cau-in\GO-CAI-DAT.bat  → bấm YES → gõ  co  để xác nhận.
   Máy mất hoặc không dùng nữa: báo người quản lý THU HỒI cầu in của quán
   (ở /super) — để máy đó không in được phiếu của quán nữa.
 

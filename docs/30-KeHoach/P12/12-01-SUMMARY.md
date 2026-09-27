@@ -139,3 +139,21 @@ spec khác. Đã sửa cả hai.
 **Rủi ro cần biết:** chủ quán tạo mã và cài trên máy thứ hai → cầu in máy cũ **ngừng in ngay** (mật khẩu xoay). Có
 cảnh báo trên màn; thu hồi cầu in vẫn chỉ ở `/super`.
 
+## Bổ sung 27/09 (3) — bộ cài gọn: ngoài cùng chỉ còn `CAI-DAT.bat`
+
+Chủ dự án: giải nén ra 12 mục, "nhiều file thế cho gọn thôi … chỉ để CAI DAT bên ngoài".
+
+- `print-pack.ps1`: mọi file (kể cả `node\`, `HUONG-DAN.txt`, `KIEM-TRA-MAY-IN.bat`, `GO-CAI-DAT.bat`) vào `bo-cai\`;
+  `CAI-DAT.bat` gọi `bo-cai\print-setup.ps1`. Chốt chặn: ngoài cùng khác `CAI-DAT.bat` + `bo-cai` → dừng đóng gói.
+- `print-setup.ps1`: chép thêm `KIEM-TRA-MAY-IN.bat` + `HUONG-DAN.txt` vào `C:\cau-in` — công cụ sửa lỗi còn đó sau
+  khi xóa thư mục giải nén. Thư mục cài `C:\cau-in` **không đổi** ⇒ cầu in đang chạy, tự cập nhật, tác vụ nền không
+  ảnh hưởng.
+- `print-upload.mjs`: từ chối zip sai bố cục (thử: zip phẳng kiểu cũ → bị từ chối).
+- `HUONG-DAN.txt`, `03-CaiDat.md`, thẻ trên màn Máy in: trỏ tới `C:\cau-in\…`.
+
+```
+Giải nén bản đã đưa lên: ngoài cùng = bo-cai, CAI-DAT.bat · bo-cai\print-setup.ps1 tồn tại · 2 file .ps1 parse 0 lỗi
+```
+**Chưa chạy thật `CAI-DAT.bat` từ bố cục mới** (tự xin quyền Admin + đăng ký tác vụ nền — không chạy trên máy dev).
+Lần lắp đầu tiên bằng bộ cài này là lần kiểm thật.
+

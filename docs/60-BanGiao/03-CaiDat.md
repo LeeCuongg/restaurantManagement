@@ -52,8 +52,9 @@ email + PIN của họ. Nhân viên nghỉ việc → **Tắt** (giữ lịch s�
 2. Cùng màn đó: **Tạo mã kích hoạt** (chỉ tài khoản chủ quán). Mã dùng một lần, sống 30 phút — tạo khi đã
    ngồi trước máy. Quản trị hệ thống vẫn tạo hộ được ở `/super` → quán → "Mã cài cầu in".
    **Cài bằng mã mới thì cầu in đang chạy ở máy khác ngừng in** — chỉ tạo mã khi lắp mới / thay laptop.
-3. Double-click `CAI-DAT.bat` → Yes → gõ mã → làm theo `HUONG-DAN.txt` trong bộ cài (xuống bếp xem giấy thử
-   ra ở đâu, chọn máy in quầy).
+3. Thư mục giải nén chỉ có `CAI-DAT.bat` và thư mục `bo-cai` → double-click `CAI-DAT.bat` → Yes → gõ mã → làm
+   theo màn cài (xuống bếp xem giấy thử ra ở đâu, chọn máy in quầy). Hướng dẫn đầy đủ + công cụ sửa lỗi: `bo-cai\HUONG-DAN.txt`,
+   sau khi cài có bản sao ở `C:\cau-in`.
 4. Làm đủ **4 phép thử** in ở cuối màn cài. Chủ quán mở **Máy in** trong admin: "Cầu in bếp — Đang kết nối",
    "Máy in bếp — Phản hồi bình thường".
 

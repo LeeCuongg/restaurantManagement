@@ -116,6 +116,11 @@ if ((Resolve-Path $SourceDir).Path -eq (Resolve-Path -LiteralPath $InstallDir -E
   foreach ($f in $needed) {
     Copy-Item (Join-Path $SourceDir $f) (Join-Path $InstallDir $f) -Force
   }
+  # Do print-pack sinh ra (khong co khi chay tu repo). Chep vao day de cong cu sua loi + huong dan van con
+  # sau khi nguoi lap xoa thu muc giai nen tren Desktop - HUONG-DAN.txt tro toi C:\cau-in.
+  foreach ($f in @("KIEM-TRA-MAY-IN.bat", "HUONG-DAN.txt")) {
+    if (Test-Path (Join-Path $SourceDir $f)) { Copy-Item (Join-Path $SourceDir $f) (Join-Path $InstallDir $f) -Force }
+  }
   if ($node -eq $bundledNode) {
     New-Item -ItemType Directory -Force -Path (Join-Path $InstallDir "node") | Out-Null
     Copy-Item $bundledNode (Join-Path $InstallDir "node\node.exe") -Force

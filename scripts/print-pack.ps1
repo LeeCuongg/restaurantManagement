@@ -1,6 +1,8 @@
 # scripts/print-pack.ps1 - Dong goi BO CAI CAU IN CHUNG cho moi quan (PRINT-11, QD-019 D6, D7).
 #
-# Chay tren MAY DEV (co repo). Sinh ra thu muc cau-in\ + cau-in.zip - GIONG NHAU cho moi quan:
+# Chay tren MAY DEV (co repo). Sinh ra thu muc cau-in\ + cau-in.zip - GIONG NHAU cho moi quan.
+# Giai nen ra chi thay CAI-DAT.bat + thu muc bo-cai\ (moi file khac nam trong do) - nguoi lap khong
+# phai chon giua hang chuc file:
 #   - KHONG co mat khau, KHONG co ten quan. Luc cai, nguoi lap go MA KICH HOAT (tao o /super ->
 #     "Ma cai cau in") -> may nhan tai khoan `printer` cua dung quan.
 #   - Kem node\node.exe (Node LTS chinh thuc, da kiem SHA-256): may quan khong can cai Node, khong can winget.
@@ -88,14 +90,15 @@ Ok "Node $ver - SHA-256 khop nodejs.org"
 Write-Host ""
 Write-Host "[2/4] Ghep thu muc $OutDir" -ForegroundColor Cyan
 if (Test-Path $OutDir) { Remove-Item $OutDir -Recurse -Force }
-New-Item -ItemType Directory -Force -Path (Join-Path $OutDir "node") | Out-Null
+$BoCai = Join-Path $OutDir "bo-cai"
+New-Item -ItemType Directory -Force -Path (Join-Path $BoCai "node") | Out-Null
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $zip = [IO.Compression.ZipFile]::OpenRead($cacheZip)
 try {
   $entry = $zip.Entries | Where-Object { $_.FullName -like "*/node.exe" } | Select-Object -First 1
   if (-not $entry) { Die "Trong $zipName khong co node.exe." }
-  [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, (Join-Path $OutDir "node\node.exe"), $true)
+  [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, (Join-Path $BoCai "node\node.exe"), $true)
 } finally { $zip.Dispose() }
 Ok "Da lay node\node.exe"
 
@@ -111,9 +114,9 @@ $files = [ordered]@{
 }
 foreach ($src in $files.Keys) {
   if (-not (Test-Path (Join-Path $PSScriptRoot $src))) { Die "Thieu scripts\$src trong repo." }
-  Copy-Item (Join-Path $PSScriptRoot $src) (Join-Path $OutDir $files[$src]) -Force
+  Copy-Item (Join-Path $PSScriptRoot $src) (Join-Path $BoCai $files[$src]) -Force
 }
-Write-TextFile (Join-Path $OutDir "print-bridge.bat") ([IO.File]::ReadAllText((Join-Path $PSScriptRoot "print-bridge.bat")))
+Write-TextFile (Join-Path $BoCai "print-bridge.bat") ([IO.File]::ReadAllText((Join-Path $PSScriptRoot "print-bridge.bat")))
 Ok ("Da chep " + ($files.Count + 1) + " file")
 
 # -- 3. Cua ngo cho nguoi lap ---------------------------------------------------
@@ -126,10 +129,10 @@ REM CAI-DAT.bat - Double-click de cai cau in. Dung cho MOI quan: luc cai se hoi 
 REM File nay do scripts/print-pack.ps1 sinh ra, dung sua tay.
 cd /d "%~dp0"
 REM %* de chay lai voi tham so, vd: CAI-DAT.bat -KitchenIp 192.168.1.87 -ActivationCode ABCD-EFGH
-powershell -ExecutionPolicy Bypass -File "%~dp0print-setup.ps1" -ApiBase "$AppBase" %*
+powershell -ExecutionPolicy Bypass -File "%~dp0bo-cai\print-setup.ps1" -ApiBase "$AppBase" %*
 "@
 
-Write-TextFile (Join-Path $OutDir "KIEM-TRA-MAY-IN.bat") @'
+Write-TextFile (Join-Path $BoCai "KIEM-TRA-MAY-IN.bat") @'
 @echo off
 REM KIEM-TRA-MAY-IN.bat - Double-click de do may in va in phieu thu.
 REM File nay do scripts/print-pack.ps1 sinh ra, dung sua tay.
@@ -142,7 +145,7 @@ echo.
 pause
 '@
 
-Write-TextFile (Join-Path $OutDir "GO-CAI-DAT.bat") @'
+Write-TextFile (Join-Path $BoCai "GO-CAI-DAT.bat") @'
 @echo off
 REM GO-CAI-DAT.bat - Double-click de go cau in khoi may nay (hoi xac nhan truoc khi xoa).
 REM File nay do scripts/print-pack.ps1 sinh ra, dung sua tay.
@@ -154,7 +157,10 @@ Ok "Da ghi 3 file .bat (CRLF)"
 $loRi = Get-ChildItem $OutDir -Recurse -File | Where-Object { $_.Extension -ne ".exe" } |
   Select-String -Pattern '^\s*PRINT_BRIDGE_PASSWORD=\S|^\s*SUPABASE_SERVICE_ROLE_KEY=\S|AGE-SECRET-KEY-' -List
 if ($loRi) { Die ("Bo cai chua bi mat: " + (($loRi | ForEach-Object { $_.Path }) -join ", ")) }
-if (Test-Path (Join-Path $OutDir ".env.local")) { Die "Bo cai co .env.local - khong duoc." }
+if (Get-ChildItem $OutDir -Recurse -Force -File -Filter ".env*") { Die "Bo cai co file .env - khong duoc." }
+# Ngoai cung CHI co CAI-DAT.bat + bo-cai\ - them file o ngoai la nguoi lap lai phai doan bam cai nao.
+$ngoai = @(Get-ChildItem $OutDir -Force | ForEach-Object { $_.Name } | Sort-Object)
+if (($ngoai -join ",") -ne "bo-cai,CAI-DAT.bat") { Die ("Ngoai cung bo cai chi duoc co CAI-DAT.bat + bo-cai, dang co: " + ($ngoai -join ", ")) }
 Ok "Khong co mat khau / khoa bi mat nao trong bo cai"
 
 # -- 4. Nen ---------------------------------------------------------------------

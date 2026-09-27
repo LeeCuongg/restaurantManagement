@@ -52,15 +52,20 @@ function* fileTrongZip(zip) {
 const tenFile = [];
 for (const f of fileTrongZip(buf)) {
   tenFile.push(f.name);
-  if (/^\.env/i.test(path.basename(f.name))) throw new Error(`Bộ cài có ${f.name} — không được.`);
+  if (/^\.env/i.test(path.basename(f.name.replace(/\\/g, "/")))) throw new Error(`Bộ cài có ${f.name} — không được.`);
   if (/^\s*(PRINT_BRIDGE_PASSWORD|SUPABASE_SERVICE_ROLE_KEY)=\S|AGE-SECRET-KEY-/m.test(f.text)) {
     throw new Error(`Bộ cài chứa bí mật trong ${f.name} — dừng, KHÔNG đưa lên.`);
   }
 }
-for (const can of ["CAI-DAT.bat", "print-bridge.mjs", "print-setup.ps1"]) {
-  if (!tenFile.some((t) => t === can || t.endsWith(`/${can}`) || t.endsWith(`\\${can}`))) {
-    throw new Error(`Bộ cài thiếu ${can} — đóng gói lại.`);
-  }
+// Ngoài cùng CHỈ có CAI-DAT.bat + bo-cai/ — người lắp không phải đoán bấm file nào. PowerShell 5.1 ghi tên
+// mục zip bằng "\" nên chuẩn hóa trước khi so.
+const chuan = tenFile.map((t) => t.replace(/\\/g, "/"));
+const ngoai = [...new Set(chuan.map((t) => t.split("/")[0]))].sort();
+if (ngoai.join(",") !== "CAI-DAT.bat,bo-cai") {
+  throw new Error(`Ngoài cùng bộ cài phải chỉ có CAI-DAT.bat + bo-cai, đang có: ${ngoai.join(", ")}`);
+}
+for (const can of ["bo-cai/print-bridge.mjs", "bo-cai/print-setup.ps1", "bo-cai/print-activate.ps1"]) {
+  if (!chuan.includes(can)) throw new Error(`Bộ cài thiếu ${can} — đóng gói lại.`);
 }
 
 const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
