@@ -297,7 +297,12 @@ export function TakeawayPanel({
             Đã xong
           </button>
         </div>
-        {searchSlot && <div className="ml-auto flex shrink-0 items-center">{searchSlot}</div>}
+        {/* Điện thoại: ô tìm chiếm TRỌN một hàng riêng. Ô tìm co giãn theo chỗ trống (max-sm:w-0 flex-1,
+            vốn cho thanh công cụ trên) — đặt cạnh tab mà không cho bề ngang thì nó co còn cái icon và
+            lòi ra ngoài mép phải. */}
+        {searchSlot && (
+          <div className="ml-auto flex shrink-0 items-center max-sm:ml-0 max-sm:w-full">{searchSlot}</div>
+        )}
         {!hideClose && (
           <button
             type="button"
@@ -337,7 +342,13 @@ export function TakeawayPanel({
           một khung cuộn thì quán đông (chục đơn chờ) là ô gõ đơn bị đẩy khuất, nhân viên phải
           cuộn ngược lên mỗi lần có khách mới. Màn hẹp (<1280px) mới xếp dọc. */}
       <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
-        <div className="max-h-[45%] shrink-0 overflow-y-auto border-b border-hairline px-lg py-md xl:max-h-none xl:w-[27rem] xl:border-b-0 xl:border-r">
+        {/* Tab "Đã xong" trên màn xếp dọc (< 1280px): ẩn ô gõ đơn — nó ăn gần nửa chiều cao, lịch sử chỉ
+            còn một khe ở đáy. Tab đó để tra đơn cũ; màn rộng vẫn hai cột như cũ. */}
+        <div
+          className={`max-h-[45%] shrink-0 overflow-y-auto border-b border-hairline px-lg py-md xl:max-h-none xl:w-[27rem] xl:border-b-0 xl:border-r${
+            tab === "history" ? " max-xl:hidden" : ""
+          }`}
+        >
         {/* ---- Đơn mới (builder) ---- */}
         <div
           className={
