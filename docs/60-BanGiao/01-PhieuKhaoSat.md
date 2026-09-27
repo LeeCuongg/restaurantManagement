@@ -33,7 +33,7 @@
 | Máy in hóa đơn ở quầy | | |
 | Máy in ở bếp | | Có cổng LAN (dây mạng)? |
 | Màn hình / tablet ở bếp | | |
-| Điện thoại / iPad cho phục vụ | | Bao nhiêu máy? |
+| Điện thoại / iPad cho phục vụ | | Bao nhiêu máy? Có muốn **in hóa đơn từ máy này** không? (Có → quán cần Cầu in) |
 
 ## 5. Cách làm hiện tại
 

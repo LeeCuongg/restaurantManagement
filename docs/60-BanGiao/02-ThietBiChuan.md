@@ -9,14 +9,19 @@
 | Quầy | Máy in nhiệt **80 mm** (hóa đơn) — cắm USB vào máy quầy, có driver của hãng | Có | Loại Xprinter 80 mm đang chạy thật ở qt-food. Driver "Generic / Text Only" in sai — phải dùng driver hãng |
 | Bếp | Máy in nhiệt **80 mm có cổng LAN** | Nếu muốn phiếu tự in ra bếp | Cắm dây mạng vào **cùng router** với máy quầy |
 | Bếp | Tablet / màn hình (tùy chọn) | Không | Mở màn bếp (KDS) — **chỉ để xem**, bếp không bấm được gì ngoài "Báo hết món" |
-| Phục vụ | Điện thoại (Android / iPhone) | Không | Gọi món tại bàn. **Không in** từ điện thoại |
+| Phục vụ | Điện thoại (Android / iPhone) hoặc iPad / tablet | Không | Dùng POS đầy đủ (gọi món, tính tiền, thu tiền…) — màn hình tự co. **In hóa đơn** từ máy này: giấy ra ở **máy in quầy**, chỉ khi quán dùng **Cầu in** |
 | Mạng | Router + wifi phủ tới khu bàn xa nhất | Có | Không dùng wifi khách cho máy quầy |
 
 ## Chọn cách in (quyết định lúc cài, đổi được sau ở "Cài đặt")
 
 | Quán có… | Chọn "Cách in phiếu" | Cần cài gì |
 |---|---|---|
-| Chỉ in ở quầy (thu ngân tự mang phiếu vào bếp) | **Trình duyệt** | Không cài gì — chỉ tạo lối tắt Chrome (`03-CaiDat.md` §5a) |
+| Chỉ in ở máy quầy (thu ngân tự mang phiếu vào bếp), phục vụ **không** in từ điện thoại | **Trình duyệt** | Không cài gì — chỉ tạo lối tắt Chrome (`03-CaiDat.md` §5a) |
 | Máy in bếp có LAN, muốn phiếu **tự ra bếp** | **Cầu in** | Bộ cài cầu in trên máy quầy (`03-CaiDat.md` §5b) |
+| Phục vụ muốn **in hóa đơn / phiếu khách từ điện thoại, tablet** | **Cầu in** | Như trên; lúc cài chọn **máy in quầy** (câu 2 của bộ cài) |
 
-Máy quầy chạy cầu in phải **cắm điện, không tắt qua đêm cũng được** — cầu in tự chạy khi bật máy.
+Quán chọn "Trình duyệt" thì điện thoại/tablet vẫn gọi món, thu tiền được, nhưng bấm in sẽ báo không in được —
+in ở máy quầy.
+
+Quán dùng cầu in: máy quầy chạy cầu in phải **cắm điện và BẬT suốt giờ bán** (không cần tắt qua đêm) — cầu in
+tự chạy khi bật máy. Máy quầy tắt thì bếp không tự ra phiếu, **và điện thoại/tablet không in được hóa đơn**.
