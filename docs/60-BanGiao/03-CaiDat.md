@@ -47,12 +47,14 @@ email + PIN của họ. Nhân viên nghỉ việc → **Tắt** (giữ lịch s�
 
 ### 5b. Quán chọn "Cầu in"
 
-1. Trên **chính laptop quầy**: chủ quán đăng nhập admin → **Máy in** → **Tải bộ cài cầu in** → giải nén
-   `cau-in.zip` vào Desktop (bộ cài giống nhau cho mọi quán, không có mật khẩu).
-2. Cùng màn đó: **Tạo mã kích hoạt** (chỉ tài khoản chủ quán). Mã dùng một lần, sống 30 phút — tạo khi đã
-   ngồi trước máy. Quản trị hệ thống vẫn tạo hộ được ở `/super` → quán → "Mã cài cầu in".
-   **Cài bằng mã mới thì cầu in đang chạy ở máy khác ngừng in** — chỉ tạo mã khi lắp mới / thay laptop.
-3. Thư mục giải nén chỉ có `CAI-DAT.bat` và thư mục `bo-cai` → double-click `CAI-DAT.bat` → Yes → gõ mã → làm
+1. Trên **chính laptop quầy**: **chủ quán** đăng nhập admin → **Máy in** → **Tải bộ cài cầu in**. File tải về
+   tên `cau-in-XXXXXXXX.zip` — 8 ký tự đó là **mã kích hoạt kèm sẵn** (dùng một lần, trong 30 phút).
+   **Cài bằng bộ cài mới trên máy khác thì cầu in đang chạy ở máy cũ ngừng in** — chỉ tải khi lắp mới / thay laptop.
+2. Chuột phải file → **Extract All** → Extract (giữ nguyên tên thư mục — bộ cài đọc mã từ đó; bị đổi tên thì
+   nó tìm file zip trong Downloads, vẫn không thấy mới hỏi mã).
+   Tài khoản quản lý cũng tải được nhưng **không kèm mã** — lúc cài sẽ hỏi. Quản trị hệ thống vẫn tạo mã hộ ở
+   `/super` → quán → "Mã cài cầu in".
+3. Thư mục giải nén chỉ có `CAI-DAT.bat` và thư mục `bo-cai` → double-click `CAI-DAT.bat` → Yes → làm
    theo màn cài (xuống bếp xem giấy thử ra ở đâu, chọn máy in quầy). Hướng dẫn đầy đủ + công cụ sửa lỗi: `bo-cai\HUONG-DAN.txt`,
    sau khi cài có bản sao ở `C:\cau-in`.
 4. Làm đủ **4 phép thử** in ở cuối màn cài. Chủ quán mở **Máy in** trong admin: "Cầu in bếp — Đang kết nối",

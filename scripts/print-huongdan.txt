@@ -5,10 +5,9 @@
 
 CHUẨN BỊ — làm đủ các việc này rồi mới cài:
 
-  [ ] Lấy MÃ KÍCH HOẠT (8 ký tự, vd ABCD-EFGH): chủ quán đăng nhập trang
-      quản lý → Máy in → bấm "Tạo mã kích hoạt".
-      Mã dùng MỘT lần, hết hạn sau 30 phút — tạo lúc đã ngồi trước laptop.
-      (Máy đã cài cầu in trước đây thì không cần mã, bộ cài tự dùng lại.)
+  [ ] Bộ cài do CHỦ QUÁN tải ở trang quản lý → Máy in → "Tải bộ cài cầu in"
+      (tải ngay trên laptop này). Bộ cài đó KÈM SẴN MÃ KÍCH HOẠT, không phải
+      gõ — nhưng chỉ dùng được trong 30 phút: tải lúc đã ngồi trước laptop.
   [ ] Laptop của quán CẮM ĐIỆN (không chạy pin) và nối vào Wi-Fi/mạng
       của quán — không phải Wi-Fi khách, không bật VPN.
   [ ] Máy in BẾP cắm dây mạng (LAN) vào cùng router với laptop, đã bật nguồn.
@@ -20,12 +19,15 @@ CHUẨN BỊ — làm đủ các việc này rồi mới cài:
 
 CÀI ĐẶT — một lần bấm:
 
-  1. Giải nén cau-in.zip vào Desktop của laptop quán.
+  1. Chuột phải file vừa tải (cau-in-XXXXXXXX.zip) → "Extract All" (Giải nén
+     tất cả) → Extract. ĐỪNG đổi tên thư mục giải nén — mã nằm trong tên đó.
   2. Trong thư mục vừa giải nén chỉ có  CAI-DAT.bat  và thư mục  bo-cai
      (không cần mở). Double-click  CAI-DAT.bat
   3. Windows hỏi "Do you want to allow..." → bấm YES.
-  4. Gõ MÃ KÍCH HOẠT khi được hỏi (chữ hoa/thường, có gạch hay không đều được).
-     Sai 3 lần → xin mã mới rồi chạy lại CAI-DAT.bat.
+  4. Màn cài hiện "Dung ma kich hoat di kem bo cai" là xong phần mã.
+     Nếu nó HỎI mã (bộ cài quá 30 phút, hoặc thư mục bị đổi tên):
+     chủ quán tải lại bộ cài rồi chạy lại CAI-DAT.bat của bộ mới.
+     (Máy đã cài cầu in trước đây thì bộ cài tự dùng lại, không cần mã.)
 
   Sau đó chỉ phải trả lời 2 câu:
 
@@ -103,7 +105,8 @@ HỎNG THÌ LÀM GÌ:
      → Chạy lại  CAI-DAT.bat, nó sẽ dò lại từ đầu.
 
   Cài lại báo "Can MA KICH HOAT" dù máy đã cài trước đây:
-     → Tài khoản cầu in cũ đã bị thu hồi hoặc thay. Tạo mã mới rồi gõ vào.
+     → Tài khoản cầu in cũ đã bị thu hồi hoặc thay. Chủ quán tải lại bộ cài
+       ở trang quản lý → Máy in, chạy CAI-DAT.bat của bộ mới.
 
 
 GỠ CẦU IN KHỎI MÁY (quán ngừng dùng, đổi sang máy khác):

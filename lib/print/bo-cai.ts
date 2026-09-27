@@ -21,11 +21,11 @@ export async function thongTinBoCai(admin: SupabaseClient): Promise<ThongTinBoCa
   return { kichThuoc, capNhatLuc: f.updated_at ?? f.created_at ?? "" };
 }
 
-/** Link tải ký hạn 60 giây (trình duyệt lưu thành `cau-in.zip`) — `null` nếu chưa có bộ cài. */
-export async function linkTaiBoCai(admin: SupabaseClient): Promise<string | null> {
+/** Link tải ký hạn 60 giây, trình duyệt lưu thành `tenLuu` — `null` nếu chưa có bộ cài. */
+export async function linkTaiBoCai(admin: SupabaseClient, tenLuu: string = BO_CAI_FILE): Promise<string | null> {
   const { data, error } = await admin.storage
     .from(BO_CAI_BUCKET)
-    .createSignedUrl(BO_CAI_FILE, HAN_LINK_GIAY, { download: BO_CAI_FILE });
+    .createSignedUrl(BO_CAI_FILE, HAN_LINK_GIAY, { download: tenLuu });
   if (error || !data?.signedUrl) return null;
   return data.signedUrl;
 }

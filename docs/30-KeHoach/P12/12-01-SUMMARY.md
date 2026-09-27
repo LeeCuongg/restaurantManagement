@@ -167,3 +167,27 @@ Hệ quả, đã ghi vào `60-BanGiao/03-CaiDat.md`: tablet **ngang** không c�
 (laptop quầy + điện thoại) không gặp. Hết hẳn khi làm đủ QD-020 D3 (quán cầu in: mọi máy gửi hóa đơn qua cầu in) —
 việc đó chờ in thử máy thật ở qt-food.
 
+## Bổ sung 27/09 (5) — bộ cài kèm sẵn mã, cài không phải gõ
+
+Chủ dự án: "bấm tạo mã kích hoạt xong đó nút tải bộ cài … người dùng chỉ cần cài, không nhập mã trong lúc cài".
+
+- Không sửa được nội dung zip lúc tải (33 MB trên Storage; hàm Vercel ~4,5 MB) ⇒ **mã nằm trong tên file**:
+  `createSignedUrl(…, { download: "cau-in-<MÃ>.zip" })`. Windows "Extract All" tạo thư mục cùng tên.
+- Gộp hai nút thành một: chủ quán bấm **Tải bộ cài** = tạo mã + tải (route đổi sang **POST**, vì mỗi lần bấm phát
+  một mã; chặn Origin lạ). Bỏ nút "Tạo mã kích hoạt" + server action; logic quyền chuyển sang
+  `lib/print/ma-chu-quan.ts` (unit test giữ nguyên các ca).
+- `print-activate.ps1 -TimMaTu`: tìm mã ở tên thư mục bộ cài → zip `cau-in-<MÃ>.zip` mới nhất (≤ 35 phút) trong
+  Downloads → không có thì hỏi như cũ. Mã kèm hết hạn → nói rõ "tải lại bộ cài". Máy đã có tài khoản cầu in
+  chạy được → vẫn dùng lại, **không** tiêu mã, không xoay mật khẩu.
+- Lỗi route → trang chỉ qua **mã cố định** `?loi=gioi-han|…` (bản đầu đưa nguyên câu lên URL — link lạ chèn được
+  chữ lên trang quản trị; sửa trước khi commit).
+
+```
+print-activate (URL chết, không đụng mã thật): tên thư mục cau-in-K7M2P9QX → "Dung ma … K7M2-P9QX";
+  thư mục đổi tên + zip cau-in-ABCD2345.zip trong Downloads → "ABCD-2345"; không có → tới bước hỏi mã
+unit taoMaChoChuQuan 9/9 · unit 673 · tsc · lint · build
+E2E bo-cai 7/7: tải → cau-in-<MÃ>.zip, mã có trong DB đúng quán, chưa dùng, hạn 30 phút · 401 / 401 / 403 · Origin lạ 403
+  · ?loi= chữ lạ không hiện, mã cố định hiện đúng câu · anon tải thẳng bucket bị chặn
+```
+**Chưa kiểm:** chạy trọn `CAI-DAT.bat` với mã kèm trên máy thật (xin quyền Admin + đăng ký tác vụ nền).
+

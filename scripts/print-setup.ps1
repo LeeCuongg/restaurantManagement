@@ -168,12 +168,13 @@ if (-not $ActivationCode -and (Test-Path $envFile) -and (Test-BridgeAuth)) {
 if (-not $daKichHoat) {
   if (-not $ApiBase) { Die "Thieu -ApiBase (dia chi app). Chay bang CAI-DAT.bat trong bo cai." }
   Write-Host ""
-  Write-Host "      Can MA KICH HOAT: chu quan dang nhap Admin -> May in -> 'Tao ma kich hoat'."
+  Write-Host "      Kich hoat cau in (bo cai chu quan tai o Admin -> May in da kem ma, khong phai go)."
   $activateArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", (Join-Path $InstallDir "print-activate.ps1"),
     "-ApiBase", $ApiBase, "-EnvFile", $envFile)
   if ($ActivationCode) { $activateArgs += @("-Code", $ActivationCode) }
+  else { $activateArgs += @("-TimMaTu", $SourceDir) }
   & powershell @activateArgs
-  if ($LASTEXITCODE -ne 0) { Die "Chua kich hoat duoc cau in. Xin ma moi roi chay lai CAI-DAT.bat." }
+  if ($LASTEXITCODE -ne 0) { Die "Chua kich hoat duoc cau in. Chu quan tai lai bo cai o Admin -> May in roi chay lai CAI-DAT.bat." }
   if (-not (Test-BridgeAuth)) { Die "Da kich hoat nhung cau in khong dang nhap duoc. Bao ky thuat." }
   Ok "Cau in dang nhap duoc"
 }

@@ -10,6 +10,11 @@
 # Chay:
 #   powershell -ExecutionPolicy Bypass -File print-activate.ps1 -ApiBase https://ten-mien -EnvFile C:\cau-in\.env.local
 #   ... -Code ABCD-EFGH      (bo qua thi hoi)
+#   ... -TimMaTu <thu muc bo cai>   tu tim ma DI KEM bo cai (PRINT-17) truoc khi hoi
+#
+# Ma di kem: chu quan tai bo cai o Admin -> May in -> file ten `cau-in-K7M2P9QX.zip`; Windows "Extract All"
+# tao thu muc cung ten. Tim theo thu tu: ten thu muc bo cai -> zip cau-in-XXXXXXXX moi nhat (<= 35 phut) trong
+# Downloads. Khong thay / ma het han -> hoi go tay nhu cu.
 #
 # Ma thoat: 0 = da ghi .env.local; 1 = khong kich hoat duoc.
 # CHI dung ky tu ASCII trong file nay: PowerShell 5.1 doc .ps1 UTF-8 khong BOM theo bang ma ANSI.
@@ -18,6 +23,7 @@ param(
   [Parameter(Mandatory = $true)][string]$ApiBase,
   [Parameter(Mandatory = $true)][string]$EnvFile,
   [string]$Code,
+  [string]$TimMaTu,
   [int]$Chars = 48
 )
 
@@ -29,9 +35,32 @@ $ErrorActionPreference = "Stop"
 $url = $ApiBase.TrimEnd("/") + "/api/bridge/activate"
 $kq = $null
 
+# Bang chu cua ma (lib/print/activation.ts CODE_ALPHABET): A-Z bo I, L, O + 2-9.
+$MauMa = 'cau-in-([A-HJKMNP-Z2-9]{8})'
+function Find-MaDiKem([string]$thuMuc) {
+  if ($thuMuc -and ($thuMuc -cmatch $MauMa)) { return $Matches[1] }
+  $dl = $null
+  try { $dl = (New-Object -ComObject Shell.Application).NameSpace("shell:Downloads").Self.Path } catch { }
+  if (-not $dl) { $dl = Join-Path $env:USERPROFILE "Downloads" }
+  $zip = Get-ChildItem -Path $dl -Filter "cau-in-*.zip" -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -cmatch $MauMa -and $_.LastWriteTime -gt (Get-Date).AddMinutes(-35) } |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if ($zip -and ($zip.Name -cmatch $MauMa)) { return $Matches[1] }
+  return $null
+}
+
+$diKem = $false
+if (-not $Code -and $TimMaTu) {
+  $Code = Find-MaDiKem $TimMaTu
+  if ($Code) {
+    $diKem = $true
+    Write-Host ("      Dung ma kich hoat di kem bo cai: " + $Code.Substring(0, 4) + "-" + $Code.Substring(4)) -ForegroundColor Green
+  }
+}
+
 for ($lan = 1; $lan -le 3 -and -not $kq; $lan++) {
   if (-not $Code) {
-    $Code = (Read-Host "      Nhap MA KICH HOAT (8 ky tu, vd ABCD-EFGH)").Trim()
+    $Code = ([string](Read-Host "      Nhap MA KICH HOAT (8 ky tu, vd ABCD-EFGH)")).Trim()
   }
   try {
     $body = @{ code = $Code } | ConvertTo-Json -Compress
@@ -40,10 +69,15 @@ for ($lan = 1; $lan -le 3 -and -not $kq; $lan++) {
     $status = 0
     if ($_.Exception.Response) { $status = [int]$_.Exception.Response.StatusCode }
     # Thong bao ASCII theo ma trang thai: chu co dau tu server hien sai tren console PowerShell 5.1.
-    if ($status -eq 400) { Write-Host "      ! Ma khong hop le hoac da het han (ma dung mot lan, song 30 phut)." -ForegroundColor Yellow }
+    if ($status -eq 400 -and $diKem) {
+      Write-Host "      ! Ma di kem bo cai da het han (30 phut) hoac da dung." -ForegroundColor Yellow
+      Write-Host "        Chu quan tai lai bo cai o Admin -> May in roi chay lai CAI-DAT.bat - hoac go ma moi duoi day." -ForegroundColor Yellow
+    }
+    elseif ($status -eq 400) { Write-Host "      ! Ma khong hop le hoac da het han (ma dung mot lan, song 30 phut)." -ForegroundColor Yellow }
     elseif ($status -eq 429) { Write-Host "      ! Nhap sai qua nhieu lan. Doi 10 phut roi thu lai." -ForegroundColor Yellow; break }
     else { Write-Host ("      ! Khong ket noi duoc may chu (" + $_.Exception.Message + "). Kiem tra mang Internet.") -ForegroundColor Yellow }
     $Code = $null
+    $diKem = $false
     $kq = $null
   }
 }

@@ -7,7 +7,7 @@ import { TuLamMoi } from "@/components/admin/TuLamMoi";
 import { buttonVariants } from "@/components/ui/button";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { thongTinBoCai } from "@/lib/print/bo-cai";
-import { MaKichHoatCauIn } from "@/components/admin/MaKichHoatCauIn";
+import { CAU_LOI } from "@/lib/print/ma-chu-quan";
 import { trangThaiMayIn, type NhipTim } from "@/lib/print/cau-in";
 import { demPhieuHomNay } from "@/lib/print/cau-in-db";
 import { resolveRange } from "@/lib/billing/report-range";
@@ -64,8 +64,18 @@ function So({ nhan, so, xau = false }: { nhan: string; so: number; xau?: boolean
   );
 }
 
-export default async function PrintersPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function PrintersPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ loi?: string }>;
+}) {
   const { slug } = await params;
+  // Lỗi do route tải bộ cài gửi về — URL chỉ mang MÃ lỗi; câu hiển thị tra từ bảng cố định, mã lạ bỏ qua
+  // (không để link lạ chèn câu tùy ý lên trang quản trị).
+  const maLoi = (await searchParams).loi;
+  const loi = maLoi && Object.hasOwn(CAU_LOI, maLoi) ? CAU_LOI[maLoi as keyof typeof CAU_LOI] : null;
 
   const session = await getSessionMembership(slug);
   if (!session) redirect(`/r/${slug}/admin/login`);
@@ -204,24 +214,37 @@ export default async function PrintersPage({ params }: { params: Promise<{ slug:
       <Card className="mt-lg">
         <CardTitle>Cài cầu in trên laptop quầy</CardTitle>
         <ol className="mt-md list-decimal space-y-xs pl-lg text-sm text-slate">
-          <li>Mở trang này <span className="font-medium text-ink">trên chính laptop quầy</span> → tải bộ cài → giải nén vào Desktop.</li>
-          <li>Bấm <span className="font-medium text-ink">Tạo mã kích hoạt</span> bên dưới (dùng một lần, hết hạn sau 30 phút).</li>
-          <li>Double-click <span className="font-medium text-ink">CAI-DAT.bat</span> (file duy nhất ở ngoài) → Yes → gõ mã → trả lời 2 câu hỏi trên màn hình.</li>
+          <li>Mở trang này <span className="font-medium text-ink">trên chính laptop quầy</span> → bấm tải bộ cài.</li>
+          <li>Chuột phải file vừa tải → <span className="font-medium text-ink">Extract All</span> (Giải nén tất cả) → Extract.</li>
+          <li>Double-click <span className="font-medium text-ink">CAI-DAT.bat</span> → Yes → trả lời 2 câu hỏi trên màn hình.</li>
         </ol>
+        {session.role === "owner" ? (
+          <p className="mt-sm text-sm text-slate">
+            Bộ cài <span className="font-medium text-ink">kèm sẵn mã kích hoạt</span> — không phải gõ mã. Cài trong vòng
+            30 phút; quá hạn thì tải lại. Cài bằng bộ cài mới trên máy khác thì cầu in đang chạy ở máy cũ{" "}
+            <span className="font-medium text-ink">ngừng in</span>.
+          </p>
+        ) : (
+          <p className="mt-sm text-sm text-slate">
+            Tài khoản quản lý: bộ cài không kèm mã, lúc cài sẽ hỏi mã. Nhờ chủ quán tải để khỏi phải gõ.
+          </p>
+        )}
+        {loi && (
+          <p role="alert" className="mt-sm text-sm text-status-late">
+            {loi}
+          </p>
+        )}
         <div className="mt-md flex flex-wrap items-center gap-md">
           {boCai ? (
-            <>
-              <a href={`/r/${slug}/admin/printers/bo-cai`} download className={buttonVariants({ variant: "primary" })}>
+            <form method="post" action={`/r/${slug}/admin/printers/bo-cai`}>
+              <button type="submit" className={buttonVariants({ variant: "primary" })}>
                 Tải bộ cài cầu in ({Math.max(1, Math.round(boCai.kichThuoc / 1048576))} MB)
-              </a>
-              <span className="text-sm text-steel">Đóng gói lúc {gioNgayNamVn(boCai.capNhatLuc)}</span>
-            </>
+              </button>
+            </form>
           ) : (
             <p className="text-sm text-slate">Chưa có bộ cài để tải — liên hệ quản trị hệ thống.</p>
           )}
-        </div>
-        <div className="mt-lg border-t border-hairline-soft pt-md">
-          <MaKichHoatCauIn slug={slug} laChuQuan={session.role === "owner"} />
+          {boCai && <span className="text-sm text-steel">Đóng gói lúc {gioNgayNamVn(boCai.capNhatLuc)}</span>}
         </div>
       </Card>
 
