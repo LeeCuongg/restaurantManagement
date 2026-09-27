@@ -64,7 +64,8 @@ function OrderLines({
             {it.note && <p className="text-xs italic text-stone">“{it.note}”</p>}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-xs">
-            <span className="text-sm tabular-nums text-steel">
+            {/* Tiền là số nhân viên đọc để báo khách — chữ đậm màu chính, không xám. */}
+            <span className="text-sm font-medium tabular-nums text-ink">
               {formatVnd(it.unitPrice * it.qty)}
             </span>
             <button
@@ -395,7 +396,8 @@ export function TakeawayPanel({
                 const names = optionNames(it, l.optionIds);
                 return (
                   <li key={l.lineId} className="border-b border-hairline-soft pb-sm last:border-b-0">
-                    <div className="flex items-start justify-between gap-sm">
+                    {/* items-center: tên món nằm giữa dòng với nút +/−, không dính mép trên. */}
+                    <div className="flex items-center justify-between gap-sm">
                       <div className="min-w-0">
                         {/* Tên món to hơn phần còn lại: nhân viên liếc qua là soát được món đã gõ. */}
                         <p className="text-base font-medium text-ink">{it.name}</p>
@@ -591,7 +593,8 @@ export function TakeawayPanel({
                     {/* Số lượt gọi thêm là span ANH EM của tổng, không lồng bên trong: lồng vào
                         thì mọi thứ đọc `innerText` của tổng (kể cả test) đều dính chữ vào số. */}
                     <span className="flex min-w-0 flex-col">
-                      <span className="text-sm font-semibold tabular-nums text-ink">
+                      <span className="text-xs text-slate">Tổng tiền</span>
+                      <span className="text-base font-semibold tabular-nums text-ink">
                         {formatVnd(g.total)}
                       </span>
                       {g.children.length > 0 && (
