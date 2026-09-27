@@ -83,7 +83,11 @@ async function tab(page: Page, ten: "Bàn" | "Thực đơn" | "Đơn") {
 async function themMon(page: Page, thuTu = 0) {
   await page.getByRole("button", { name: /^Thêm / }).nth(thuTu).click();
   const themVaoGio = page.getByRole("button", { name: /Thêm vào giỏ/ });
-  const daVaoGio = page.getByRole("navigation", { name: "Chuyển màn POS" }).getByLabel(/món chưa gửi/);
+  // Bàn: badge "món chưa gửi" ở tab Đơn. Đơn không bàn: thanh giỏ ở đáy thực đơn ("Giỏ hàng: N món").
+  const daVaoGio = page
+    .getByRole("navigation", { name: "Chuyển màn POS" })
+    .getByLabel(/món chưa gửi/)
+    .or(page.getByRole("button", { name: /^Giỏ hàng: [1-9]/ }));
   await expect(themVaoGio.or(daVaoGio).first()).toBeVisible({ timeout: 10_000 });
   if (await themVaoGio.isVisible()) {
     await khongTran(page, "hộp tùy chọn món");
@@ -167,9 +171,17 @@ test("6: bán mang về → tạo đơn → thu tiền & hoàn tất", async ({ 
   await tab(page, "Bàn");
   await page.getByRole("button", { name: /^Bán mang về/ }).click();
   await themMon(page, 0);
+  // Giỏ đơn không bàn nằm ở thanh giỏ tab Thực đơn — tạo đơn ngay tại đó, không sang tab Đơn.
+  await page.getByRole("button", { name: /^Giỏ hàng: [1-9]/ }).click();
+  const gio = page.getByRole("dialog", { name: "Giỏ hàng" });
+  await expect(gio).toBeVisible();
+  await khongTran(page, "ngăn Giỏ hàng");
+  await gio.getByRole("button", { name: /^Tạo đơn mang về/ }).click();
+  await expect(gio).toBeHidden({ timeout: 15_000 });
   await tab(page, "Đơn");
   await khongTran(page, "tab Đơn mang về");
-  await page.getByRole("button", { name: /^Tạo đơn mang về/ }).click();
+  // Tab Đơn giờ chỉ còn danh sách đơn — khung "Đơn mới" không còn ở đây trên điện thoại.
+  await expect(page.getByText("Đơn mới", { exact: true })).toBeHidden();
   const hoanTat = page.getByRole("button", { name: /Thu tiền & hoàn tất/ }).first();
   await expect(hoanTat).toBeVisible({ timeout: 15_000 });
   await hoanTat.click();

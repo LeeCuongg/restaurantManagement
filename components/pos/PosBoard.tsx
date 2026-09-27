@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useResumeRefresh } from "@/components/pos/use-resume-refresh";
-import { Bell, BellRing, Check, CalendarClock, Loader2, Printer, ShoppingBag } from "lucide-react";
+import { Bell, BellRing, Check, CalendarClock, ChevronUp, Loader2, Printer, ShoppingBag, ShoppingCart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { CustomerMenu, CustomerMenuItem } from "@/lib/orders/customer-menu";
@@ -46,7 +46,7 @@ import { gioVn } from "@/lib/time/vn";
 import { CauInBanner, ThietBiInChip, useCauIn } from "@/components/pos/CauInBanner";
 import { PhoneAlertBar } from "@/components/pos/PhoneAlertBar";
 import { TablePickerDrawer } from "@/components/pos/TablePickerDrawer";
-import { conLaiSauKhiGui } from "@/lib/orders/cart";
+import { conLaiSauKhiGui, formatVnd, unitPrice } from "@/lib/orders/cart";
 import { MobileTabBar, type MobileTab } from "@/components/pos/MobileTabBar";
 
 const STATUS_VN: Record<string, string> = {
@@ -99,6 +99,8 @@ export function PosBoard({
   const [mobileTab, setMobileTab] = useState<MobileTab>(counter ? "mon" : "ban");
   const [pendingOpen, setPendingOpen] = useState(false);
   const [takeawayMode, setTakeawayMode] = useState(counter);
+  /** Điện thoại: ngăn "Giỏ hàng" của đơn không bàn (mở từ thanh giỏ ở tab Thực đơn). */
+  const [gioMo, setGioMo] = useState(false);
   /**
    * Tab của panel đơn không bàn. Giữ Ở ĐÂY (không phải trong TakeawayPanel) vì ô tìm nằm trên
    * thanh này: tab quyết định ô tìm đang tra hàng đợi hay tra lịch sử.
@@ -613,6 +615,12 @@ export function PosBoard({
     </>
   );
 
+  const soMonGio = cart.reduce((n, l) => n + l.qty, 0);
+  const tongGio = cart.reduce((t, l) => {
+    const it = itemMap.get(l.itemId);
+    return it ? t + unitPrice(it, l.optionIds) * l.qty : t;
+  }, 0);
+
   const onlineLink = (
     <Link
       href={`/r/${slug}/pos/online`}
@@ -858,14 +866,46 @@ export function PosBoard({
           </aside>
         )}
 
-        <section className={cn("min-h-0 min-w-0 flex-1", mobileTab !== "mon" && "max-sm:hidden")}>
-          <MenuPanel
-            slug={slug}
-            menu={menu}
-            portions={portions}
-            canAdd={takeawayMode || (!!selectedTable && !splitEvenlyNow)}
-            onAddLine={addLine}
-          />
+        <section className={cn("flex min-h-0 min-w-0 flex-1 flex-col", mobileTab !== "mon" && "max-sm:hidden")}>
+          <div className="min-h-0 flex-1">
+            <MenuPanel
+              slug={slug}
+              menu={menu}
+              portions={portions}
+              canAdd={takeawayMode || (!!selectedTable && !splitEvenlyNow)}
+              onAddLine={addLine}
+            />
+          </div>
+          {/* Điện thoại, đơn không bàn: thanh giỏ LUÔN ở đáy thực đơn — xem/sửa món đã chọn và tạo đơn ngay
+              tại đây, không phải sang tab Đơn (chủ dự án: tốn thời gian, tab Đơn chật vì có cả khung gõ đơn). */}
+          {takeawayMode && (
+            <button
+              type="button"
+              onClick={() => setGioMo(true)}
+              aria-label={`Giỏ hàng: ${soMonGio} món`}
+              className="flex min-h-[52px] shrink-0 items-center gap-sm border-t border-hairline-soft bg-canvas px-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:hidden"
+            >
+              <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-cream">
+                <ShoppingCart className="h-5 w-5 text-primary" aria-hidden />
+                {soMonGio > 0 && (
+                  <span className="absolute -right-1 -top-1 grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1 text-xs font-bold text-primary-fg">
+                    {soMonGio}
+                  </span>
+                )}
+              </span>
+              <span className="min-w-0 flex-1 text-sm">
+                {soMonGio > 0 ? (
+                  <span className="font-medium text-ink">Giỏ hàng · {soMonGio} món</span>
+                ) : (
+                  <span className="text-steel">Giỏ trống — chạm món để thêm</span>
+                )}
+              </span>
+              {soMonGio > 0 && (
+                <span className="shrink-0 text-base font-semibold tabular-nums text-ink">{formatVnd(tongGio)}</span>
+              )}
+              <ChevronUp className="h-5 w-5 shrink-0 text-steel" aria-hidden />
+            </button>
+          )}
         </section>
 
         {/* Panel đơn không bàn cần chỗ cho HAI cột (gõ đơn + hàng đợi) nên rộng hơn panel bàn;
@@ -901,6 +941,9 @@ export function PosBoard({
               tab={takeawayTab}
               onTabChange={changeTakeawayTab}
               searchQuery={query}
+              phoneCartOpen={gioMo}
+              onPhoneCartOpenChange={setGioMo}
+              onGoiThem={() => setMobileTab("mon")}
             />
           ) : selectedTable ? (
             <OrderPanel
@@ -931,7 +974,8 @@ export function PosBoard({
         </aside>
       </div>
 
-      <MobileTabBar tab={mobileTab} onTab={setMobileTab} soMonChuaGui={cart.length} counter={counter} />
+      {/* Đơn không bàn: giỏ nằm ở thanh giỏ tab Thực đơn → badge tab Đơn sẽ chỉ nhầm chỗ. */}
+      <MobileTabBar tab={mobileTab} onTab={setMobileTab} soMonChuaGui={takeawayMode ? 0 : cart.length} counter={counter} />
 
       <PendingOrdersDrawer
         slug={slug}
