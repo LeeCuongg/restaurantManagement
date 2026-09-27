@@ -189,11 +189,16 @@ test("7: gọi nhân viên → chạm để xử lý", async ({ page }) => {
     .single();
   try {
     await vaoPos(page);
-    const bang = page.getByText(/Bàn đang gọi/);
-    await expect(bang).toBeVisible();
-    await khongTran(page, "băng gọi nhân viên");
-    await page.getByRole("button", { name: /Bàn V1/ }).filter({ hasText: "e2e-dien-thoai" }).click();
-    await expect(bang).toHaveCount(0, { timeout: 15_000 });
+    // Điện thoại: băng "Bàn đang gọi" gọn thành nút "Bàn gọi N" → mở danh sách từ đáy màn.
+    const nutGoi = page.getByRole("button", { name: /^Bàn gọi \d/ });
+    await expect(nutGoi).toBeVisible();
+    await khongTran(page, "hàng nút thông báo");
+    await nutGoi.click();
+    const cuaToi = page.getByRole("button", { name: /Bàn V1/ }).filter({ hasText: "e2e-dien-thoai" });
+    await khongTran(page, "danh sách bàn đang gọi");
+    await cuaToi.click();
+    // Quán demo có thể còn lượt gọi khác (DB dùng chung) — chỉ chắc lượt CỦA TEST biến mất.
+    await expect(cuaToi).toHaveCount(0, { timeout: 15_000 });
   } finally {
     await admin.from("staff_calls").delete().eq("id", goi!.id);
   }
@@ -363,7 +368,7 @@ test("7: duyệt đơn QR của khách + xác nhận đặt bàn", async ({ page
 
   try {
     await vaoPos(page);
-    await page.getByRole("button", { name: /Order chờ duyệt/ }).click();
+    await page.getByRole("button", { name: /^Chờ duyệt \d/ }).click();
     const nganKeo = page.getByRole("dialog").filter({ hasText: /Chờ duyệt/ });
     // Ngăn kéo trượt từ phải vào — đo lúc đang trượt là báo động giả. Chờ nó đứng yên đã.
     await expect
@@ -393,6 +398,6 @@ test("8: trang Đơn online vừa màn hình điện thoại", async ({ page }) 
   await page.goto(`/r/${SLUG}/pos/online`, { waitUntil: "networkidle" });
   await expect(page.getByRole("heading", { name: "Đơn online" })).toBeVisible({ timeout: 30_000 });
   await khongTran(page, "trang Đơn online");
-  await page.getByRole("link", { name: /Về sơ đồ bàn/ }).click();
+  await page.getByRole("link", { name: /Về màn POS/ }).click();
   await expect(page.getByRole("navigation", { name: "Chuyển màn POS" })).toBeVisible({ timeout: 30_000 });
 });

@@ -44,6 +44,7 @@ import type { MergeCandidate } from "./MergeTablesDialog";
 import type { CancelStaff } from "./CancelItemDialog";
 import { gioVn } from "@/lib/time/vn";
 import { CauInBanner, ThietBiInChip, useCauIn } from "@/components/pos/CauInBanner";
+import { PhoneAlertBar } from "@/components/pos/PhoneAlertBar";
 import { TablePickerDrawer } from "@/components/pos/TablePickerDrawer";
 import { conLaiSauKhiGui } from "@/lib/orders/cart";
 import { MobileTabBar, type MobileTab } from "@/components/pos/MobileTabBar";
@@ -612,10 +613,27 @@ export function PosBoard({
     </>
   );
 
+  const onlineLink = (
+    <Link
+      href={`/r/${slug}/pos/online`}
+      aria-label="Đơn online"
+      className="inline-flex h-11 items-center gap-sm rounded-md border border-hairline-strong bg-canvas px-md text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    >
+      <ShoppingBag className="h-4 w-4" />
+      <span className="hidden lg:inline">Đơn online</span>
+    </Link>
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface">
-      {/* Toolbar */}
-      <div className="flex items-center gap-md border-b border-hairline-soft bg-canvas py-sm pl-md pr-lg">
+      {/* Toolbar. Điện thoại + chế độ quầy: cả hàng chỉ còn 2–3 nút ở góc phải (không có ô tìm bàn) →
+          ẩn, các nút đó dời vào hàng PhoneAlertBar ngay dưới. */}
+      <div
+        className={cn(
+          "flex items-center gap-md border-b border-hairline-soft bg-canvas py-sm pl-md pr-lg",
+          counter && "max-sm:hidden"
+        )}
+      >
         {/* Dưới 1024 px cột sơ đồ bàn ẩn đi — chọn bàn qua ngăn kéo (ORDER-19). Từ lg nút này ẩn. */}
         {!counter && (
           <TablePickerDrawer
@@ -651,22 +669,16 @@ export function PosBoard({
               <span className="hidden lg:inline">Đặt bàn</span>
             </Link>
           )}
-          <Link
-            href={`/r/${slug}/pos/online`}
-            aria-label="Đơn online"
-            className="inline-flex h-11 items-center gap-sm rounded-md border border-hairline-strong bg-canvas px-md text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          >
-            <ShoppingBag className="h-4 w-4" />
-            <span className="hidden lg:inline">Đơn online</span>
-          </Link>
-          {/* Có đơn chờ duyệt = việc GẤP NHẤT ở POS → nút đổi sang nền primary + chuông rung,
+          {onlineLink}
+          {/* Điện thoại: nút này ẩn — nút "Chờ duyệt N" của PhoneAlertBar làm đúng việc đó.
+              Có đơn chờ duyệt = việc GẤP NHẤT ở POS → nút đổi sang nền primary + chuông rung,
               không để cùng một sắc độ với các nút phụ (dễ miss đơn khách). */}
           <button
             type="button"
             onClick={() => setPendingOpen(true)}
             aria-label={`Order chờ duyệt${initial.pending.length > 0 ? `, ${initial.pending.length} đơn` : ""}`}
             className={cn(
-              "relative inline-flex h-11 items-center gap-sm rounded-md px-md text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              "relative inline-flex h-11 items-center gap-sm rounded-md px-md text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 max-sm:hidden",
               initial.pending.length > 0
                 ? "border-2 border-primary-deep bg-primary text-primary-fg shadow-card hover:bg-primary-deep"
                 : "border border-hairline-strong bg-canvas font-medium text-ink hover:bg-surface"
@@ -691,15 +703,35 @@ export function PosBoard({
           nhân viên phải biết trước khi xử lý bất kỳ đơn nào bên dưới. */}
       <CauInBanner st={cauIn.st} onDaXuLy={cauIn.daXuLy} />
 
+      <PhoneAlertBar
+        pendingCount={initial.pending.length}
+        onOpenPending={() => setPendingOpen(true)}
+        unprinted={initial.unprinted}
+        printingId={printingOrderId}
+        onPrint={handlePrintUnprinted}
+        calls={initial.calls}
+        resolvingId={resolvingCall}
+        onResolve={handleResolveCall}
+        callError={callError}
+        always={counter}
+        trailing={
+          counter ? (
+            <>
+              <ThietBiInChip st={cauIn.st} />
+              {onlineLink}
+            </>
+          ) : null
+        }
+      />
+
       {/* Banner ĐƠN KHÁCH CHỜ DUYỆT — ưu tiên cao nhất nên đặt trên banner gọi nhân viên.
           Bấm chip mở drawer để XEM món rồi mới duyệt (D8: duyệt để chặn order giỡn/nhầm bàn),
           không duyệt tắt từ banner. */}
       {initial.pending.length > 0 && (
         // Nền kem + chữ mực (như banner "Bàn đang gọi"): chữ trắng trên nền cam đặc chỉ đạt
         // tương phản 3.3:1, dưới AA cho chữ 14px. Nổi bật bằng viền primary dày + chuông rung.
-        // Điện thoại (ORDER-20): mỗi băng gọn thành MỘT dòng chip cuộn ngang — xuống dòng như máy quầy thì
-        // ba băng chiếm nửa màn hình, vùng đơn/thực đơn còn một khe.
-        <div className="flex flex-wrap items-center gap-sm border-b-2 border-primary bg-cream-deeper px-lg py-sm max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:whitespace-nowrap max-sm:px-md max-sm:[&>*]:shrink-0">
+        // Điện thoại: ba băng ẩn, thay bằng PhoneAlertBar (một hàng nút) — xem ngay dưới CauInBanner.
+        <div className="flex flex-wrap items-center gap-sm border-b-2 border-primary bg-cream-deeper px-lg py-sm max-sm:hidden">
           <span className="inline-flex items-center gap-xs text-sm font-bold text-ink">
             <BellRing className="h-4 w-4 animate-pulse text-primary" />
             Đơn khách chờ duyệt ({initial.pending.length})
@@ -736,7 +768,7 @@ export function PosBoard({
           in = món không bao giờ xuống bếp, nên viền đỏ: hậu quả nặng hơn cả đơn chờ duyệt.
           Bấm chip là in luôn — không có bước xem trước, vì món do chính nhân viên gõ. */}
       {initial.unprinted.length > 0 && (
-        <div className="flex flex-wrap items-center gap-sm border-b-2 border-status-late bg-cream-soft px-lg py-sm max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:whitespace-nowrap max-sm:px-md max-sm:[&>*]:shrink-0">
+        <div className="flex flex-wrap items-center gap-sm border-b-2 border-status-late bg-cream-soft px-lg py-sm max-sm:hidden">
           <span className="inline-flex items-center gap-xs text-sm font-bold text-ink">
             <Printer className="h-4 w-4 text-status-late" />
             Đơn cần in phiếu ({initial.unprinted.length})
@@ -770,7 +802,7 @@ export function PosBoard({
 
       {/* Banner "Gọi nhân viên" (CALL-01) — bàn đang gọi, bấm để đánh dấu đã xử lý */}
       {initial.calls.length > 0 && (
-        <div className="flex flex-wrap items-center gap-sm border-b border-hairline-soft bg-cream px-lg py-sm max-sm:flex-nowrap max-sm:overflow-x-auto max-sm:whitespace-nowrap max-sm:px-md max-sm:[&>*]:shrink-0">
+        <div className="flex flex-wrap items-center gap-sm border-b border-hairline-soft bg-cream px-lg py-sm max-sm:hidden">
           <span className="inline-flex items-center gap-xs text-sm font-semibold text-ink">
             <BellRing className="h-4 w-4 animate-pulse text-primary" />
             Bàn đang gọi ({initial.calls.length})
