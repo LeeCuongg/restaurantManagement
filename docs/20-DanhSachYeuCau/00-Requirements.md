@@ -202,12 +202,12 @@
 ## REPORT (mở rộng) + CUST — Báo cáo sâu & khách hàng (P16)
 | Mã | Yêu cầu | Tiêu chí chấp nhận | GĐ | TT |
 |---|---|---|---|---|
-| REPORT-15 | Báo cáo lịch sử không bị viết lại | Bill lưu `table_label`, `area_label`; món lưu `category_name` lúc bán. Xóa bàn / đổi nhóm món → báo cáo kỳ cũ **không đổi**. Backfill: tổng doanh thu trước/sau bằng nhau; mọi khối báo cáo cũ trên qt-food không đổi số | P16 | ◐ code + migration 0056 xong (16-01-SUMMARY); chờ áp production |
+| REPORT-15 | Báo cáo lịch sử không bị viết lại | Bill lưu `table_label`, `area_label`; món lưu `category_name` lúc bán. Xóa bàn / đổi nhóm món → báo cáo kỳ cũ **không đổi**. Backfill: tổng doanh thu trước/sau bằng nhau; mọi khối báo cáo cũ trên qt-food không đổi số | P16 | ☑ 0056 áp production 27/09/2026; báo cáo trước/sau giống hệt; 278/278 RLS (16-01-SUMMARY) |
 | REPORT-16 | Báo cáo theo nhân viên | Mỗi nhân viên: đơn/món/tiền nhận, HĐ/tiền thu (tách tiền mặt/chuyển khoản), món hủy, lượt/tiền giảm giá — theo quy ước P16 `00-TongQuan`. Σ tiền thu = doanh thu kỳ (BILL-05). Có dòng "Khách tự gọi", "Không rõ", "Nhân viên đã nghỉ". Chỉ owner/manager | P16 | ☐ |
 | REPORT-17 | Hiệu quả bàn/khu | Mỗi bàn/khu: số phiên, thời gian ngồi TB (giờ VN), doanh thu, doanh thu/phiên, doanh thu/giờ ngồi; Σ theo bàn + "Không gắn bàn" = doanh thu kỳ | P16 | ☐ |
 | REPORT-18 | Xu hướng nhóm món + so sánh chi nhánh | Doanh thu/số lượng nhóm món theo ngày/tuần/tháng (tuần bắt đầu thứ Hai giờ VN); màn chuỗi so sánh chi nhánh: TB/HĐ, tỷ lệ hủy, tỷ lệ giảm giá, doanh thu/bàn | P16 | ☐ |
 | REPORT-19 | Xuất Excel | Mọi khối báo cáo có nút xuất; file mở đúng tiếng Việt trên Excel Windows tiếng Việt + Google Sheets; tổng cột tiền = số trên màn; cashier → 403; ghi nhật ký xuất | P16 | ☐ |
-| CUST-01 | SĐT khách một dạng | Mọi đường ghi (QR, online, POS mang về, đặt bàn) chuẩn hóa SĐT ở server (`+84`/`84`/dấu cách/dấu chấm → `0…`); POS mang về có SĐT không tên vẫn lưu SĐT; production sau backfill: số SĐT chưa chuẩn = 0 | P16 | ◐ code + migration 0056 xong (16-01-SUMMARY); chờ áp production |
+| CUST-01 | SĐT khách một dạng | Mọi đường ghi (QR, online, POS mang về, đặt bàn) chuẩn hóa SĐT ở server (`+84`/`84`/dấu cách/dấu chấm → `0…`); POS mang về có SĐT không tên vẫn lưu SĐT; production sau backfill: số SĐT **hợp lệ** chưa chuẩn = 0 (chuỗi không phải SĐT giữ nguyên) | P16 | ☑ 0056 áp production 27/09/2026; báo cáo trước/sau giống hệt; 278/278 RLS (16-01-SUMMARY) |
 | CUST-02 | Danh sách khách | `/admin/khach-hang`: theo SĐT — tên gần nhất, số lần đến, tổng chi, lần đầu/gần nhất, kênh hay dùng; tìm, sắp xếp, phân trang (≤ 100/trang); lịch sử hóa đơn + đặt bàn của một khách; màn chuỗi gộp khách nhiều chi nhánh. Một bill chỉ quy cho một SĐT (không nhân đôi tiền) | P16 | ☐ |
 | CUST-03 | Ghi chú khách + bảo vệ dữ liệu | Ghi chú tay theo SĐT; chỉ owner/manager đọc (RLS: cashier = 0 dòng); SĐT không hiện trên POS/KDS; xuất danh sách khách chỉ owner, có nhật ký | P16 | ☐ |
 

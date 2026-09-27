@@ -1,7 +1,7 @@
 # 16-01 — SUMMARY: dữ liệu nguồn sạch (làm sớm 27/09/2026)
 
-> Chủ dự án yêu cầu sửa ngay ba lỗi phát hiện khi rà code cho P16. **Trạng thái: CODE XONG — CHỜ ÁP MIGRATION**
-> (`.env.local` trỏ vào project Supabase duy nhất = production; chưa áp khi chưa có đồng ý).
+> Chủ dự án yêu cầu sửa ngay ba lỗi phát hiện khi rà code cho P16. **Trạng thái: XONG** — migration 0056 áp lên production
+> 27/09/2026 17:20 (giờ VN), được chủ dự án cho phép; qt-food bán 6h–10h, 60 phút trước khi áp không có đơn nào.
 
 ## Ba lỗi và cách sửa
 
@@ -27,16 +27,26 @@ npx tsc --noEmit        → không lỗi
 next lint (6 tệp đổi)   → No ESLint warnings or errors
 ```
 
-`tests/rls/report-snapshots.test.ts` **chưa chạy** — cần migration 0056 trên DB.
+## Áp production (27/09/2026)
 
-## Việc còn lại (cần chủ dự án đồng ý)
+```
+supabase migration repair --status applied 0055   # 0055 đã áp tay trước đó (bucket + policy có sẵn), sổ chưa ghi
+supabase db push --dry-run                         # → chỉ 0056_report_snapshots.sql
+supabase db push                                   # → Applying migration 0056_report_snapshots.sql... Finished
+npx vitest run tests/rls/report-snapshots.test.ts  # → 4 passed (4)
+npm run test:rls                                   # → Test Files 18 passed (18) · Tests 278 passed (278)
+npm run schema:snapshot && npm run schema:check    # → Schema khớp snapshot (trigger=3)
+```
 
-1. Áp `0056` lên production **ngoài giờ bán** (backfill vài nghìn dòng → sự kiện realtime tới POS đang mở):
-   `supabase db push`, rồi `npm run test:rls -- report-snapshots`, rồi `npm run schema:snapshot` và commit snapshot.
-2. Sau khi áp, so ảnh báo cáo "Khu vực & bàn" và "Nhóm món" của qt-food 30 ngày trước/sau — phải **giống hệt**
-   (thiết kế: số liệu không đổi ngay khi áp).
-3. Kiểm: `select count(*) from orders where customer_contact->>'phone' !~ '^0[0-9]{9,10}$' and customer_contact ? 'phone'`
-   — phần còn lại là chuỗi không phải SĐT, giữ nguyên có chủ đích.
+| Kiểm | Kết quả |
+|---|---|
+| Báo cáo "Khu vực & bàn" + "Nhóm món" qt-food, 01/08–27/09 và 20/09–27/09, trước vs sau | **Giống hệt** (so JSON từng dòng) — Phở ngựa 542.505.000đ, Món ngựa 50.185.000đ, Đồ uống 10.880.000đ, Món kèm 2.605.000đ |
+| Bill có phiên bàn mà thiếu `table_label` | 0 |
+| Món có `menu_item_id` mà thiếu `category_name` | 0 |
+| SĐT trong đơn chưa ở dạng `0…` | 2 — `0000000`, `09741221`: không phải SĐT hợp lệ, giữ nguyên có chủ đích |
+| SĐT đặt bàn chưa ở dạng `0…` | 3 — không hợp lệ, giữ nguyên |
+
+qt-food hiện chỉ dùng chế độ quầy (mọi bill "Không gắn bàn") nên phần bàn/khu chỉ có tác dụng với quán có bàn.
 
 ## Chưa làm trong 16-01 (còn ở plan)
 
