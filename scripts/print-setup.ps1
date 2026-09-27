@@ -104,7 +104,7 @@ $cu = @(Get-CimInstance Win32_Process -Filter "Name='node.exe'" |
 foreach ($p in $cu) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
 if ($cu.Count -gt 0) { Ok ("Da tat " + $cu.Count + " cau in cu dang chay"); Start-Sleep -Seconds 1 }
 
-$needed = @("print-bridge.mjs", "print-bridge.bat", "print-scan.ps1", "print-activate.ps1", "go-cai-dat.ps1", "GO-CAI-DAT.bat")
+$needed = @("print-bridge.mjs", "print-bridge.bat", "print-scan.ps1", "print-activate.ps1", "print-raw.ps1", "go-cai-dat.ps1", "GO-CAI-DAT.bat")
 foreach ($f in $needed) {
   if (-not (Test-Path (Join-Path $SourceDir $f))) { Die "Thieu file $f trong thu muc nguon." }
 }
@@ -267,6 +267,12 @@ if ($printers.Count -eq 0) {
     $cim = Get-CimInstance -ClassName Win32_Printer -Filter ("Name = '" + $name.Replace("'", "''") + "'")
     Invoke-CimMethod -InputObject $cim -MethodName SetDefaultPrinter | Out-Null
     Ok "May in mac dinh = $name"
+    # Cau in in hoa don tu dien thoai/tablet ra DUNG may nay (PRINT-15). Luu TEN, khong dua vao "mac
+    # dinh": tac vu nen chay duoi SYSTEM khong thay may in mac dinh cua nguoi dung.
+    $dongEnv = @(Get-Content $envFile | Where-Object { $_ -notmatch '^COUNTER_PRINTER=' })
+    $dongEnv += "COUNTER_PRINTER=usb:$name"
+    Set-Content -Path $envFile -Value $dongEnv -Encoding UTF8
+    Ok "Hoa don tu dien thoai se in ra may nay (COUNTER_PRINTER=usb:$name)"
   } else {
     Warn "Bo qua - nho tu dat may in QUAY lam mac dinh, khong hoa don se in o bep"
   }

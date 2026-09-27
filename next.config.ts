@@ -30,6 +30,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/bridge/latest": ["./scripts/print-bridge.mjs"],
     "/api/bridge/latest/file": ["./scripts/print-bridge.mjs"],
+    // Ảnh hóa đơn có dấu (PRINT-14) đọc font bằng fs.
+    "/api/print/jobs/[id]/image": ["./assets/fonts/*.ttf"],
   },
   // next/image được phép tải ảnh menu/logo từ Supabase Storage (bucket public).
   images: {

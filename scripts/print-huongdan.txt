@@ -37,6 +37,8 @@ CÀI ĐẶT — một lần bấm:
 
   Câu 2 — "Máy in QUẦY (in hóa đơn) là số mấy?"
      Nhìn danh sách rồi gõ số tương ứng. Đây là máy in hóa đơn cho khách.
+     Hóa đơn bấm từ ĐIỆN THOẠI / TABLET của phục vụ cũng ra máy này — nên
+     laptop quầy phải BẬT trong giờ bán.
 
   Xong sẽ hiện "CAI DAT XONG" màu xanh.
 

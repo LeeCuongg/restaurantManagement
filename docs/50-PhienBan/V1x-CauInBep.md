@@ -130,6 +130,14 @@ tiếp** → bat tự quay về `print-bridge.old.mjs`. **Sửa cầu in = tăng
 quán tự lên trong ≤ 1 giờ. `/super` → bảng **Cầu in các quán** cho biết quán nào còn bản cũ.
 Cầu in cài bằng bộ cài trước 11-05 (không có `POS_URL`) **không** tự cập nhật — cài lại một lần.
 
+**In hóa đơn từ điện thoại / tablet (P12 · 12-01→03 · PRINT-14/15/16).** Bộ cài hỏi "máy in quầy là số
+mấy" và ghi `COUNTER_PRINTER=usb:<tên máy in Windows>` vào `.env.local` (máy quầy LAN: sửa tay thành
+`lan:<ip>[:cổng]`). Từ đó, bấm "In hóa đơn" / "Phiếu khách" trên thiết bị **không có máy in** → server xếp
+phiếu kèm bản chụp → cầu in tải **ảnh có dấu** (`/api/print/jobs/[id]/image`) → lệnh in ảnh `GS v 0` → máy
+quầy (USB qua hàng đợi Windows, `print-raw.ps1`; LAN qua cổng 9100). **Máy quầy (≥1024 px) vẫn in trình
+duyệt như cũ.** Laptop quầy tắt → điện thoại báo "Cầu in ở quầy không chạy", không in được. Màn `/admin/printers`
+có thẻ "Máy in quầy". Không khai `COUNTER_PRINTER` → cầu in chạy y như trước (chỉ phiếu bếp).
+
 **Gỡ:** `GO-CAI-DAT.bat` (xóa tác vụ, lối tắt, thư mục). Máy mất → `/super` → **Mã cài cầu in** →
 **Thu hồi cầu in của quán** (cầu in mất quyền ngay, quán về in trình duyệt).
 

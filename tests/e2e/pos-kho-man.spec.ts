@@ -83,7 +83,8 @@ for (const { w, h, ban } of KHO) {
       await expect(nganKeo).toBeVisible();
       await nganKeo.getByRole("button", { name: new RegExp(`^${ban}\\b`) }).click();
       await expect(nganKeo).toBeHidden();
-      await expect(page.getByRole("button", { name: new RegExp(`Bàn ${ban}`) })).toBeVisible();
+      // Khớp CHÍNH XÁC nút chọn bàn — băng "Đơn cần in phiếu" có thể có chip "Bàn T2 #…".
+      await expect(page.getByRole("button", { name: new RegExp(`^Bàn ${ban}$`) })).toBeVisible();
 
       // Gọi một món.
       await page.getByRole("button", { name: /^Thêm / }).first().click();

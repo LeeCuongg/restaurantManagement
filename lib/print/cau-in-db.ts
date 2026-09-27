@@ -109,3 +109,17 @@ export async function demPhieuHomNay(
     loiGanDay: loiRows.map((r) => ({ luc: r.created_at, soDon: r.kitchen_no ?? null })),
   };
 }
+
+/**
+ * Quầy nhận hóa đơn qua cầu in được không (PRINT-16): cầu in đang sống VÀ đã khai máy in quầy.
+ * Không → server không xếp hóa đơn vào hàng đợi (phiếu sẽ nằm chờ mà không ai in). Đọc lỗi → không.
+ */
+export async function quayCoCauIn(client: SupabaseClient, tenantId: string): Promise<boolean> {
+  const { data, error } = await client
+    .from("printer_heartbeats")
+    .select("seen_at, counter_target")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (error || !data?.counter_target) return false;
+  return cauInConSong(data.seen_at ?? null, Date.now());
+}

@@ -198,9 +198,9 @@ sao mỗi đêm ngoài Supabase, một quán không kéo chậm quán khác"**.
 Chi tiết: `30-KeHoach/P12/00-TongQuan.md` · quyết định `QD-020`. Hai nhánh song song: in (chờ P11 11-04..06)
 và màn hình (không chờ).
 
-- [ ] 12-01 **Hóa đơn có dấu thành ảnh trên server** + thử in thật trước khi xây (PRINT-14).
-- [ ] 12-02 **Cầu in hai máy in (bếp + quầy), LAN hoặc USB** (PRINT-15).
-- [ ] 12-03 **In từ mọi thiết bị** qua cầu in (PRINT-16).
+- [~] 12-01 **Hóa đơn có dấu thành ảnh trên server** + thử in thật trước khi xây (PRINT-14).
+- [~] 12-02 **Cầu in hai máy in (bếp + quầy), LAN hoặc USB** (PRINT-15).
+- [~] 12-03 **In từ mọi thiết bị** qua cầu in (PRINT-16).
 - [~] 12-04 **POS co giãn: iPad/tablet dọc**, khổ ≥1024 không đổi, tải lại khi máy thức dậy (ORDER-19).
 - [~] 12-05 **POS đầy đủ trên điện thoại**; `/pos/m` về hưu (ORDER-20).
 

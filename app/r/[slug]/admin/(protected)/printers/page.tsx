@@ -74,15 +74,28 @@ export default async function PrintersPage({ params }: { params: Promise<{ slug:
   const [{ data: nhipRow }, dem] = await Promise.all([
     supabase
       .from("printer_heartbeats")
-      .select("seen_at, printer_ok, printer_host, printer_checked_at")
+      .select("seen_at, printer_ok, printer_host, printer_checked_at, counter_ok, counter_target, counter_checked_at")
       .eq("tenant_id", tenantId)
       .maybeSingle(),
     demPhieuHomNay(supabase, tenantId, resolveRange({ preset: "today" }).fromUtc),
   ]);
 
   const now = Date.now();
-  const nhip = (nhipRow as (NhipTim & { printer_host: string | null }) | null) ?? null;
+  const nhip =
+    (nhipRow as
+      | (NhipTim & {
+          printer_host: string | null;
+          counter_ok: boolean | null;
+          counter_target: string | null;
+          counter_checked_at: string | null;
+        })
+      | null) ?? null;
   const tt = trangThaiMayIn(nhip, now);
+  // Máy in QUẦY (PRINT-15) — cùng quy tắc sống/chết/không biết với máy bếp, áp lên các cột counter_*.
+  const ttQuay = trangThaiMayIn(
+    nhip ? { seen_at: nhip.seen_at, printer_ok: nhip.counter_ok, printer_checked_at: nhip.counter_checked_at } : null,
+    now
+  );
 
   const lyDoKhongBiet =
     tt.cauIn !== "song"
@@ -147,6 +160,40 @@ export default async function PrintersPage({ params }: { params: Promise<{ slug:
           </div>
         </Card>
       </div>
+
+      <Card className="mt-lg">
+        <CardTitle>Máy in quầy — hóa đơn từ điện thoại, tablet</CardTitle>
+        <div className="mt-md flex flex-col gap-sm">
+          {!nhip?.counter_target ? (
+            <>
+              <NhanTrangThai tone="chua-ro">Chưa khai</NhanTrangThai>
+              <p className="text-sm text-slate">
+                Điện thoại / tablet chưa in được hóa đơn. Chạy lại CAI-DAT.bat trên laptop quầy và chọn máy in
+                quầy. Máy quầy vẫn in hóa đơn bình thường.
+              </p>
+            </>
+          ) : (
+            <>
+              {ttQuay.mayIn === "ok" && <NhanTrangThai tone="tot">In được</NhanTrangThai>}
+              {ttQuay.mayIn === "loi" && <NhanTrangThai tone="xau">KHÔNG in được</NhanTrangThai>}
+              {ttQuay.mayIn === "khong-biet" && <NhanTrangThai tone="chua-ro">Không biết</NhanTrangThai>}
+              <Dong nhan="Máy in" giaTri={nhip.counter_target} />
+              {ttQuay.mayIn === "khong-biet" && (
+                <p className="text-sm text-slate">
+                  {ttQuay.cauIn !== "song"
+                    ? "Cầu in không kết nối — điện thoại sẽ báo lỗi khi bấm in hóa đơn."
+                    : nhip.counter_target.startsWith("usb:")
+                      ? "Máy in cắm USB: biết được sau lần in hóa đơn đầu tiên từ điện thoại."
+                      : "Chưa có kết quả kiểm gần đây."}
+                </p>
+              )}
+              {ttQuay.mayIn === "loi" && (
+                <p className="text-sm text-slate">Kiểm tra máy in quầy: nguồn, dây (USB/mạng), giấy.</p>
+              )}
+            </>
+          )}
+        </div>
+      </Card>
 
       <Card className="mt-lg">
         <CardTitle>Phiếu bếp hôm nay</CardTitle>

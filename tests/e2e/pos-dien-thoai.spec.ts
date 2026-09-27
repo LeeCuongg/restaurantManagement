@@ -1,6 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { getServiceMode, setServiceMode, getPrintMode, setPrintMode, type ServiceMode, type PrintMode } from "./tenant-mode";
+import { donBan } from "./don-ban";
+
+const BAN_TEST = ["T1", "T2", "T3", "V1"];
 
 /**
  * ORDER-20 — POS ĐẦY ĐỦ trên điện thoại (< 640 px): thanh tab dưới Bàn · Thực đơn · Đơn; mọi việc của máy
@@ -17,64 +20,17 @@ let modeCu: ServiceMode = "table";
 let printCu: PrintMode = "browser";
 let tenantId = "";
 
-/**
- * Dựng điều kiện SẠCH cho các bàn spec này dùng: database dùng chung, lượt chạy đỏ trước đó có thể để lại
- * phiên mở / hóa đơn dở / đơn chờ duyệt — và test sau đó đỏ vì dữ liệu chứ không vì code. Chỉ đụng đúng
- * các bàn của quán DEMO. Hủy (không xóa): lịch sử vẫn còn để đối chiếu.
- */
-const BAN_TEST = ["T1", "T2", "T3", "V1"];
-async function donBan() {
-  const { data: bans } = await admin.from("tables").select("id").eq("tenant_id", tenantId).in("name", BAN_TEST);
-  const banIds = (bans ?? []).map((b) => b.id);
-  const { data: phien } = await admin.from("table_sessions").select("id").in("table_id", banIds).eq("status", "open");
-  const phienIds = (phien ?? []).map((p) => p.id);
-  if (phienIds.length) {
-    const { data: don } = await admin
-      .from("orders")
-      .select("id")
-      .in("table_session_id", phienIds)
-      .not("status", "in", "(served,cancelled)");
-    const donIds = (don ?? []).map((d) => d.id);
-    if (donIds.length) {
-      await admin
-        .from("order_items")
-        .update({ status: "cancelled", cancel_reason: "e2e dọn bàn" })
-        .in("order_id", donIds)
-        .not("status", "in", "(served,cancelled)");
-      await admin.from("orders").update({ status: "cancelled", cancel_reason: "e2e dọn bàn" }).in("id", donIds);
-    }
-    await admin.from("bills").update({ status: "void" }).in("table_session_id", phienIds).eq("status", "open");
-    // Hóa đơn GỘP nhiều bàn có table_session_id = null — tìm qua bill_items trỏ tới món của các phiên này.
-    const { data: tatCaDon } = await admin.from("orders").select("id").in("table_session_id", phienIds);
-    const { data: mon } = await admin
-      .from("order_items")
-      .select("id")
-      .in("order_id", (tatCaDon ?? []).map((d) => d.id));
-    const { data: dongBill } = await admin
-      .from("bill_items")
-      .select("bill_id")
-      .in("order_item_id", (mon ?? []).map((m) => m.id));
-    const billGop = [...new Set((dongBill ?? []).map((b) => b.bill_id))];
-    if (billGop.length) await admin.from("bills").update({ status: "void" }).in("id", billGop).eq("status", "open");
-    await admin
-      .from("table_sessions")
-      .update({ status: "closed", closed_at: new Date().toISOString() })
-      .in("id", phienIds);
-  }
-  await admin.from("tables").update({ status: "available" }).in("id", banIds);
-}
-
 test.beforeAll(async () => {
   modeCu = await getServiceMode(SLUG);
   printCu = await getPrintMode(SLUG);
   await setServiceMode(SLUG, "table");
   await setPrintMode(SLUG, "browser");
   tenantId = (await admin.from("tenants").select("id").eq("slug", SLUG).single()).data!.id as string;
-  await donBan();
+  await donBan(tenantId, BAN_TEST);
 });
 
 test.afterAll(async () => {
-  await donBan();
+  await donBan(tenantId, BAN_TEST);
   await setServiceMode(SLUG, modeCu);
   await setPrintMode(SLUG, printCu);
 });

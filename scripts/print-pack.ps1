@@ -102,6 +102,7 @@ $files = [ordered]@{
   "print-scan.ps1"     = "print-scan.ps1"
   "print-setup.ps1"    = "print-setup.ps1"
   "print-activate.ps1" = "print-activate.ps1"
+  "print-raw.ps1"      = "print-raw.ps1"
   "go-cai-dat.ps1"     = "go-cai-dat.ps1"
   "print-huongdan.txt" = "HUONG-DAN.txt"
 }
