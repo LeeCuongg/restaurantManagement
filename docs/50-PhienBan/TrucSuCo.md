@@ -49,3 +49,27 @@ token bàn `?t=`, body request (tên/SĐT/địa chỉ khách), cookie, header x
 1. Xem tag `tenant_slug`: một quán hay nhiều quán?
 2. Lỗi ở đường tiền (thanh toán, đóng bill) → ưu tiên cao nhất, gọi quán xác nhận ngay.
 3. Ghi vào `docs/40-KiemTra/BUG-*.md` nếu cần sửa code — cùng khuôn các BUG trước.
+
+## C. Gia hạn thuê bao (SUB-04) — ghi nhận và sửa nhầm
+
+**Ghi nhận:** tiền có nội dung `GIAHAN <MÃQUÁN> <số tháng>T` (vd `GIAHAN QTFOOD 12T`) về tài khoản nền tảng → `/super` → hàng quán đó → **Ghi nhận gia hạn** → số tháng, số tiền
+(điền sẵn theo `PLATFORM_PRICE_*`), ghi chú (mã giao dịch ngân hàng) → **Ghi nhận**. Hạn mới = max(hôm nay, hạn cũ) +
+số tháng; quán đang khóa mở lại ngay.
+
+Ngoài "theo số tháng" còn hai kiểu: **Chọn ngày hết hạn** (hạn mới = đúng ngày chọn, chỉ kéo dài) và **Vĩnh viễn**
+(quán thành không giới hạn, không cần gia hạn nữa — nhật ký ghi "Vĩnh viễn").
+
+**Quán đang "không giới hạn"** (`paid_until` rỗng — qt-food, quán demo): nút từ chối trừ khi tích *"chuyển quán sang có
+hạn"*. Đừng tích cho qt-food nếu chưa có thỏa thuận thu phí.
+
+**Ghi nhận nhầm quán / nhầm số tháng:** nhật ký `subscription_payments` **chỉ thêm, không xóa, không có dòng tháng âm**.
+1. `/super` → quán bị ghi nhầm → **Sửa hạn tay** → đặt lại đúng ngày cũ (xem cột "hạn trước" trong nhật ký; ngày cũ rỗng =
+   để trống ô ngày = không giới hạn).
+2. Ghi nhận lại cho đúng quán.
+3. Lần ghi nhận kế tiếp của quán bị nhầm: ghi chú lý do (vd "sửa nhầm 27/09 — đã đặt lại hạn tay").
+Hoàn tiền: làm ngoài hệ thống, ghi vào ghi chú lần gia hạn sau.
+
+**Quán báo "Hết hạn sử dụng" mà đã chuyển tiền:** kiểm sao kê có `GIAHAN <MÃQUÁN>` → ghi nhận như trên. Cần mở gấp khi chưa đối
+soát được: **Sửa hạn tay** lùi ra vài ngày, rồi ghi nhận khi tiền về.
+
+**Bảng Cầu in** ghi *"quán đang khóa (hết hạn / tạm ngưng)"*: cầu in ngừng lấy phiếu là **đúng ý**, không phải sự cố.

@@ -19,6 +19,19 @@ Góc trên hiện "Nhân viên: <tên bạn>". Hết ca → **Đăng xuất** đ
 | Bán mang về | Ô **Bán mang về** → món → **Tạo đơn mang về** → khi khách lấy: **Thu tiền & hoàn tất** |
 | Đơn online / đặt bàn | Nút **Đơn online** và **Đặt bàn** trên thanh công cụ |
 
+### Khách chuyển khoản bằng mã QR trên hóa đơn (PAY-03)
+
+Chỉ có khi chủ quán đã khai **tài khoản nhận** ở Cài đặt. Hóa đơn **chưa thanh toán** in ra có mã QR ngay dưới dòng **TỔNG**.
+
+1. **In hóa đơn TRƯỚC khi thu tiền** (bill còn mở) → đưa khách.
+2. Khách quét QR bằng app ngân hàng → số tiền và nội dung (`HD<số bill> <ngàytháng>`) tự điền → khách chuyển.
+3. Loa / app ngân hàng của quán báo tiền về, **đúng số tiền** → **Thu tiền** → **Chuyển khoản** → **Xác nhận thu · đóng bill**.
+4. Khách trả tiền mặt thì bỏ qua QR, thu như cũ.
+
+- **Thêm món / đổi giảm giá sau khi đã in → in lại hóa đơn**: tờ cũ mang số tiền cũ.
+- Hóa đơn in **sau** khi đã đóng bill thì **không** có QR (tránh khách chuyển hai lần) — muốn khách quét thì in trước, thu sau.
+- Chưa thấy loa báo tiền về thì **chưa** bấm Chuyển khoản. Hệ thống không tự biết tiền đã về.
+
 Hệ thống ghi nhận 2 cách thu: **Tiền mặt** và **Chuyển khoản**. Chưa có mục **Thẻ** — khách quẹt thẻ thì làm
 theo cách quản lý quán đã dặn (hỏi trước khi vào ca).
 

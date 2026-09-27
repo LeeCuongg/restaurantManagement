@@ -18,6 +18,10 @@ import { DiscountPanel } from "@/components/admin/reports/DiscountPanel";
 import { MarginPanel } from "@/components/admin/reports/MarginPanel";
 import { WastePanel } from "@/components/admin/reports/WastePanel";
 import { getInventoryReportBlock, type InventoryReportBlock } from "@/lib/inventory/report-server";
+import Link from "next/link";
+import { chuoiCuaQuan } from "@/lib/brand/context";
+import { BaoCaoChuoiView } from "@/components/brand/BaoCaoChuoiView";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +35,7 @@ export default async function ReportsPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ preset?: string; offset?: string; from?: string; to?: string; bucket?: string }>;
+  searchParams: Promise<{ preset?: string; offset?: string; from?: string; to?: string; bucket?: string; pham?: string; cn?: string }>;
 }) {
   const { slug } = await params;
   const sp = await searchParams;
@@ -44,6 +48,37 @@ export default async function ReportsPage({
   const now = new Date();
   const range = resolveRange(sp, now);
   const prevRange = previousRange(range, now);
+
+  // Chuỗi (P15): báo cáo có thêm phạm vi "Tất cả chi nhánh" — như bộ lọc chi nhánh của KiotViet / Sapo, không có
+  // trang báo cáo chuỗi riêng. Chỉ thành viên chuỗi vào được ≥ 2 chi nhánh mới thấy.
+  const chuoi = await chuoiCuaQuan(session.tenant.id, session.userId);
+  const coChuoi = !!chuoi && chuoi.branches.length >= 2;
+  const kyQuery = new URLSearchParams(
+    Object.entries({ preset: sp.preset, offset: sp.offset, from: sp.from, to: sp.to }).filter(([, v]) => v) as [string, string][]
+  ).toString();
+  const phamVi = coChuoi ? <PhamVi slug={slug} chuoi={sp.pham === "chuoi"} kyQuery={kyQuery} /> : null;
+  if (coChuoi && sp.pham === "chuoi") {
+    return (
+      <div className="w-full">
+        <BaoCaoChuoiView
+          all={chuoi!.branches}
+          loc={sp.cn}
+          range={range}
+          prev={prevRange}
+          base={`/r/${slug}/admin/reports?pham=chuoi`}
+          kyQuery={kyQuery}
+          now={now}
+          dauTrang={
+            <div>
+              <h1 className="font-display text-2xl text-ink">Báo cáo dòng tiền</h1>
+              <p className="text-sm text-steel">{range.label} · giờ Việt Nam · cả chuỗi {chuoi!.brand.name}</p>
+              {phamVi}
+            </div>
+          }
+        />
+      </div>
+    );
+  }
 
   let data: ReportData;
   let prev: ComparisonData;
@@ -61,7 +96,7 @@ export default async function ReportsPage({
     ]);
   } catch (err) {
     return (
-      <ReportShell slug={slug} range={range} now={now}>
+      <ReportShell slug={slug} range={range} now={now} phamVi={phamVi}>
         <div className="mt-lg rounded-lg border border-status-late bg-canvas p-lg">
           <p className="text-sm font-medium text-status-late">Không tải được báo cáo.</p>
           <p className="mt-xs text-sm text-steel">
@@ -77,7 +112,7 @@ export default async function ReportsPage({
   const hasData = summary.billCount > 0;
 
   return (
-    <ReportShell slug={slug} range={range} now={now}>
+    <ReportShell slug={slug} range={range} now={now} phamVi={phamVi}>
       <div className="grid grid-cols-1 gap-md sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="Doanh thu"
@@ -214,11 +249,14 @@ function ReportShell({
   slug,
   range,
   now,
+  phamVi,
   children,
 }: {
   slug: string;
   range: ReturnType<typeof resolveRange>;
   now: Date;
+  /** Bộ chọn "Chi nhánh này / Tất cả chi nhánh" (chỉ quán thuộc chuỗi). */
+  phamVi?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -227,6 +265,7 @@ function ReportShell({
         <div>
           <h1 className="font-display text-2xl text-ink">Báo cáo dòng tiền</h1>
           <p className="text-sm text-steel">{range.label} · giờ Việt Nam</p>
+          {phamVi}
         </div>
         <RangePicker
           base={`/r/${slug}/admin/reports`}
@@ -251,5 +290,28 @@ function Panel({ title, className, children }: { title: string; className?: stri
       <h2 className="mb-md font-display text-lg text-ink">{title}</h2>
       {children}
     </section>
+  );
+}
+
+/** Phạm vi báo cáo của quán thuộc chuỗi: chi nhánh đang mở / tất cả chi nhánh. Giữ nguyên kỳ đang xem. */
+function PhamVi({ slug, chuoi, kyQuery }: { slug: string; chuoi: boolean; kyQuery: string }) {
+  const base = `/r/${slug}/admin/reports`;
+  const muc = [
+    { chu: "Chi nhánh này", href: kyQuery ? `${base}?${kyQuery}` : base, bat: !chuoi },
+    { chu: "Tất cả chi nhánh", href: `${base}?pham=chuoi${kyQuery ? `&${kyQuery}` : ""}`, bat: chuoi },
+  ];
+  return (
+    <nav aria-label="Phạm vi báo cáo" className="mt-xs flex gap-xs text-sm" data-pham-vi>
+      {muc.map((m) => (
+        <Link
+          key={m.chu}
+          href={m.href}
+          aria-current={m.bat ? "page" : undefined}
+          className={cn("rounded-full border px-sm py-[2px]", m.bat ? "border-ink bg-ink text-canvas" : "border-hairline-strong text-slate")}
+        >
+          {m.chu}
+        </Link>
+      ))}
+    </nav>
   );
 }

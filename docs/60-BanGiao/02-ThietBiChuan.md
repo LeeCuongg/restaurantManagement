@@ -5,12 +5,27 @@
 
 | Vị trí | Thiết bị | Bắt buộc | Ghi chú |
 |---|---|---|---|
-| Quầy | Máy tính hoặc máy POS **Windows 10 trở lên**, màn hình ngang ≥ 1024 px | Có | Cài **Google Chrome**. Màn POS đầy đủ cần màn ngang |
-| Quầy | Máy in nhiệt **80 mm** (hóa đơn) — cắm USB vào máy quầy, có driver của hãng | Có | Loại Xprinter 80 mm đang chạy thật ở qt-food. Driver "Generic / Text Only" in sai — phải dùng driver hãng |
-| Bếp | Máy in nhiệt **80 mm có cổng LAN** | Nếu muốn phiếu tự in ra bếp | Cắm dây mạng vào **cùng router** với máy quầy |
+| Quầy | Máy tính hoặc máy POS **Windows 10 trở lên**, màn hình ngang ≥ 1024 px | Có | Cài **Google Chrome**. Màn POS đầy đủ cần màn ngang — **trừ** khi quán thu tiền bằng điện thoại (bộ rẻ nhất bên dưới): máy chỉ chạy cầu in, không cần màn hình |
+| Quầy | Máy in hóa đơn **Sapo SPR02** (80 mm, USB + LAN, ESC/POS) — cắm USB vào máy quầy hoặc dây LAN vào router, có driver của hãng | Có | **Máy in chuẩn** (chủ dự án chốt 27/09/2026) — đang chạy thật ở qt-food. Giá niêm yết **1.190.000đ** (gồm VAT, bảo hành 12 tháng — [SapoShop](https://shop.sapo.vn/may-in-hoa-don-spr02), tra 27/09/2026). Driver "Generic / Text Only" in sai — phải dùng driver hãng |
+| Bếp | Thêm một máy **Sapo SPR02** nối **dây LAN** | Chỉ khi bếp ở xa quầy | Cắm dây mạng vào **cùng router** với máy quầy. Bếp gần quầy: dùng **chung một máy in** cho hóa đơn và phiếu bếp (cầu in hỗ trợ) |
 | Bếp | Tablet / màn hình (tùy chọn) | Không | Mở màn bếp (KDS) — **chỉ để xem**, bếp không bấm được gì ngoài "Báo hết món" |
 | Phục vụ | Điện thoại (Android / iPhone) hoặc iPad / tablet | Không | Dùng POS đầy đủ (gọi món, tính tiền, thu tiền…) — màn hình tự co. **In hóa đơn** từ máy này: giấy ra ở **máy in quầy**, chỉ khi quán dùng **Cầu in** |
 | Mạng | Router + wifi phủ tới khu bàn xa nhất | Có | Không dùng wifi khách cho máy quầy |
+
+## Bộ rẻ nhất (chủ dự án yêu cầu giá thấp nhất — 27/09/2026)
+
+| Thiết bị | Chọn | Giá |
+|---|---|---|
+| Máy in | **1 máy Sapo SPR02** dùng chung cho hóa đơn + phiếu bếp | 1.190.000đ |
+| Máy quầy (chạy cầu in + màn POS) | Máy tính Windows **sẵn có** của quán; không có thì **laptop cũ giá rẻ** (Dell/HP/Lenovo Core i3/i5, RAM 8GB, SSD, có bảo hành cửa hàng) — chủ dự án chọn laptop thay mini PC 27/09/2026: có sẵn màn hình, có pin khi cúp điện ngắn, dùng làm màn POS ở quầy luôn. Cắm sạc suốt giờ bán (bộ cài đã chỉnh gập nắp vẫn chạy) | 0đ hoặc ~4–5 triệu (kiểm giá lúc mua) |
+| Gọi món, thu tiền | Điện thoại của nhân viên / chủ quán (POS đầy đủ trên điện thoại) | 0đ |
+| Báo tiền chuyển khoản | Loa hoặc app của ngân hàng quán | 0đ |
+| Router, wifi | Dùng cái quán đang có | 0đ |
+| Dây mạng LAN, ổ cắm | | ~50–100 nghìn |
+| Giấy in K80 (tiêu hao) | Thùng 50 cuộn | ~300–450 nghìn/thùng (6–9 nghìn/cuộn) |
+| **Tổng lần đầu** | | **~1,5–1,8 triệu** (có sẵn máy tính) · **~5,5–6,8 triệu** (mua laptop cũ) |
+
+Thêm máy in bếp riêng: +1.190.000đ. Két tiền: chưa dùng — máy in có cổng két nhưng hệ thống **chưa gửi lệnh mở két**.
 
 ## Chọn cách in (quyết định lúc cài, đổi được sau ở "Cài đặt")
 

@@ -36,6 +36,9 @@ export async function middleware(request: NextRequest) {
 
   const requestHeaders = new Headers(request.headers);
   if (slug) requestHeaders.set("x-tenant-slug", slug);
+  // Layout /r/[slug] cần biết đang ở trang nào: quán HẾT HẠN vẫn phải mở được trang đăng nhập + Gia hạn
+  // (lối thoát duy nhất, SUB-04) trong khi mọi trang khác hiện màn "Hết hạn sử dụng".
+  requestHeaders.set("x-pathname", pathname);
 
   let response = NextResponse.next({ request: { headers: requestHeaders } });
 
