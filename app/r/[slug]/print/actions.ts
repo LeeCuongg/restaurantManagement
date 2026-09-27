@@ -7,7 +7,7 @@ import { buildKitchenTicket } from "@/lib/print/kitchen-ticket";
 import { buildCustomerTicket } from "@/lib/print/customer-ticket";
 import type { OrderPrintState } from "@/lib/print/adapter";
 import { daInGanDay } from "@/lib/print/dedupe";
-import { cauInConSongCua, thayTheLuotDangCho, quayCoCauIn } from "@/lib/print/cau-in-db";
+import { cauInConSongCua, thayTheLuotDangCho, trangThaiQuay } from "@/lib/print/cau-in-db";
 import { buildReceiptView } from "@/lib/billing/receipt-view";
 import { gioNgayNamVn, gioNgayVn } from "@/lib/time/vn";
 import type { PhieuAnh } from "@/lib/print/anh-phieu";
@@ -96,8 +96,11 @@ export async function queueKitchenTicketPrint(
   return insertPrintJob(slug, orderId, "kitchen_ticket", "pending");
 }
 
-/** Kết quả xếp phiếu ra máy in QUẦY. `cau-in` = cầu in chết hoặc chưa khai máy in quầy. */
-export type KetQuaXepQuay = { ok: true } | { ok: false; lyDo: "cau-in" | "loi" };
+/**
+ * Kết quả xếp phiếu ra máy in QUẦY. `cau-in` = đã khai máy in quầy nhưng cầu in chết; `chua-khai` = cầu in
+ * chưa khai máy in quầy → thiết bị in trình duyệt như trước P12.
+ */
+export type KetQuaXepQuay = { ok: true } | { ok: false; lyDo: "cau-in" | "chua-khai" | "loi" };
 
 /**
  * Xếp HÓA ĐƠN / PHIẾU KHÁCH ra máy in quầy qua cầu in (PRINT-16) — cho thiết bị KHÔNG có máy in (điện
@@ -114,7 +117,9 @@ async function xepPhieuQuay(
   const session = await getSessionMembership(slug);
   if (!session || !canAccess(session.role, "pos")) return { ok: false, lyDo: "loi" };
   const supabase = await createClient();
-  if (!(await quayCoCauIn(supabase, session.tenant.id))) return { ok: false, lyDo: "cau-in" };
+  const quay = await trangThaiQuay(supabase, session.tenant.id);
+  if (quay === "chua-khai") return { ok: false, lyDo: "chua-khai" };
+  if (quay === "chet") return { ok: false, lyDo: "cau-in" };
 
   let payload: Record<string, unknown>;
   if (loai === "receipt") {

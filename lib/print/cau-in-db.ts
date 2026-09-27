@@ -115,11 +115,23 @@ export async function demPhieuHomNay(
  * Không → server không xếp hóa đơn vào hàng đợi (phiếu sẽ nằm chờ mà không ai in). Đọc lỗi → không.
  */
 export async function quayCoCauIn(client: SupabaseClient, tenantId: string): Promise<boolean> {
+  return (await trangThaiQuay(client, tenantId)) === "san-sang";
+}
+
+/**
+ * - `san-sang`: cầu in sống + đã khai máy in quầy → xếp hóa đơn ra quầy.
+ * - `chua-khai`: cầu in chưa khai máy in quầy (bản cũ, vd qt-food trước khi cài lại) → thiết bị in như
+ *   TRƯỚC P12 (trình duyệt), để deploy không đổi gì ở quầy. Đọc lỗi cũng lui về đây.
+ * - `chet`: đã khai nhưng cầu in không báo sống → báo lỗi rõ.
+ */
+export type TrangThaiQuay = "san-sang" | "chua-khai" | "chet";
+
+export async function trangThaiQuay(client: SupabaseClient, tenantId: string): Promise<TrangThaiQuay> {
   const { data, error } = await client
     .from("printer_heartbeats")
     .select("seen_at, counter_target")
     .eq("tenant_id", tenantId)
     .maybeSingle();
-  if (error || !data?.counter_target) return false;
-  return cauInConSong(data.seen_at ?? null, Date.now());
+  if (error || !data?.counter_target) return "chua-khai";
+  return cauInConSong(data.seen_at ?? null, Date.now()) ? "san-sang" : "chet";
 }

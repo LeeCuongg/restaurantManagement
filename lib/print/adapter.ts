@@ -137,9 +137,11 @@ class BridgePrintAdapter implements PrintAdapter {
   private browser = new BrowserPrintAdapter();
 
   printKitchenTicket(args: PrintKitchenArgs): void {
-    // Đường lui khi cầu in không nhận: máy có máy in → in trình duyệt; điện thoại → báo lỗi rõ.
+    // Đường lui khi cầu in không nhận: in trình duyệt NHƯ TRƯỚC P12, không xét thiết bị — laptop quầy phóng
+    // to chữ 125–150% có thể rộng < 1024 px; báo lỗi ở đó là bếp mất phiếu. Điện thoại thì thấy hộp thoại in
+    // vô ích, nhưng mất phiếu bếp đắt hơn nhiều.
     const fallback = () =>
-      thietBiCoMayIn() ? this.browser.printKitchenTicket(args) : baoIn("loi", CAU_IN_KHONG_NHAN);
+      printViaHiddenFrame(`/r/${args.slug}/print/kitchen/${args.orderId}?w=${args.width ?? "80"}`);
     queueKitchenTicketPrint(args.slug, args.orderId)
       .then((res) => {
         if (!res?.ok) fallback();
@@ -154,21 +156,31 @@ class BridgePrintAdapter implements PrintAdapter {
    */
   printCustomerTicket(args: PrintCustomerArgs): void {
     if (thietBiCoMayIn()) return this.browser.printCustomerTicket(args);
-    xepRaQuay(() => queueCustomerTicketPrint(args.slug, args.orderId), "phiếu khách");
+    xepRaQuay(() => queueCustomerTicketPrint(args.slug, args.orderId), "phiếu khách", () =>
+      printViaHiddenFrame(`/r/${args.slug}/print/customer/${args.orderId}?w=${args.width ?? "80"}`)
+    );
   }
   printReceipt(args: PrintReceiptArgs): void {
     if (thietBiCoMayIn()) return this.browser.printReceipt(args);
-    xepRaQuay(() => queueReceiptPrint(args.slug, args.billId), "hóa đơn");
+    xepRaQuay(() => queueReceiptPrint(args.slug, args.billId), "hóa đơn", () =>
+      printViaHiddenFrame(`/r/${args.slug}/print/receipt/${args.billId}?w=${args.width ?? "80"}`)
+    );
   }
 }
 
+/**
+ * `inNhuCu`: cầu in CHƯA KHAI máy in quầy (bản cũ, vd qt-food trước khi cài lại) → in trình duyệt như trước
+ * P12. Không có nhánh này thì laptop quầy rộng < 1024 px (Windows phóng to chữ) sẽ báo lỗi thay vì in.
+ */
 function xepRaQuay(
-  xep: () => Promise<{ ok: true } | { ok: false; lyDo: "cau-in" | "loi" }>,
-  ten: string
+  xep: () => Promise<{ ok: true } | { ok: false; lyDo: "cau-in" | "chua-khai" | "loi" }>,
+  ten: string,
+  inNhuCu: () => void
 ): void {
   xep()
     .then((r) => {
       if (r.ok) baoIn("ok", `Đã gửi ${ten} ra máy in quầy.`);
+      else if (r.lyDo === "chua-khai") inNhuCu();
       else baoIn("loi", r.lyDo === "cau-in" ? CAU_IN_KHONG_NHAN : `Không gửi được ${ten} — thử lại.`);
     })
     .catch(() => baoIn("loi", `Mất kết nối — chưa gửi được ${ten}, thử lại.`));

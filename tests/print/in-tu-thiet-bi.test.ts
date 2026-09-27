@@ -6,7 +6,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
  * | Quán     | Thiết bị        | Hóa đơn / phiếu khách                                          |
  * |----------|-----------------|----------------------------------------------------------------|
  * | bridge   | CÓ máy in       | trình duyệt như cũ (máy quầy qt-food không đổi hành vi)        |
- * | bridge   | KHÔNG máy in    | xếp ra máy in quầy qua cầu in; cầu in không nhận → báo lỗi rõ  |
+ * | bridge   | KHÔNG máy in    | ra máy in quầy qua cầu in; chưa khai quầy → trình duyệt như cũ; |
+ * |          |                 | đã khai mà cầu in chết → báo lỗi rõ                            |
  * | browser  | CÓ máy in       | trình duyệt như cũ                                             |
  * | browser  | KHÔNG máy in    | báo "thiết bị này không in được", KHÔNG mở hộp thoại in        |
  */
@@ -85,13 +86,22 @@ describe("quán bridge", () => {
     expect(thongBao[0].noiDung).toMatch(/Cầu in/);
   });
 
-  it("điện thoại + phiếu bếp, cầu in chết → báo lỗi thay vì mở hộp thoại in vô ích", async () => {
-    dungMoiTruong(390);
+  it("phiếu bếp, cầu in không nhận → in trình duyệt như trước P12, KỂ CẢ máy < 1024 px", async () => {
+    // Laptop quầy Windows phóng to chữ 150% chỉ rộng ~910 px — báo lỗi ở đó là bếp mất phiếu.
+    dungMoiTruong(910);
     queueKitchenTicketPrint.mockResolvedValue({ ok: false });
     (await import("@/lib/print/adapter")).getPrintAdapter("bridge").printKitchenTicket({ slug: "q", orderId: "o1" });
     await cho();
-    expect(iframe).toEqual([]);
-    expect(thongBao[0].loai).toBe("loi");
+    expect(iframe[0]).toMatch(/\/print\/kitchen\/o1/);
+  });
+
+  it("máy < 1024 px + cầu in CHƯA KHAI máy in quầy (qt-food trước khi cài lại) → hóa đơn in trình duyệt, không báo lỗi", async () => {
+    dungMoiTruong(910);
+    queueReceiptPrint.mockResolvedValue({ ok: false, lyDo: "chua-khai" });
+    (await import("@/lib/print/adapter")).getPrintAdapter("bridge").printReceipt({ slug: "q", billId: "b1" });
+    await cho();
+    expect(iframe[0]).toMatch(/\/print\/receipt\/b1/);
+    expect(thongBao).toEqual([]);
   });
 });
 
