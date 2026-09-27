@@ -99,7 +99,9 @@ export function MenuPanel({
         ) : (
           filtered.map((cat) => (
             <section key={cat.id} className="mb-lg">
-              <h3 className="sticky top-0 z-10 -mx-md mb-xs bg-canvas px-md py-xs font-display text-sm text-steel">
+              {/* -top-sm = bù đúng padding trên (py-sm) của vùng cuộn: sticky tính từ mép TRONG padding, để
+                  top-0 thì tiêu đề dính cách mép 12px và thẻ món lọt qua khe đó khi cuộn. */}
+              <h3 className="sticky -top-sm z-10 -mx-md mb-xs bg-canvas px-md py-xs font-display text-sm text-steel">
                 {cat.name}
               </h3>
               {/* auto-fill theo bề ngang THẬT của cột menu, không theo bề ngang cửa sổ: breakpoint

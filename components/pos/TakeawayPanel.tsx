@@ -467,7 +467,8 @@ export function TakeawayPanel({
       <div className="min-h-0 flex-1 overflow-y-auto px-lg py-md">
         {/* Chip "đang lọc theo số đơn" bám mép trên để lúc nào cũng thoát lọc được. */}
         {tab === "queue" && filteredOrder && (
-          <div className="sticky top-0 z-20 -mt-md flex bg-canvas py-sm">
+          // -top-md bù padding trên (py-md) của vùng cuộn — top-0 để lại khe 16px, đơn lọt qua khi cuộn.
+          <div className="sticky -top-md z-20 -mt-md flex bg-canvas py-sm">
             <button
               type="button"
               onClick={onClearFilter}
