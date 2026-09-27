@@ -214,7 +214,7 @@ export default async function PrintersPage({
       <Card className="mt-lg">
         <CardTitle>Cài cầu in trên laptop quầy</CardTitle>
         <ol className="mt-md list-decimal space-y-xs pl-lg text-sm text-slate">
-          <li>Mở trang này <span className="font-medium text-ink">trên chính laptop quầy</span> → bấm tải bộ cài.</li>
+          <li>Mở trang này <span className="font-medium text-ink">trên chính laptop quầy</span> → bấm tải bộ cài (có thể mất tới 1 phút mới bắt đầu tải — đừng bấm lại).</li>
           <li>Chuột phải file vừa tải → <span className="font-medium text-ink">Extract All</span> (Giải nén tất cả) → Extract.</li>
           <li>Double-click <span className="font-medium text-ink">CAI-DAT.bat</span> → Yes → trả lời 2 câu hỏi trên màn hình.</li>
         </ol>

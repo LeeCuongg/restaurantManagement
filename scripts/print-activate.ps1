@@ -10,11 +10,10 @@
 # Chay:
 #   powershell -ExecutionPolicy Bypass -File print-activate.ps1 -ApiBase https://ten-mien -EnvFile C:\cau-in\.env.local
 #   ... -Code ABCD-EFGH      (bo qua thi hoi)
-#   ... -TimMaTu <thu muc bo cai>   tu tim ma DI KEM bo cai (PRINT-17) truoc khi hoi
+#   ... -TimMaTu <thu muc bo cai>   doc ma DI KEM bo cai (PRINT-17) truoc khi hoi
 #
-# Ma di kem: chu quan tai bo cai o Admin -> May in -> file ten `cau-in-K7M2P9QX.zip`; Windows "Extract All"
-# tao thu muc cung ten. Tim theo thu tu: ten thu muc bo cai -> zip cau-in-XXXXXXXX moi nhat (<= 35 phut) trong
-# Downloads. Khong thay / ma het han -> hoi go tay nhu cu.
+# Ma di kem: chu quan tai bo cai o Admin -> May in; server chen file bo-cai\ma-kich-hoat.txt (8 ky tu) vao
+# zip. Khong co file / ma het han -> hoi go tay nhu cu.
 #
 # Ma thoat: 0 = da ghi .env.local; 1 = khong kich hoat duoc.
 # CHI dung ky tu ASCII trong file nay: PowerShell 5.1 doc .ps1 UTF-8 khong BOM theo bang ma ANSI.
@@ -36,16 +35,11 @@ $url = $ApiBase.TrimEnd("/") + "/api/bridge/activate"
 $kq = $null
 
 # Bang chu cua ma (lib/print/activation.ts CODE_ALPHABET): A-Z bo I, L, O + 2-9.
-$MauMa = 'cau-in-([A-HJKMNP-Z2-9]{8})'
 function Find-MaDiKem([string]$thuMuc) {
-  if ($thuMuc -and ($thuMuc -cmatch $MauMa)) { return $Matches[1] }
-  $dl = $null
-  try { $dl = (New-Object -ComObject Shell.Application).NameSpace("shell:Downloads").Self.Path } catch { }
-  if (-not $dl) { $dl = Join-Path $env:USERPROFILE "Downloads" }
-  $zip = Get-ChildItem -Path $dl -Filter "cau-in-*.zip" -File -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -cmatch $MauMa -and $_.LastWriteTime -gt (Get-Date).AddMinutes(-35) } |
-    Sort-Object LastWriteTime -Descending | Select-Object -First 1
-  if ($zip -and ($zip.Name -cmatch $MauMa)) { return $Matches[1] }
+  $f = Join-Path $thuMuc "ma-kich-hoat.txt"
+  if (-not (Test-Path -LiteralPath $f)) { return $null }
+  $s = ([string](Get-Content -LiteralPath $f -Raw -ErrorAction SilentlyContinue)).Trim().ToUpper() -replace '[\s-]', ''
+  if ($s -cmatch '^[A-HJKMNP-Z2-9]{8}$') { return $s }
   return $null
 }
 

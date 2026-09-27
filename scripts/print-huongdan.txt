@@ -19,13 +19,13 @@ CHUẨN BỊ — làm đủ các việc này rồi mới cài:
 
 CÀI ĐẶT — một lần bấm:
 
-  1. Chuột phải file vừa tải (cau-in-XXXXXXXX.zip) → "Extract All" (Giải nén
-     tất cả) → Extract. ĐỪNG đổi tên thư mục giải nén — mã nằm trong tên đó.
+  1. Chuột phải file vừa tải (cau-in.zip) → "Extract All" (Giải nén tất cả)
+     → Extract.
   2. Trong thư mục vừa giải nén chỉ có  CAI-DAT.bat  và thư mục  bo-cai
      (không cần mở). Double-click  CAI-DAT.bat
   3. Windows hỏi "Do you want to allow..." → bấm YES.
   4. Màn cài hiện "Dung ma kich hoat di kem bo cai" là xong phần mã.
-     Nếu nó HỎI mã (bộ cài quá 30 phút, hoặc thư mục bị đổi tên):
+     Nếu nó HỎI mã (bộ cài quá 30 phút, hoặc do quản lý tải):
      chủ quán tải lại bộ cài rồi chạy lại CAI-DAT.bat của bộ mới.
      (Máy đã cài cầu in trước đây thì bộ cài tự dùng lại, không cần mã.)
 

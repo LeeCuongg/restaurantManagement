@@ -47,11 +47,10 @@ email + PIN của họ. Nhân viên nghỉ việc → **Tắt** (giữ lịch s�
 
 ### 5b. Quán chọn "Cầu in"
 
-1. Trên **chính laptop quầy**: **chủ quán** đăng nhập admin → **Máy in** → **Tải bộ cài cầu in**. File tải về
-   tên `cau-in-XXXXXXXX.zip` — 8 ký tự đó là **mã kích hoạt kèm sẵn** (dùng một lần, trong 30 phút).
+1. Trên **chính laptop quầy**: **chủ quán** đăng nhập admin → **Máy in** → **Tải bộ cài cầu in** (đợi vài giây).
+   Bộ cài **kèm sẵn mã kích hoạt** (file `bo-cai\ma-kich-hoat.txt`, dùng một lần, trong 30 phút) — cài không phải gõ.
    **Cài bằng bộ cài mới trên máy khác thì cầu in đang chạy ở máy cũ ngừng in** — chỉ tải khi lắp mới / thay laptop.
-2. Chuột phải file → **Extract All** → Extract (giữ nguyên tên thư mục — bộ cài đọc mã từ đó; bị đổi tên thì
-   nó tìm file zip trong Downloads, vẫn không thấy mới hỏi mã).
+2. Chuột phải `cau-in.zip` → **Extract All** → Extract.
    Tài khoản quản lý cũng tải được nhưng **không kèm mã** — lúc cài sẽ hỏi. Quản trị hệ thống vẫn tạo mã hộ ở
    `/super` → quán → "Mã cài cầu in".
 3. Thư mục giải nén chỉ có `CAI-DAT.bat` và thư mục `bo-cai` → double-click `CAI-DAT.bat` → Yes → làm

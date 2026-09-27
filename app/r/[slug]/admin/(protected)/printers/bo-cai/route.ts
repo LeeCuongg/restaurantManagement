@@ -2,20 +2,20 @@ import { NextResponse } from "next/server";
 import { getSessionMembership } from "@/lib/auth/session";
 import { canManage } from "@/lib/auth/rbac";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { BO_CAI_FILE, linkTaiBoCai } from "@/lib/print/bo-cai";
+import { linkTaiBoCai, linkTaiBoCaiKemMa } from "@/lib/print/bo-cai";
 import { taoMaChoChuQuan, type CAU_LOI } from "@/lib/print/ma-chu-quan";
 
 export const dynamic = "force-dynamic";
+// Chủ quán: tải 33 MB từ Storage, chèn mã, đưa lại lên — vài giây, vượt mặc định của gói Hobby.
+export const maxDuration = 60;
 
 /**
  * POST /r/[slug]/admin/printers/bo-cai — tải bộ cài cầu in (PRINT-17). Owner/manager của quán.
  *
- * Chủ quán: tạo mã kích hoạt và GẮN VÀO TÊN FILE (`cau-in-K7M2P9QX.zip`). Windows "Extract All" tạo thư mục
- * cùng tên → `print-activate.ps1` đọc mã từ đó → cài không phải gõ mã. Không sửa được nội dung zip ở đây:
- * file 33 MB nằm trên Storage, hàm server Vercel chỉ trả được ~4,5 MB.
- * Quản lý: bộ cài không kèm mã (lúc cài sẽ hỏi).
+ * Chủ quán: tạo mã kích hoạt và CHÈN VÀO BỘ CÀI (`bo-cai\ma-kich-hoat.txt`) → cài không phải gõ mã.
+ * Quản lý: bộ cài gốc, không kèm mã (lúc cài sẽ hỏi).
  *
- * POST (không phải GET) vì mỗi lần bấm tạo một mã: GET có thể bị trình duyệt/tiện ích tải trước.
+ * POST (không phải GET) vì mỗi lần bấm phát một mã: GET có thể bị trình duyệt/tiện ích tải trước.
  * Trả 303 sang link Storage ký hạn 60 giây — trình duyệt tải file, trang đứng yên.
  */
 export async function POST(req: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -32,14 +32,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
   const veTrang = (loi: keyof typeof CAU_LOI) =>
     NextResponse.redirect(new URL(`/r/${slug}/admin/printers?loi=${loi}`, req.url), 303);
 
-  let tenFile = BO_CAI_FILE;
+  const admin = createAdminClient();
+  let link: string | null;
   if (session.role === "owner") {
     const ma = await taoMaChoChuQuan(session);
     if ("error" in ma) return veTrang(ma.error);
-    tenFile = `cau-in-${ma.code}.zip`;
+    try {
+      link = await linkTaiBoCaiKemMa(admin, ma.code);
+    } catch (err) {
+      console.error(JSON.stringify({ evt: "bo-cai-kem-ma-loi", msg: err instanceof Error ? err.message : String(err) }));
+      return veTrang("khac");
+    }
+  } else {
+    link = await linkTaiBoCai(admin);
   }
-
-  const link = await linkTaiBoCai(createAdminClient(), tenFile);
   if (!link) return veTrang("chua-co-bo-cai");
   return NextResponse.redirect(link, 303);
 }

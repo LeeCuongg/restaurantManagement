@@ -3,18 +3,37 @@ import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import zlib from "node:zlib";
 
 config({ path: ".env.local", quiet: true });
 
 /**
- * PRINT-17 — chủ quán tải bộ cài cầu in ngay ở Admin → Máy in; bộ cài KÈM MÃ kích hoạt trong tên file nên cài
- * không phải gõ mã. Cần bộ cài đã đưa lên (`print-pack.ps1 -Upload`). Chỉ owner/manager ĐÚNG quán tải được.
+ * PRINT-17 — chủ quán tải bộ cài cầu in ngay ở Admin → Máy in; bộ cài KÈM MÃ kích hoạt trong file
+ * `bo-cai\ma-kich-hoat.txt` nên cài không phải gõ mã. Cần bộ cài đã đưa lên (`print-pack.ps1 -Upload`). Chỉ owner/manager ĐÚNG quán tải được.
  */
 const SLUG = "pho-viet";
 const ROUTE = `/r/${SLUG}/admin/printers/bo-cai`;
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
   auth: { persistSession: false },
 });
+
+/** Nội dung một mục trong zip (store/deflate), tên so sau khi đổi "\" → "/". */
+function docMucZip(zip: Buffer, ten: string): string | null {
+  let eocd = zip.length - 22;
+  while (zip.readUInt32LE(eocd) !== 0x06054b50) eocd--;
+  let p = zip.readUInt32LE(eocd + 16);
+  for (let i = 0; i < zip.readUInt16LE(eocd + 10); i++) {
+    const dai = zip.readUInt16LE(p + 28);
+    if (zip.subarray(p + 46, p + 46 + dai).toString("utf8").replace(/\\/g, "/") === ten) {
+      const l = zip.readUInt32LE(p + 42);
+      const bd = l + 30 + zip.readUInt16LE(l + 26) + zip.readUInt16LE(l + 28);
+      const raw = zip.subarray(bd, bd + zip.readUInt32LE(p + 20));
+      return (zip.readUInt16LE(p + 10) === 8 ? zlib.inflateRawSync(raw) : raw).toString("utf8");
+    }
+    p += 46 + dai + zip.readUInt16LE(p + 30) + zip.readUInt16LE(p + 32);
+  }
+  return null;
+}
 
 async function dangNhapAdmin(page: Page, slug: string, email: string) {
   await page.goto(`/r/${slug}/admin/login`);
@@ -23,21 +42,25 @@ async function dangNhapAdmin(page: Page, slug: string, email: string) {
   await Promise.all([page.waitForLoadState("networkidle"), page.click('button[type="submit"]')]);
 }
 
-test("chủ quán bấm 'Tải bộ cài' → cau-in-<MÃ>.zip; mã có thật trong DB, đúng quán, chưa dùng, hạn 30 phút", async ({ page }) => {
+test("chủ quán bấm 'Tải bộ cài' → zip có bo-cai/ma-kich-hoat.txt; mã có thật trong DB, đúng quán, chưa dùng, hạn 30 phút", async ({ page }) => {
+  // Server tải bộ cài 33 MB từ Storage, chèn mã, đưa lại lên: vài giây ở Vercel, tới ~1 phút từ máy dev.
+  test.setTimeout(180_000);
   const tenantId = (await admin.from("tenants").select("id").eq("slug", SLUG).single()).data!.id as string;
   await dangNhapAdmin(page, SLUG, "ownerA@pho-viet.test");
   await page.goto(`/r/${SLUG}/admin/printers`, { waitUntil: "networkidle" });
   await expect(page.getByText(/kèm sẵn mã kích hoạt/)).toBeVisible();
   const nut = page.getByRole("button", { name: /^Tải bộ cài cầu in \(\d+ MB\)$/ });
 
-  const [tai] = await Promise.all([page.waitForEvent("download", { timeout: 60_000 }), nut.click()]);
-  const ten = tai.suggestedFilename();
-  expect(ten).toMatch(/^cau-in-[A-HJKMNP-Z2-9]{8}\.zip$/);
+  // noWaitAfter: bấm là gửi form; phản hồi là file tải (không chuyển trang) và tới sau vài chục giây.
+  const [tai] = await Promise.all([page.waitForEvent("download", { timeout: 150_000 }), nut.click({ noWaitAfter: true })]);
+  expect(tai.suggestedFilename()).toBe("cau-in.zip");
   const buf = fs.readFileSync(await tai.path());
   expect(buf.subarray(0, 2).toString()).toBe("PK");
   expect(buf.length).toBeGreaterThan(20 * 1024 * 1024); // kèm node.exe
+  expect(docMucZip(buf, "CAI-DAT.bat")).toContain("bo-cai");
 
-  const ma = ten.slice(7, 15);
+  const ma = (docMucZip(buf, "bo-cai/ma-kich-hoat.txt") ?? "").trim();
+  expect(ma).toMatch(/^[A-HJKMNP-Z2-9]{8}$/);
   const bam = crypto.createHash("sha256").update(`cau-in:${ma}`).digest("hex");
   const { data: dong } = await admin
     .from("bridge_activation_codes")

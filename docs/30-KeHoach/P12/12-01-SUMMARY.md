@@ -191,3 +191,30 @@ E2E bo-cai 7/7: tải → cau-in-<MÃ>.zip, mã có trong DB đúng quán, chưa
 ```
 **Chưa kiểm:** chạy trọn `CAI-DAT.bat` với mã kèm trên máy thật (xin quyền Admin + đăng ký tác vụ nền).
 
+## Bổ sung 27/09 (6) — mã nằm TRONG bộ cài, không nằm ở tên file
+
+Chủ dự án: "để ở tên file rủi ro bị đổi tên — sao không cho vào file nào đó rồi kiếm từ đó ra". Thay cách (5):
+
+- Route (chủ quán): tải bộ cài gốc 33 MB từ Storage → chèn `bo-cai\ma-kich-hoat.txt` → đưa bản ghép lên `tam/<uuid>.zip`
+  → link ký hạn 60 giây, tên tải về `cau-in.zip`. Giới hạn ~4,5 MB của Vercel chỉ áp lên phản hồi cho trình duyệt,
+  không áp lên lượt server tải/đưa Storage. `maxDuration = 60`. Bản tạm quá 1 giờ bị xóa ở lượt tải sau.
+- `lib/print/zip-them.ts` (mới): chèn một file vào zip không cần thư viện — cắt ở central directory, chèn mục, viết lại
+  CD + EOCD; giữ kiểu dấu `\` của zip PowerShell 5.1 (trộn `/` và `\` Explorer có thể hiện hai thư mục trùng tên).
+- `print-activate.ps1 -TimMaTu`: đọc `ma-kich-hoat.txt` trong thư mục bộ cài; bỏ đoán theo tên thư mục / Downloads.
+
+```
+unit zip-them 5/5 (CRC chuẩn, hai lần chèn, giữ "\", giữ mục deflate, lỗi rõ)
+Bộ cài THẬT + chèn mã → giải nén bằng Expand-Archive VÀ bằng Explorer (Shell.Application, chính là "Extract All"):
+  ma-kich-hoat.txt = K7M2P9QX · node.exe 89,2 MB chạy được (v24.21.0) · ngoài cùng: bo-cai, CAI-DAT.bat
+print-activate (URL chết): có file → "Dung ma … K7M2-P9QX"; không có → tới bước hỏi, đọc được mã gõ vào
+```
+E2E bo-cai 7/7 (máy dev → Supabase): zip tải về tên `cau-in.zip`, có `bo-cai\ma-kich-hoat.txt`, mã đó có trong DB
+đúng quán, chưa dùng, hạn 30 phút · 401/401/403 · Origin lạ 403 · ?loi= lạ không hiện · anon bị chặn · unit 678 · lint · build
+
+**Thời gian chờ sau khi bấm (đo từ máy dev, mạng nhà):** lần đo riêng 53 giây (tải về 34 s, ghép 0,01 s, đưa lên 19 s);
+lượt E2E trọn vòng 22 giây. Trên Vercel (sin1, cùng khu vực Supabase) dự kiến vài giây — **phải đo lại sau deploy**;
+nếu vẫn chậm, hướng thay: ghép ngay trên Storage bằng S3 `UploadPartCopy` (không kéo 33 MB qua hàm).
+
+Chi phí: mỗi lượt chủ quán tải = 33 MB server tải về + 33 MB đưa lên + 33 MB trình duyệt tải (~100 MB băng thông
+Storage). Lắp 50 quán ≈ 5 GB — trong hạn mức gói Pro.
+
