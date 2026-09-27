@@ -532,6 +532,7 @@ export function PosBoard({
       // Xong một hành động — bàn kế tiếp gọi y hệt món này vẫn phải ra đơn riêng.
       orderKey.done();
       setCart((hienTai) => conLaiSauKhiGui(hienTai, guiDi));
+      setGioMo(false);
       router.refresh();
     }
   };
@@ -876,9 +877,9 @@ export function PosBoard({
               onAddLine={addLine}
             />
           </div>
-          {/* Điện thoại, đơn không bàn: thanh giỏ LUÔN ở đáy thực đơn — xem/sửa món đã chọn và tạo đơn ngay
-              tại đây, không phải sang tab Đơn (chủ dự án: tốn thời gian, tab Đơn chật vì có cả khung gõ đơn). */}
-          {takeawayMode && (
+          {/* Điện thoại: thanh giỏ LUÔN ở đáy thực đơn (đơn không bàn, hoặc đang gọi món cho một bàn) — xem/sửa
+              món đã chọn và gửi ngay tại đây, không phải sang tab Đơn (chủ dự án: tốn thời gian, tab Đơn chật). */}
+          {(takeawayMode || selectedTable) && (
             <button
               type="button"
               onClick={() => setGioMo(true)}
@@ -895,9 +896,16 @@ export function PosBoard({
               </span>
               <span className="min-w-0 flex-1 text-sm">
                 {soMonGio > 0 ? (
-                  <span className="font-medium text-ink">Giỏ hàng · {soMonGio} món</span>
+                  <span className="font-medium text-ink">
+                    {!takeawayMode && selectedTable ? `Bàn ${selectedTable.name} · ` : "Giỏ hàng · "}
+                    {soMonGio} món
+                  </span>
                 ) : (
-                  <span className="text-steel">Giỏ trống — chạm món để thêm</span>
+                  <span className="text-steel">
+                    {!takeawayMode && selectedTable
+                      ? `Bàn ${selectedTable.name} — chạm món để thêm`
+                      : "Giỏ trống — chạm món để thêm"}
+                  </span>
                 )}
               </span>
               {soMonGio > 0 && (
@@ -965,6 +973,8 @@ export function PosBoard({
               onOpenBill={openBill}
               openingBill={openingBill}
               onClose={() => setSelectedTableId(null)}
+              phoneCartOpen={gioMo}
+              onPhoneCartOpenChange={setGioMo}
             />
           ) : (
             <div className="grid h-full place-items-center p-lg text-center text-sm text-steel">
@@ -974,8 +984,8 @@ export function PosBoard({
         </aside>
       </div>
 
-      {/* Đơn không bàn: giỏ nằm ở thanh giỏ tab Thực đơn → badge tab Đơn sẽ chỉ nhầm chỗ. */}
-      <MobileTabBar tab={mobileTab} onTab={setMobileTab} soMonChuaGui={takeawayMode ? 0 : cart.length} counter={counter} />
+      {/* Không còn badge "món chưa gửi" trên tab Đơn: giỏ nằm ở thanh giỏ đáy tab Thực đơn. */}
+      <MobileTabBar tab={mobileTab} onTab={setMobileTab} counter={counter} />
 
       <PendingOrdersDrawer
         slug={slug}

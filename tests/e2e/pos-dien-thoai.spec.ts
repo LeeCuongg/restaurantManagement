@@ -83,11 +83,8 @@ async function tab(page: Page, ten: "Bàn" | "Thực đơn" | "Đơn") {
 async function themMon(page: Page, thuTu = 0) {
   await page.getByRole("button", { name: /^Thêm / }).nth(thuTu).click();
   const themVaoGio = page.getByRole("button", { name: /Thêm vào giỏ/ });
-  // Bàn: badge "món chưa gửi" ở tab Đơn. Đơn không bàn: thanh giỏ ở đáy thực đơn ("Giỏ hàng: N món").
-  const daVaoGio = page
-    .getByRole("navigation", { name: "Chuyển màn POS" })
-    .getByLabel(/món chưa gửi/)
-    .or(page.getByRole("button", { name: /^Giỏ hàng: [1-9]/ }));
+  // Món vào giỏ = thanh giỏ ở đáy thực đơn đổi sang "Giỏ hàng: N món" (N ≥ 1).
+  const daVaoGio = page.getByRole("button", { name: /^Giỏ hàng: [1-9]/ });
   await expect(themVaoGio.or(daVaoGio).first()).toBeVisible({ timeout: 10_000 });
   if (await themVaoGio.isVisible()) {
     await khongTran(page, "hộp tùy chọn món");
@@ -95,13 +92,27 @@ async function themMon(page: Page, thuTu = 0) {
   }
 }
 
-/** Gửi giỏ và CHỜ lượt gửi xong thật (số đơn tăng một) — bàn có thể còn đơn cũ nên "có Đơn #" không đủ. */
+/** Mở ngăn "Giỏ hàng" từ thanh giỏ ở đáy tab Thực đơn. */
+async function moGio(page: Page) {
+  await tab(page, "Thực đơn");
+  await page.getByRole("button", { name: /^Giỏ hàng: [1-9]/ }).click();
+  const gio = page.getByRole("dialog", { name: /^Giỏ hàng/ });
+  await expect(gio).toBeVisible();
+  await khongTran(page, "ngăn Giỏ hàng");
+  return gio;
+}
+
+/**
+ * Gửi giỏ (từ ngăn Giỏ hàng) và CHỜ lượt gửi xong thật (số đơn tăng một) — bàn có thể còn đơn cũ nên
+ * "có Đơn #" không đủ.
+ */
 async function guiMon(page: Page) {
   await tab(page, "Đơn");
   const truoc = await page.getByText(/Đơn #\d+/).count();
-  const xacNhan = page.getByRole("button", { name: /^Xác nhận thêm \d+ món/ });
-  await khongTran(page, "tab Đơn trước khi gửi");
-  await xacNhan.click();
+  const gio = await moGio(page);
+  await gio.getByRole("button", { name: /^Xác nhận thêm \d+ món/ }).click();
+  await expect(gio).toBeHidden({ timeout: 15_000 });
+  await tab(page, "Đơn");
   await expect(page.getByText(/Đơn #\d+/)).toHaveCount(truoc + 1, { timeout: 15_000 });
 }
 
@@ -133,8 +144,11 @@ test("1–3: gọi món có ghi chú → bếp nhận → gọi thêm gom một 
 
   // (1) món có tùy chọn + ghi chú → gửi → bếp nhận.
   await themMon(page, 0);
-  await tab(page, "Đơn");
-  await page.getByPlaceholder(/Ghi chú/).first().fill("ít cay");
+  // Ghi chú món nằm trong ngăn Giỏ hàng (tab Đơn chỉ còn món đã gửi).
+  const gio = await moGio(page);
+  await gio.getByPlaceholder(/Ghi chú/).first().fill("ít cay");
+  await gio.getByRole("button", { name: "Đóng giỏ hàng" }).click();
+  await expect(gio).toBeHidden();
   await guiMon(page);
   const bep = await context.newPage();
   await bep.goto(`/r/${SLUG}/kds`, { waitUntil: "networkidle" });
@@ -222,6 +236,7 @@ test("món thêm vào TRONG LÚC đang gửi không bị mất (lỗi tìm ra �
   await themMon(page, 0);
   await tab(page, "Đơn");
   const truoc = await page.getByText(/Đơn #\d+/).count();
+  const gio = await moGio(page);
 
   // Làm chậm ĐÚNG MỘT server action (lượt gửi này) 2 giây: nó chắc chắn còn đang chờ khi thêm món thứ hai.
   let daLamCham = false;
@@ -232,15 +247,17 @@ test("món thêm vào TRONG LÚC đang gửi không bị mất (lỗi tìm ra �
     }
     await route.continue();
   });
-  await page.getByRole("button", { name: /^Xác nhận thêm 1 món/ }).click();
-  await tab(page, "Thực đơn");
+  await gio.getByRole("button", { name: /^Xác nhận thêm 1 món/ }).click();
+  // Đóng ngăn ngay khi lượt gửi còn đang chờ, rồi thêm món thứ hai.
+  await gio.getByRole("button", { name: "Đóng giỏ hàng" }).click();
+  await expect(gio).toBeHidden();
   await themMon(page, 1);
 
   // Lượt gửi đầu xong → đúng một đơn mới, và món thứ hai VẪN còn trong giỏ.
   await tab(page, "Đơn");
   await expect(page.getByText(/Đơn #\d+/)).toHaveCount(truoc + 1, { timeout: 15_000 });
-  const conLai = page.getByRole("navigation", { name: "Chuyển màn POS" }).getByLabel(/món chưa gửi/);
-  await expect(conLai).toHaveText("1");
+  await tab(page, "Thực đơn");
+  await expect(page.getByRole("button", { name: /^Giỏ hàng: / })).toHaveAccessibleName("Giỏ hàng: 1 món");
   await guiMon(page);
   await page.getByRole("button", { name: /^(Tính tiền|Xem hóa đơn)/ }).click();
   await thuTienChuyenKhoan(page);

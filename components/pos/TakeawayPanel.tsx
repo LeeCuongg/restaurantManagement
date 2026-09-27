@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Drawer } from "vaul";
+import { useLaDienThoai } from "@/components/pos/use-la-dien-thoai";
 import { useRouter } from "next/navigation";
 import { X, Loader2, ShoppingBag, Plus, CornerDownRight } from "lucide-react";
 import type { CustomerMenuItem } from "@/lib/orders/customer-menu";
@@ -161,6 +162,7 @@ export function TakeawayPanel({
   const hideClose = counter; // chế độ quầy không có bàn để quay về
 
   const router = useRouter();
+  const dienThoai = useLaDienThoai();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [creating, setCreating] = useState(false);
@@ -746,7 +748,8 @@ export function TakeawayPanel({
         }}
         initialLine={editing?.initial ?? null}
         submitLabel="Cập nhật"
-        presentation="dialog"
+        // Điện thoại: mở từ ngăn Giỏ hàng → phải là bottom sheet có portal (xem useLaDienThoai).
+        presentation={dienThoai ? "sheet" : "dialog"}
         onAdd={(pending) => {
           if (editing) {
             onCartEdit(editing.lineId, pending);
