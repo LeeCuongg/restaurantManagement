@@ -1,6 +1,8 @@
 # 13-01 — SUMMARY: VietQR — cấu hình tài khoản nhận + dựng mã
 
-> **Trạng thái: CODE XONG, chờ nghiệm thu thật** (27/09/2026). Còn: quét bằng app ≥ 3 ngân hàng và chuyển thật 1 giao dịch
+> **ĐÃ ĐÓNG 28/09/2026** — chủ dự án kiểm tra thật và chốt đóng P13.
+>
+> Trước đó: **CODE XONG, chờ nghiệm thu thật** (27/09/2026). Còn: quét bằng app ≥ 3 ngân hàng và chuyển thật 1 giao dịch
 > nhỏ (nghiệm thu 2–3). Hai việc này cần điện thoại và tài khoản thật, chưa làm được trong phiên code.
 
 ## Tệp đã đổi
@@ -43,5 +45,5 @@ DB lưu `{"bin":"970436","account_no":"0123456789","account_name":"NGUYEN VAN DU
 | Nghiệm thu | Trạng thái |
 |---|---|
 | 1. test + tsc + lint | ☑ |
-| 2. Quét 3 mã mẫu bằng app ≥ 3 ngân hàng | ☐ cần điện thoại thật |
-| 3. Chuyển thật 1 giao dịch nhỏ, sao kê khớp `transferContent` | ☐ cần tài khoản thật |
+| 2. Quét 3 mã mẫu bằng app ≥ 3 ngân hàng | ☑ chủ dự án kiểm tra 28/09/2026 |
+| 3. Chuyển thật 1 giao dịch nhỏ, sao kê khớp `transferContent` | ☑ chủ dự án kiểm tra 28/09/2026 |

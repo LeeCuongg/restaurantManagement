@@ -1,6 +1,8 @@
 # 13-02 — SUMMARY: In mã QR chuyển khoản trên hóa đơn
 
-> **Trạng thái: CODE XONG, chờ nghiệm thu trên giấy in thật** (27/09/2026). Còn: in trên máy nhiệt 80/58mm thật và quét
+> **ĐÃ ĐÓNG 28/09/2026** — chủ dự án kiểm tra thật và chốt đóng P13.
+>
+> Trước đó: **CODE XONG, chờ nghiệm thu trên giấy in thật** (27/09/2026). Còn: in trên máy nhiệt 80/58mm thật và quét
 > bằng ≥ 2 app.
 
 ## Tệp đã đổi
@@ -35,6 +37,6 @@ npm run test → 765 passed · tsc sạch · lint sạch
 | Nghiệm thu | Trạng thái |
 |---|---|
 | 1. test + tsc + lint | ☑ |
-| 2. Giấy in thật 80/58mm, cả trình duyệt và cầu in, ≥ 2 app | ☐ cần máy in + điện thoại; chốt lại số chấm/ô sau khi đo |
+| 2. Giấy in thật 80/58mm, cả trình duyệt và cầu in, ≥ 2 app | ☑ chủ dự án kiểm tra 28/09/2026 |
 | 3. Hóa đơn đã trả không có QR; quán chưa khai tài khoản → như cũ | ☑ (test + so sha256) |
 | 4. Hướng dẫn thu ngân | ☑ |

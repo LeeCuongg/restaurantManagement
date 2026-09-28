@@ -47,3 +47,36 @@ schema:check khớp · tsc + next lint sạch
   Excel thật.
 - "Bấm vào một nhân viên → danh sách hóa đơn đã thu" (16-02) chưa làm — khối hiện tổng theo người.
 - Bảng xếp hạng bàn chưa kiểm tay trên quán có bàn thật (qt-food bán tại quầy, pho-viet demo cũng tại quầy).
+
+## Xử lý phần còn mở (28/09/2026)
+
+Chủ dự án: "xử lý hết, có thể tạo dữ liệu để test". Tra đối thủ trước khi làm: KiotViet **"Báo cáo nhân viên"** có chế
+độ xem chi tiết theo từng nhân viên [2]; KiotViet **không cho xóa phòng/bàn đã phát sinh doanh thu**, thay bằng "Ngừng
+hoạt động" (hướng dẫn "Quản lý Phòng/bàn", kiotviet.vn/huong-dan-su-dung-kiotviet/fnb-thiet-lap/quan-ly-phong-ban/, tra
+28/09/2026). Khác đối thủ: ta vẫn cho xóa bàn đã đóng hết phiên vì tên bàn đã chụp vào hóa đơn (0056) — lịch sử không mất;
+chỉ chặn bàn **đang có khách**.
+
+| Việc | Đã làm | Tệp |
+|---|---|---|
+| 16-02 bấm vào một nhân viên | RPC `report_staff_detail` (0074, cùng vị từ với `report_by_staff`, phân trang SQL ≤ 100, khóa phụ id cho thứ tự ổn định giữa các trang). Trang `/admin/reports/nhan-vien`: ba góc **Đơn đã nhận / Hóa đơn đã thu / Món đã hủy**, 50 dòng/trang, giữ kỳ + phạm vi chi nhánh. Bảng Nhân viên: bấm tên (thẻ phục vụ → đơn đã nhận, thẻ thu ngân → hóa đơn đã thu), bấm ô hủy → món đã hủy | `0074_staff_detail_table_guard.sql`, `lib/reports/deep.ts`, `reports/nhan-vien/page.tsx`, `StaffPanel.tsx` |
+| Lỗi 16-01: xóa bàn đang có khách | Trigger `tables_block_delete_open` (0074): bàn có phiên mở → DB từ chối "Bàn "X" đang có khách — thanh toán hoặc chuyển bàn trước khi xóa." (hiện thành thông báo ở trang Bàn). Xóa cả quán (cascade) không bị chặn | `0074…sql` |
+| Dữ liệu thử | `seed-demo-data.mjs`: đơn có người nhận (POS) / người duyệt (~60% QR), tiền có người thu, ~8% lượt có món hủy (người hủy + lý do), ~10% hóa đơn giảm 10% (người duyệt). PRNG riêng ⇒ lịch bán/món cũ không xáo. Sửa lỗi có sẵn: dọn lứa cũ hỏng khi hóa đơn thử tay gom món của đơn demo. Chạy lại cho pho-viet: 734 HĐ / 129.720.000đ / 45 ngày | `scripts/seed-demo-data.mjs` |
+| 16-03 bàn thật | Quán demo bật chế độ bàn tạm thời: bảng Hiệu quả bàn 9 bàn + "Không gắn bàn" | ảnh `anh/4-hieu-qua-ban.png` |
+| 16-04 Excel | E2E tải file thật; openpyxl mở không cảnh báo, 10 trang tính, số là số, tiếng Việt đúng. **Máy dev không có Excel / LibreOffice** ⇒ chưa mở bằng Excel thật; file mẫu để mở tay: `anh/bao-cao-30-ngay.xlsx` | `tests/e2e/p16.spec.ts` |
+
+Migration 0074 áp production 28/09/2026 ~23:07 giờ VN (qt-food đã nghỉ, đơn cuối 10:34) — chỉ thêm hàm + trigger.
+
+```
+npx vitest run tests/rls/p16-open-items.test.ts → 5 passed: với MỌI người trên dòng tổng, đi hết các trang của cả ba góc
+    → số dòng = số đơn nhận, Σ tiền = tiền hàng / tổng thu / tiền hủy, Σ món = số món / món hủy; p_limit 500 → ≤ 100;
+    thu ngân / chủ quán khác 0 dòng; bàn đang có khách → xóa bị từ chối, bàn + phiên còn; đóng phiên → xóa được; xóa cả
+    quán có bàn đang mở không bị chặn
+npx playwright test tests/e2e/p16.spec.ts      → 4 passed (hiệu quả bàn; bấm tên thu ngân → 8 trang, Σ = cột Tổng thu,
+    số dòng = cột Hóa đơn; tải Excel; xóa bàn đang có khách → thông báo, bàn còn)
+npm run test → 858 passed · npm run test:rls → 422 passed · schema:check khớp · tsc + lint sạch
+```
+
+Ảnh: `anh/5-chi-tiet-thu-ngan.png`, `anh/6-chan-xoa-ban.png`.
+
+**Còn mở sau đợt này:** mở `anh/bao-cao-30-ngay.xlsx` bằng Excel Windows tiếng Việt + Google Sheets (việc tay).
+qt-food ít SĐT khách là chuyện vận hành (nhắc thu ngân nhập SĐT đơn mang về), không phải lỗi.

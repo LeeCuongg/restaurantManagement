@@ -1,5 +1,7 @@
 # 13-03 — SUMMARY: Hạn dùng, nhắc, khóa tự động
 
+> **ĐÃ ĐÓNG 28/09/2026** — chủ dự án chốt đóng P13; đơn mới của qt-food sau khi áp 0057 đã có (28/09).
+
 > **Trạng thái: XONG** — migration 0057 áp production 27/09/2026 khoảng 18:45 (giờ VN), chủ dự án cho phép. QD-021 U1/U2 chủ
 > dự án chốt: nhắc trước 7 ngày, ân hạn 7 ngày. Còn chờ: xem đơn mới của qt-food sau khi áp (đơn gần nhất trước khi áp là
 > 09:01 sáng cùng ngày).
@@ -62,4 +64,4 @@ Sự cố nhỏ khi làm: lần chạy `npm run test` đầu tiên (trước khi
 |---|---|
 | 1. test + test:rls + schema:check | ☑ |
 | 2. Preview: vàng → đỏ → khóa → mở | ☑ trên `next start` ở máy dev nối DB thật (chưa deploy preview) |
-| 3. Production: `paid_until` rỗng; qt-food bán bình thường 30 phút sau khi áp | ◐ phần DB ☑; chờ đơn mới của qt-food |
+| 3. Production: `paid_until` rỗng; qt-food bán bình thường 30 phút sau khi áp | ☑ qt-food bán bình thường ngày 28/09 (đơn 09:13, 09:46, 10:34 giờ VN) |

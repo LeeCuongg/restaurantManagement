@@ -106,3 +106,50 @@ export async function getNhomMonTheoTuan(tenantIds: string[], range: ReportRange
     };
   });
 }
+
+/** Chi tiết một dòng của báo cáo nhân viên (16-02 "bấm vào một nhân viên") — 0074, phân trang ở SQL. */
+export type GocXemNhanVien = "nhan" | "thu" | "huy";
+export type DongChiTietNhanVien = {
+  luc: string;
+  tenantId: string;
+  soHd: number | null;
+  soDon: number | null;
+  noi: string | null;
+  chiTiet: string | null;
+  soLuong: number | null;
+  tien: number;
+  phuongThuc: string | null;
+};
+
+export async function getChiTietNhanVien(
+  tenantIds: string[],
+  range: ReportRange,
+  ai: { kind: DongNhanVien["kind"]; membershipId: string | null },
+  xem: GocXemNhanVien,
+  trang: { offset: number; limit: number }
+): Promise<{ tong: number; rows: DongChiTietNhanVien[] }> {
+  const rows = await rpc<Record<string, unknown>>(await createClient(), "report_staff_detail", {
+    p_tenants: tenantIds,
+    p_from: range.fromUtc,
+    p_to: range.toUtc,
+    p_kind: ai.kind,
+    p_membership: ai.membershipId,
+    p_view: xem,
+    p_offset: trang.offset,
+    p_limit: trang.limit,
+  });
+  return {
+    tong: rows.length ? n(rows[0].total_count) : 0,
+    rows: rows.map((r) => ({
+      luc: String(r.at),
+      tenantId: String(r.tenant_id),
+      soHd: r.bill_no == null ? null : n(r.bill_no),
+      soDon: r.kitchen_no == null ? null : n(r.kitchen_no),
+      noi: (r.place as string | null) ?? null,
+      chiTiet: (r.detail as string | null) ?? null,
+      soLuong: r.qty == null ? null : n(r.qty),
+      tien: n(r.amount),
+      phuongThuc: (r.method as string | null) ?? null,
+    })),
+  };
+}

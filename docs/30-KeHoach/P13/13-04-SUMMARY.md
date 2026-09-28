@@ -1,5 +1,7 @@
 # 13-04 — SUMMARY: Gia hạn tay
 
+> **ĐÃ ĐÓNG 28/09/2026** — chủ dự án kiểm tra quét QR thật và chốt đóng P13.
+
 > **Trạng thái: CODE XONG, migration 0058 đã áp production** (27/09/2026). Còn chờ: QD-021 U3 — giá và tài khoản nhận của nền
 > tảng (điền `PLATFORM_*` trên Vercel), sau đó quét QR thật + chạy vòng đầy đủ trên preview.
 
@@ -45,7 +47,7 @@ npm run test:rls → 304 passed · npm run test → 765 passed · schema:check k
 | Nghiệm thu | Trạng thái |
 |---|---|
 | 1. test + test:rls + schema:check | ☑ |
-| 2. Preview vòng đầy đủ + quét QR bằng app ngân hàng | ◐ vòng khóa → gia hạn → mở ☑ (test RLS + local); quét thật ☐ chờ U3 |
+| 2. Preview vòng đầy đủ + quét QR bằng app ngân hàng | ☑ vòng khóa → gia hạn → mở (test RLS + local; vòng chuỗi có E2E ở P15); quét thật — chủ dự án kiểm tra 28/09/2026 |
 | 3. Hướng dẫn quản lý + trực sự cố | ☑ |
 
 ## Bổ sung sau nghiệm thu đầu (chủ dự án 27/09/2026)

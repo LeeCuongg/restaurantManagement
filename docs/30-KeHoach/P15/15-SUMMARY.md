@@ -48,8 +48,8 @@ dòng; Đồng bộ chi nhánh 3 → "+41 · sửa 0 · ẩn 0", 12 món; Gia h�
 
 - Ảnh chụp qt-food trước/sau (cổng "quán lẻ không thấy gì khác"): không có mật khẩu chủ qt-food trong môi trường dev —
   đã kiểm bằng dữ liệu: qt-food `brand_id` rỗng ⇒ `boChonChiNhanh` trả null, không bộ chọn, không đổi màn nào.
-- E2E Playwright "tạo order ở B2 không hiện ở POS/KDS B1": chưa viết; cách ly đã chứng minh ở tầng RLS trên cả 23 bảng.
-- Nghiệm thu preview thật (Vercel) + quét QR gia hạn chuỗi bằng app ngân hàng.
+- ~~E2E Playwright "tạo order ở B2 không hiện ở POS/KDS B1"~~ — xong 28/09 (xem cuối trang).
+- Nghiệm thu preview thật (Vercel). ~~Quét QR gia hạn chuỗi~~ — chủ dự án bỏ qua 28/09 (đã quét được).
 
 ## Gỡ quán / xóa thương hiệu (0066, 27/09/2026 tối)
 
@@ -93,3 +93,28 @@ thử của chủ dự án) · schema:check khớp
 npm run test → 802 passed · npm run test:rls → 345 passed (brand-isolation cố ý bỏ qua khi quán demo thuộc thương hiệu
 thử) · schema:check khớp · tsc + lint sạch
 ```
+
+## Nghiệm thu bổ sung 28/09/2026
+
+Chủ dự án: bỏ qua bước quét QR chuyển khoản (đã tự quét được); yêu cầu test gia hạn, E2E cách ly, chạy lại brand-isolation.
+
+- **E2E `tests/e2e/chuoi.spec.ts`** (mới) — chuỗi TẠM: B1 = pho-viet, B2 = chi nhánh do `create_branch` tạo; chủ đăng nhập
+  là chủ chuỗi (vào được cả hai).
+  - BRANCH-07: KDS + POS của B1 thấy đơn B1, **không** thấy đơn B2 — cả đơn tới SAU khi mở màn (qua realtime; test chờ
+    kênh báo "Subscribed to PostgreSQL" rồi mới tạo đơn, đơn B1 tới được còn đơn B2 thì không). KDS B2 chỉ thấy đơn B2.
+    Ảnh `anh/10-kds-b1-cach-ly.png`.
+  - BRANCH-08: hai chi nhánh quá ân hạn (hạn khác nhau) → chủ đăng nhập bị đưa thẳng tới Gia hạn, "350.000đ × 2 chi nhánh
+    = 700.000đ", nội dung `GIAHAN …` → super-admin bấm **Ghi nhận gia hạn chuỗi** ở `/super/thuong-hieu` → hai chi nhánh
+    cùng một ngày hết hạn, đúng 1 dòng nhật ký → `/admin/menu` của cả hai mở lại. Ảnh `anh/11-gia-han-chuoi-khoa.png`.
+  - afterAll trả nguyên trạng và **đo lại** số quyền (user, quán) đang bật = trước khi chạy.
+- **`brand-isolation.test.ts` không còn tự dừng**: quán demo đang thuộc thương hiệu thử "phoviet" của chủ dự án → test
+  TẠM gỡ `brand_id` rồi gắn lại ở afterAll (không đụng thương hiệu đó hay quyền của nó). **53/53 xanh**; kiểm sau khi chạy:
+  pho-viet vẫn thuộc "phoviet", hạn 25/09 giữ nguyên.
+
+```
+npx vitest run tests/rls/brand-isolation.test.ts → 53 passed
+npx playwright test tests/e2e/chuoi.spec.ts       → 2 passed
+npm run test:rls                                   → Test Files 30 passed · Tests 422 passed
+```
+
+**Còn mở:** nghiệm thu trên preview Vercel — cần merge/deploy trước (code P13–P18 mới ở nhánh `dev`).

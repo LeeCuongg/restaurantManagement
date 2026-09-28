@@ -188,7 +188,12 @@ export async function BaoCaoChuoiView({
         </>
       )}
       <Panel title="Nhân viên (các chi nhánh đang lọc)">
-        {staff ? <StaffPanel rows={staff} /> : <p className="text-sm text-status-late">Không tải được thống kê nhân viên.</p>}
+        {staff ? (
+          <StaffPanel
+            rows={staff}
+            chiTiet={`${base.split("?")[0]}/nhan-vien?${["pham=chuoi", kyQuery, dangLoc ? `cn=${dangLoc}` : ""].filter(Boolean).join("&")}`}
+          />
+        ) : <p className="text-sm text-status-late">Không tải được thống kê nhân viên.</p>}
       </Panel>
       <p className="text-xs text-steel">Chi nhánh đang bị khóa (hết hạn / tạm ngưng) không có trong số liệu.</p>
     </div>

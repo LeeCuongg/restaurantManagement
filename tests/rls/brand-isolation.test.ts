@@ -14,8 +14,11 @@ import { homNayHanDung } from "@/lib/tenant/subscription";
  *  - Chủ thương hiệu đọc được cả B1 và B2.
  *  - Gia hạn chuỗi: một lần ghi nhận → mọi chi nhánh đang hoạt động cùng một ngày; chi nhánh tạm ngưng không đụng.
  *
- * afterAll trả nguyên trạng: gỡ brand_id, xóa thương hiệu, XÓA membership chéo do đồng bộ thêm (chủ A ở B, chủ
- * B ở A), trả `paid_until`/`status` cũ, xóa tài khoản tạm và dòng nhật ký thử.
+ * afterAll trả nguyên trạng: trả `brand_id` cũ, xóa thương hiệu thử, XÓA membership chéo do đồng bộ thêm (chủ A ở B,
+ * chủ B ở A), trả `paid_until`/`status` cũ, xóa tài khoản tạm và dòng nhật ký thử.
+ *
+ * Quán demo đang thuộc một thương hiệu khác (vd thương hiệu thử của chủ dự án) → TẠM gỡ ra (chỉ cột `brand_id`, không
+ * đụng thương hiệu đó hay membership của nó) rồi gắn lại ở afterAll — trước đây test tự dừng trong trường hợp này.
  */
 const TAG = crypto.randomUUID().slice(0, 6);
 let tenantA = "";
@@ -27,7 +30,7 @@ const tam: string[] = [];
 let superAdmin: SupabaseClient;
 let cashierA: SupabaseClient;
 let chuoi: SupabaseClient;
-let goc: { id: string; paid_until: string | null; status: string }[] = [];
+let goc: { id: string; paid_until: string | null; status: string; brand_id: string | null }[] = [];
 
 let daDung = false;
 
@@ -37,9 +40,9 @@ beforeAll(async () => {
   tenantB = ids.tenantB;
   const admin = adminClient();
   goc = ((await admin.from("tenants").select("id, paid_until, status, brand_id").in("id", [tenantA, tenantB])).data ?? []) as typeof goc;
-  if ((goc as unknown as { brand_id: string | null }[]).some((t) => t.brand_id)) throw new Error("Quán demo đang thuộc thương hiệu — dọn tay trước.");
-  // Chỉ dọn khi CHÍNH test này đã dựng: quán demo đang thuộc thương hiệu của người dùng thì afterAll không được gỡ.
+  if (goc.length !== 2) throw new Error("Không đọc được hai quán demo.");
   daDung = true;
+  for (const t of goc) if (t.brand_id) await admin.from("tenants").update({ brand_id: null }).eq("id", t.id);
 
   const tao = async (nhan: string) => {
     const email = `p15-iso-${nhan}-${TAG}@test.local`;
@@ -68,7 +71,7 @@ beforeAll(async () => {
 afterAll(async () => {
   if (!daDung) return;
   const admin = adminClient();
-  for (const t of goc) await admin.from("tenants").update({ brand_id: null, paid_until: t.paid_until, status: t.status }).eq("id", t.id);
+  for (const t of goc) await admin.from("tenants").update({ brand_id: t.brand_id, paid_until: t.paid_until, status: t.status }).eq("id", t.id);
   await admin.from("subscription_payments").delete().eq("brand_id", brandId);
   if (brandId) await admin.from("brands").delete().eq("id", brandId);
   // Membership chéo do sync_brand_memberships thêm — quán demo trở lại cách ly như trước.

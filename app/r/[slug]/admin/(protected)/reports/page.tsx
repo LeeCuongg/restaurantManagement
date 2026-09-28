@@ -235,7 +235,7 @@ export default async function ReportsPage({
       </Panel>
 
       <Panel title="Nhân viên" className="mt-lg">
-        {sau ? <StaffPanel rows={sau.staff} /> : <p className="text-sm text-status-late">Không tải được thống kê nhân viên.</p>}
+        {sau ? <StaffPanel rows={sau.staff} chiTiet={`/r/${slug}/admin/reports/nhan-vien${kyQuery ? `?${kyQuery}` : ""}`} /> : <p className="text-sm text-status-late">Không tải được thống kê nhân viên.</p>}
       </Panel>
 
       {sau && serviceMode === "table" && sau.ban.some((r) => r.ban !== "Không gắn bàn") && (
