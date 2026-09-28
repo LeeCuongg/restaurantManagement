@@ -58,3 +58,30 @@ Chrome Page.getInstallabilityErrors           → [] ở /pos, /kds, /admin
 - Server action của Next chạy **nối tiếp** trên một trang: bàn nhiều đơn thì lệnh xếp phiếu có thể đứng sau hàng chục lượt
   hỏi trạng thái in (E2E thấy trễ ~10–20 giây trên bàn 19 đơn). Có từ trước P17, nên xem lại riêng.
 - QD-024 C2 (hotspot điện thoại quản lý) đã làm theo đề xuất — chủ dự án xác nhận sau buổi diễn tập.
+
+## Giả lập mất mạng với cầu in thật (28/09/2026)
+
+Chủ dự án: thử thật ở quán để sau, trước mắt giả lập. Ngoài E2E đã có (`mat-mang.spec` — POS offline; `cau-in.spec` —
+băng cảnh báo, điện thoại xếp phiếu khi cầu in chết), thêm **`tests/rls/cau-in-mat-mang.test.ts`**: chạy **`print-bridge.mjs`
+thật** (bản chép ở thư mục tạm, không `POS_URL` ⇒ không tự cập nhật) nối Supabase qua **proxy cục bộ có công tắc mạng**, máy
+in là **máy in giả TCP** đếm từng tờ. Tắt công tắc = quán mất Internet nhưng cầu in vẫn sống, máy in LAN vẫn nối.
+
+| Ca | Kết quả |
+|---|---|
+| Có mạng: 1 phiếu | 1 tờ, `printed` |
+| Mất mạng → xếp 5 phiếu + 1 phiếu 40 phút trước → có mạng lại | 5 tờ, mỗi phiếu đúng 1 tờ; phiếu 40 phút **không** in bù, vẫn `pending` |
+| Mạng rớt **ngay sau** khi máy in ra giấy, trước khi báo "đã in" | **Lỗi thật — in 2 tờ** (phiếu vẫn `pending` → lượt poll sau in lại). Đã sửa → 1 tờ, `printed` sau khi có mạng |
+
+**Sửa cầu in (bản 4):** phiếu đã ra giấy mà chưa báo được lên máy chủ được ghi vào sổ trong bộ nhớ, **không bao giờ in
+lại**, đầu mỗi lượt poll báo bù; lỗi báo không còn bị ghi nhầm thành "IN LỖI" / `failed`. Áp cho cả máy in bếp và máy
+quầy. `BRIDGE_VERSION` 3 → 4 ⇒ cầu in ở quán (qt-food) tự tải bản mới trong ≤ 1 giờ **sau khi deploy** (PRINT-12).
+Giới hạn: sổ nằm trong bộ nhớ — cầu in khởi động lại ĐÚNG lúc đang mất mạng mà còn phiếu chưa báo thì phiếu đó có thể in lại.
+
+```
+npx vitest run tests/rls/cau-in-mat-mang.test.ts → trước khi sửa: 2 passed, 1 failed ("phiếu 821 bị in hai lần: [821, 821]")
+                                                  → sau khi sửa: 3 passed
+npx playwright test mat-mang.spec cau-in.spec     → 10 passed
+```
+
+Chưa giả lập được (cần phần cứng): Windows tự nối hotspot ≤ 60 giây; PC nối máy in bằng LAN + Internet qua hotspot cùng lúc;
+lượng dữ liệu 4G thật.

@@ -303,7 +303,18 @@ if ($cu.Count -gt 0) { Ok ("Da tat " + $cu.Count + " cau in cu dang chay") }
 # Chay bang SYSTEM luc khoi dong: khong co cua so de nhan vien tat nham, va chay
 # ngay ca khi chua ai dang nhap Windows.
 schtasks /create /tn "CauInBep" /tr "`"$bat`"" /sc onstart /ru SYSTEM /rl HIGHEST /f | Out-Null
-if ($LASTEXITCODE -eq 0) { Ok "Da dang ky tac vu 'CauInBep' chay khi bat may" }
+if ($LASTEXITCODE -eq 0) {
+  Ok "Da dang ky tac vu 'CauInBep' chay khi bat may"
+  # schtasks /create de mac dinh "dung tac vu neu chay qua 3 ngay" -> Windows giet ca print-bridge.bat (vong tu chay lai
+  # chet theo) sau 72 gio, cau in tat han. Cung mac dinh: khong chay / bi dung khi laptop rut sac. Bo ca hai.
+  try {
+    Set-ScheduledTask -TaskName CauInBep -Settings (New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries `
+      -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)) -ErrorAction Stop | Out-Null
+    Ok "Tac vu chay mai mai (khong dung sau 72 gio), van chay khi rut sac"
+  } catch {
+    Warn ("Khong bo duoc gioi han 72 gio cua tac vu: " + $_.Exception.Message + " - cau in se tu tat sau 3 ngay")
+  }
+}
 else { Warn "Khong dang ky duoc tac vu tu chay - se phai mo print-bridge.bat bang tay" }
 
 powercfg /change standby-timeout-ac 0 | Out-Null
