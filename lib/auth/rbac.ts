@@ -73,7 +73,8 @@ export type ManageSection =
   | "reports"
   | "printers"
   | "inventory"
-  | "branches";
+  | "branches"
+  | "customers";
 
 /**
  * Vai trò `role` có quyền quản lý `section` cấu hình không — ma trận QD-010 §2.
@@ -103,6 +104,8 @@ export function canManage(role: Role, section: ManageSection): boolean {
     case "inventory":
     // Chi nhánh (P15): quản lý XEM tổng quan chuỗi; tạo chi nhánh / đồng bộ thực đơn chỉ chủ (kiểm ở trang + RPC).
     case "branches":
+    // Khách hàng (P16): SĐT khách là dữ liệu cá nhân — chỉ chủ / quản lý, không nhân viên trạm.
+    case "customers":
       return role === "owner" || role === "manager";
   }
 }

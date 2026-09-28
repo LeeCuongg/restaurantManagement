@@ -35,6 +35,34 @@ Duyệt hủy món / giảm giá tại quầy: thu ngân chọn tên bạn và b
 2. **Nhân viên quên PIN / bị "tạm khóa do sai nhiều lần"** → **Nhân viên** → **Đặt lại** PIN mới; khóa tạm tự hết sau ít phút.
 3. **Quên mật khẩu chủ quán** → gọi hỗ trợ để đặt lại (hiện chưa tự đổi được).
 
+## Báo cáo sâu và khách hàng (P16)
+
+- **Báo cáo → Nhân viên**: thẻ **Theo phục vụ** (ai nhận bao nhiêu đơn, món, tiền hàng, hủy món) và **Theo thu ngân** (ai
+  thu bao nhiêu hóa đơn, tiền mặt / chuyển khoản, duyệt giảm giá bao nhiêu). Số theo tài khoản đăng nhập — mỗi nhân viên
+  cần tài khoản riêng thì số mới đúng người.
+- **Hiệu quả bàn** (quán theo bàn): lượt khách, thời gian ngồi TB, doanh thu mỗi lượt / mỗi giờ. **Nhóm món theo tuần**:
+  chọn kỳ từ 2 tuần trở lên.
+- **Xuất Excel** (góc trên trang Báo cáo): tải đúng báo cáo đang xem thành một file Excel, mỗi khối một trang tính.
+- **Khách hàng** (menu trái): khách tự có từ đơn và đặt bàn có số điện thoại — tìm theo tên / SĐT, bấm tiêu đề cột để sắp
+  xếp, bấm tên khách xem lịch sử và ghi chú ("dị ứng tôm", "khách quen"). **Nhập SĐT khách khi bán mang về / giao hàng**
+  thì danh sách mới đầy đủ. Chỉ chủ quán xuất được danh sách khách ra Excel; mọi lần xuất đều được ghi lại.
+
+## Dự báo và nhận xét tuần (P18)
+
+Trang **Tổng quan** (và đầu trang **Báo cáo**) — chỉ chủ / quản lý thấy:
+
+- **Dự báo 7 ngày tới**: doanh thu dự kiến từng ngày (cột cam), khoảng dao động (vạch dọc), so với cùng thứ tuần trước
+  (đường nét đứt), và các món dự kiến bán nhiều. Dòng **"Sai lệch trung bình ±X%"** = hệ thống tự thử dự báo lại 4 tuần vừa
+  qua rồi so với thực tế. Quán mới (dưới 6 tuần có bán) hoặc sai lệch trên 25% thì chỉ hiện **"Chưa đủ dữ liệu để dự báo
+  đáng tin"** — không đoán bừa. Ngày lễ ghi "(lễ)": dự báo ngày đó kém chắc chắn.
+- **Nhận xét tuần** (sáng thứ Hai): một đoạn ngắn về tuần vừa qua + 1–3 gợi ý; mọi con số đã được máy kiểm khớp với số
+  liệu. Bấm **Hữu ích / Không hữu ích** để chúng tôi biết nhận xét có đáng đọc không. **Bất thường gần đây**: ngày doanh thu
+  cao / thấp bất thường so với cùng thứ các tuần trước.
+- **Nguyên liệu → Nhập hôm nay** (quán đã khai định lượng): bảng **Gợi ý nhập theo dự báo hôm nay** (cần hôm nay, cần 3 ngày,
+  tồn, gợi ý nhập theo kg / vỉ…) và nút **Điền theo gợi ý** chép số vào phiếu nhập — vẫn sửa được trước khi ghi. Món chưa
+  khai định lượng được liệt kê riêng.
+- Số liệu tính lúc 2 giờ 30 sáng. Nếu thấy "bản cũ, đêm qua chưa tính được" → báo chúng tôi; màn vẫn dùng bản gần nhất.
+
 ## Chuỗi nhiều chi nhánh (P15)
 
 Quán lẻ vẫn như cũ; mục **Chi nhánh** ở menu trái có nút tạo chi nhánh.

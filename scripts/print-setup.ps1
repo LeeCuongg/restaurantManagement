@@ -15,6 +15,8 @@
 #   -KitchenIp       IP may in bep neu da biet. Bo qua thi script tu do trong mang.
 #   -InstallDir      Thu muc cai. Mac dinh C:\cau-in (MOT bo cai cho moi quan - QD-019 D6).
 #   -SkipNode        Bo qua buoc Node (khi da co san).
+#   -BackupSsid      Ten wifi PHAT TU DIEN THOAI QUAN LY (mang du phong, P17). Bo qua thi hoi; Enter de bo qua.
+#   -BackupPassword  Mat khau wifi du phong do.
 
 param(
   [string]$ApiBase,
@@ -22,7 +24,9 @@ param(
   [string]$AppUrl,
   [string]$KitchenIp,
   [string]$InstallDir = "C:\cau-in",
-  [switch]$SkipNode
+  [switch]$SkipNode,
+  [string]$BackupSsid,
+  [string]$BackupPassword
 )
 
 $ErrorActionPreference = "Stop"
@@ -309,6 +313,56 @@ powercfg /setacvalueindex SCHEME_CURRENT 4f971e89-eebd-4455-a8de-9e59040e7347 5c
 powercfg /setactive SCHEME_CURRENT | Out-Null
 Ok "Cam dien: khong ngu, dong nap van chay"
 
+# ── 6b. Mang du phong (P17 17-02, OFFLINE-02, QD-024 D2) ───────────────────────
+# Wifi quan mat -> cau in khong len duoc Internet -> bep khong nhan phieu. Luu san wifi phat tu dien thoai
+# quan ly (hotspot) voi uu tien THAP HON wifi quan: Windows tu noi sang khi wifi quan mat, tu quay ve khi co lai.
+# May in bep/quay PHAI noi bang day LAN hoac USB - may in noi qua wifi quan thi mat cung luc voi wifi.
+Step "6b" "Mang du phong (wifi phat tu dien thoai quan ly) - tuy chon"
+# Tim card wifi bang loai ket noi (802.11 = 9), KHONG doc chu cua netsh: Windows tieng Viet dich ca chu do.
+$wifi = @(Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object { $_.NdisPhysicalMedium -eq 9 })
+if ($wifi.Count -eq 0) {
+  Warn "May nay khong co wifi - bo qua mang du phong (can USB wifi hoac router 4G du phong)"
+} else {
+  if (-not $BackupSsid) {
+    Write-Host "      Ten wifi phat tu dien thoai quan ly (vd 'iPhone cua Nam'). Enter de bo qua."
+    $BackupSsid = (Read-Host "      Ten wifi du phong").Trim()
+  }
+  if ($BackupSsid) {
+    if (-not $BackupPassword) { $BackupPassword = (Read-Host "      Mat khau wifi du phong").Trim() }
+    $esc = { param($v) [System.Security.SecurityElement]::Escape($v) }
+    $xml = @"
+<?xml version="1.0"?>
+<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+  <name>$(& $esc $BackupSsid)</name>
+  <SSIDConfig><SSID><name>$(& $esc $BackupSsid)</name></SSID></SSIDConfig>
+  <connectionType>ESS</connectionType>
+  <connectionMode>auto</connectionMode>
+  <MSM><security>
+    <authEncryption><authentication>WPA2PSK</authentication><encryption>AES</encryption><useOneX>false</useOneX></authEncryption>
+    <sharedKey><keyType>passPhrase</keyType><protected>false</protected><keyMaterial>$(& $esc $BackupPassword)</keyMaterial></sharedKey>
+  </security></MSM>
+</WLANProfile>
+"@
+    # Tep tam chua mat khau -> xoa ngay sau khi nap, ke ca khi loi.
+    $tep = Join-Path $env:TEMP ("wifi-du-phong-" + [guid]::NewGuid().ToString("N") + ".xml")
+    try {
+      Set-Content -Path $tep -Value $xml -Encoding UTF8
+      $kq = (cmd /c "netsh wlan add profile filename=`"$tep`" user=all 2>&1") -join " "
+    } finally {
+      Remove-Item $tep -Force -ErrorAction SilentlyContinue
+    }
+    if ($LASTEXITCODE -ne 0) {
+      Warn "Khong luu duoc wifi du phong: $kq"
+    } else {
+      # Ho so moi them vao CUOI danh sach uu tien -> wifi quan (da luu tu truoc) luon duoc chon truoc khi co.
+      Ok "Da luu wifi du phong '$BackupSsid' (uu tien thap hon wifi quan, tu noi khi wifi quan mat)"
+      Warn "Dien thoai quan ly: bat 'Giu phat wifi' / tat 'Tu tat diem phat' de hotspot khong tu tat"
+    }
+  } else {
+    Warn "Bo qua mang du phong - wifi quan mat thi bep KHONG nhan phieu cho toi khi co mang lai"
+  }
+}
+
 # ── 7. Loi tat POS + khoi dong cau in ──────────────────────────────────────────
 Step 7 "Tao loi tat POS va khoi dong cau in"
 if (-not $AppUrl) {
@@ -372,5 +426,9 @@ Write-Host "  3. Tat han laptop, bat lai, KHONG bam gi, doi 1 phut roi bam"
 Write-Host "     'Phieu bep'               -> van ra giay o bep"
 Write-Host "  4. Rut day mang may in bep, bam 'Phieu bep' -> chip do 'Bep CHUA in'."
 Write-Host "     Cam day lai, bam vao chip do -> ra giay"
+if ($BackupSsid) {
+  Write-Host "  5. (Mang du phong) Bat phat wifi tren dien thoai quan ly, rut dien router quan,"
+  Write-Host "     gui 1 phieu bep tu dien thoai 4G/5G -> trong 1-2 phut giay ra o bep"
+}
 Write-Host ""
 Read-Host "Nhan Enter de dong"

@@ -8,6 +8,11 @@ import { SubscriptionBannerSlot } from "@/components/tenant/SubscriptionBanner";
 import { GoiDichVuThe } from "@/components/tenant/GoiDichVuThe";
 import { BranchSwitcher } from "@/components/brand/BranchSwitcher";
 import { boChonChiNhanh } from "@/lib/brand/branches";
+import { manifestMeta } from "@/lib/offline/manifest-meta";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  return manifestMeta((await params).slug, "admin");
+}
 
 /**
  * Guard khu admin (server): chặn chéo tenant + RBAC vai trò.

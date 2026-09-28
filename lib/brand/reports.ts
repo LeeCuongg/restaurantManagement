@@ -15,6 +15,10 @@ export type SoSanhChiNhanh = {
   avgPerBill: number;
   prevRevenue: number;
   prevBillCount: number;
+  /** P16 16-03 (report_branch_extra, 0068). */
+  discountAmount: number;
+  cancelledAmount: number;
+  tableSessions: number;
 };
 export type BaoCaoChuoi = {
   summary: RevenueSummary;
@@ -51,7 +55,7 @@ export async function getBaoCaoChuoi(tenantIds: string[], range: ReportRange, pr
   const p = { p_tenants: tenantIds, p_from: prev.fromUtc, p_to: prev.toUtc };
   type Tom = { total_revenue: number; bill_count: number; avg_per_bill: number };
   type Diem = { bucket_start: string; revenue: number; bill_count: number };
-  const [s, se, ps, pse, items, cats, pays, br] = await Promise.all([
+  const [s, se, ps, pse, items, cats, pays, br, ex] = await Promise.all([
     rpc<Tom>(client, "report_summary_multi", a),
     rpc<Diem>(client, "report_series_multi", { ...a, p_grain: range.grain }),
     rpc<Tom>(client, "report_summary_multi", p),
@@ -64,7 +68,13 @@ export async function getBaoCaoChuoi(tenantIds: string[], range: ReportRange, pr
       "report_by_branch",
       a
     ),
+    rpc<{ tenant_id: string; discount_amount: number; cancelled_amount: number; table_sessions: number }>(
+      client,
+      "report_branch_extra",
+      a
+    ),
   ]);
+  const exTheo = new Map(ex.map((r) => [r.tenant_id, r]));
   const payMap = new Map<PaymentMethod, PaymentSlice>([
     ["cash", { method: "cash", amount: 0, count: 0 }],
     ["transfer", { method: "transfer", amount: 0, count: 0 }],
@@ -91,6 +101,9 @@ export async function getBaoCaoChuoi(tenantIds: string[], range: ReportRange, pr
       avgPerBill: Number(r.avg_per_bill),
       prevRevenue: Number(r.prev_revenue),
       prevBillCount: Number(r.prev_bill_count),
+      discountAmount: Number(exTheo.get(r.tenant_id)?.discount_amount ?? 0),
+      cancelledAmount: Number(exTheo.get(r.tenant_id)?.cancelled_amount ?? 0),
+      tableSessions: Number(exTheo.get(r.tenant_id)?.table_sessions ?? 0),
     })),
   };
 }

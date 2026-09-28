@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ChiNhanh } from "@/lib/brand/branches";
 import { getBaoCaoChuoi } from "@/lib/brand/reports";
+import { getBaoCaoNhanVien } from "@/lib/reports/deep";
+import { StaffPanel } from "@/components/admin/reports/StaffPanel";
 import { deltaPct, type ReportRange, vnToday } from "@/lib/billing/report-range";
 import { formatVnd } from "@/lib/orders/cart";
 import { RangePicker } from "@/components/admin/reports/RangePicker";
@@ -43,7 +45,10 @@ export async function BaoCaoChuoiView({
 }) {
   const chon = dangLoc ? new Set(dangLoc.split(",")) : null;
   const dang = chon ? all.filter((b) => chon.has(b.slug)) : all;
-  const d = await getBaoCaoChuoi(dang.map((b) => b.tenantId), range, prev);
+  const [d, staff] = await Promise.all([
+    getBaoCaoChuoi(dang.map((b) => b.tenantId), range, prev),
+    getBaoCaoNhanVien(dang.map((b) => b.tenantId), range).catch(() => null),
+  ]);
   const tenTheo = new Map(all.map((b) => [b.tenantId, b]));
   const loc = (c: string | null) => `${base}${[kyQuery, c ? `cn=${c}` : ""].filter(Boolean).map((x) => `&${x}`).join("")}`;
 
@@ -126,6 +131,9 @@ export async function BaoCaoChuoiView({
                 <th className="py-xs pr-md text-right font-medium">Tỷ trọng</th>
                 <th className="py-xs pr-md text-right font-medium">Hóa đơn</th>
                 <th className="py-xs pr-md text-right font-medium">TB/HĐ</th>
+                <th className="py-xs pr-md text-right font-medium">Giảm giá</th>
+                <th className="py-xs pr-md text-right font-medium">Hủy món</th>
+                <th className="py-xs pr-md text-right font-medium">DT / lượt bàn</th>
                 <th className="py-xs text-right font-medium">So kỳ trước</th>
               </tr>
             </thead>
@@ -141,6 +149,11 @@ export async function BaoCaoChuoiView({
                     </td>
                     <td className="py-xs pr-md text-right tabular-nums text-slate">{r.billCount}</td>
                     <td className="py-xs pr-md text-right tabular-nums text-slate">{formatVnd(r.avgPerBill)}</td>
+                    <td className="py-xs pr-md text-right tabular-nums text-slate">{tyLe(r.discountAmount, r.revenue + r.discountAmount)}</td>
+                    <td className="py-xs pr-md text-right tabular-nums text-slate">{tyLe(r.cancelledAmount, r.revenue + r.cancelledAmount)}</td>
+                    <td className="py-xs pr-md text-right tabular-nums text-slate">
+                      {r.tableSessions ? formatVnd(Math.round(r.revenue / r.tableSessions)) : "—"}
+                    </td>
                     <td className={cn("py-xs text-right tabular-nums", bd == null ? "text-steel" : bd >= 0 ? "text-status-ready" : "text-status-late")}>
                       {bd == null ? "—" : `${bd >= 0 ? "+" : ""}${bd}%`}
                     </td>
@@ -174,9 +187,17 @@ export async function BaoCaoChuoiView({
           </div>
         </>
       )}
+      <Panel title="Nhân viên (các chi nhánh đang lọc)">
+        {staff ? <StaffPanel rows={staff} /> : <p className="text-sm text-status-late">Không tải được thống kê nhân viên.</p>}
+      </Panel>
       <p className="text-xs text-steel">Chi nhánh đang bị khóa (hết hạn / tạm ngưng) không có trong số liệu.</p>
     </div>
   );
+}
+
+/** "3,2%" — phần / tổng; tổng 0 → "—". */
+function tyLe(phan: number, tong: number): string {
+  return tong > 0 ? `${((phan / tong) * 100).toFixed(1).replace(".", ",")}%` : "—";
 }
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {

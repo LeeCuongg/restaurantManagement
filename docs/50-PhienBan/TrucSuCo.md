@@ -33,6 +33,25 @@ Sentry nhận được: đường dẫn (đã cắt query), thông điệp lỗi
 token bàn `?t=`, body request (tên/SĐT/địa chỉ khách), cookie, header xác thực — lọc ở
 `lib/observability/scrub.ts`.
 
+### 3. Dự báo + nhận xét hằng đêm (P18)
+
+Workflow `.github/workflows/du-bao.yml` chạy 02:30 giờ VN, dùng lại secret **`BACKUP_DB_URL`** của sao lưu. Khóa AI là
+**tùy chọn** (thiếu hết → nhận xét bằng mẫu câu cố định, job vẫn xanh). Tất cả đều gói **miễn phí** (QD-025 D7):
+
+| Secret (GitHub → Settings → Secrets → Actions) | Lấy ở đâu |
+|---|---|
+| `GEMINI_API_KEY` | aistudio.google.com → *Get API key* (gói miễn phí — Google được dùng dữ liệu gửi lên; chỉ số tổng hợp, không PII) |
+| `GROQ_API_KEY` | console.groq.com → *API Keys* |
+| `CF_ACCOUNT_ID`, `CF_API_TOKEN` | Cloudflare → *Workers AI* → token quyền "Workers AI: Read" |
+
+Đổi mô hình không sửa code: *Settings → Variables* đặt `GEMINI_MODEL` / `GROQ_MODEL` / `CF_MODEL`; `MAX_NHAN_XET_MOI_DEM`
+(mặc định 20). Chạy tay: *Actions → Dự báo + nhận xét hằng đêm → Run workflow*, hoặc trên máy dev
+`node scripts/du-bao-dem.mjs --quan <slug> --khong-ghi`. Log job ghi nguồn AI nào đã trả lời và các lần rơi xuống dự phòng;
+cột `insights.model` / `insights.fallbacks` lưu lại để đo.
+
+**Job đỏ (email GitHub):** màn quán vẫn hiện dự báo hôm trước kèm "bản cũ". Mở log job: dòng `LỖI <slug>` cho biết quán nào
+— một quán lỗi không chặn quán khác.
+
 ---
 
 ## B. Cảnh báo đến thì làm gì — theo thứ tự
@@ -49,6 +68,15 @@ token bàn `?t=`, body request (tên/SĐT/địa chỉ khách), cookie, header x
 1. Xem tag `tenant_slug`: một quán hay nhiều quán?
 2. Lỗi ở đường tiền (thanh toán, đóng bill) → ưu tiên cao nhất, gọi quán xác nhận ngay.
 3. Ghi vào `docs/40-KiemTra/BUG-*.md` nếu cần sửa code — cùng khuôn các BUG trước.
+
+**Quán báo "không in được phiếu bếp" (P17):**
+
+1. **Kiểm cầu in trước**: `/r/<slug>/admin/printers` (hoặc bảng `/super`) — "Mất kết nối từ HH:mm" và dòng
+   **"Mất kết nối gần nhất"** cho biết cầu in mất mạng lúc nào, bao lâu.
+2. Cầu in mất kết nối → gần như luôn là **wifi / Internet quán** đứt hoặc máy quầy tắt. Hướng dẫn quán: dùng điện
+   thoại 4G/5G để bán, quản lý bật phát wifi điện thoại (mạng dự phòng đã khai lúc cài) — `04-HuongDan-ThuNgan.md`
+   mục *Khi quán mất mạng*. Quán chưa khai mạng dự phòng → chạy lại `CAI-DAT.bat`, bước 6b.
+3. Cầu in sống mà vẫn không in → máy in (giấy, điện, dây LAN) — chip "Máy in bếp không phản hồi".
 
 ## C. Gia hạn thuê bao (SUB-04) — ghi nhận và sửa nhầm
 
