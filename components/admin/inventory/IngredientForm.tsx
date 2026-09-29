@@ -95,15 +95,19 @@ export function IngredientForm({ slug, ingredient }: { slug: string; ingredient?
             Giá gần nhất / {purchaseUnit.trim() || unitWord} (không bắt buộc)
             <MoneyField name="price" defaultValue={price ?? ""} placeholder="280.000" />
           </label>
-          <label className="flex flex-col gap-xxs text-sm text-slate">
-            % dùng được sau sơ chế
-            <Input
-              name="yield_pct"
-              inputMode="numeric"
-              defaultValue={ingredient?.yield_pct ?? 100}
-              placeholder="100"
-            />
-          </label>
+          {/* Không gõ tay (chủ dự án 29/09/2026): tự tính từ kiểm kê — lib/inventory/yield.ts. */}
+          <div className="flex flex-col gap-xxs text-sm text-slate" data-dung-duoc>
+            % dùng được (tự tính)
+            <p className="flex min-h-11 items-center rounded-md border border-hairline-soft bg-surface px-md text-ink">
+              {ingredient && ingredient.yield_days > 0
+                ? `${ingredient.yield_pct}% · từ ${ingredient.yield_days} lần kiểm kê gần nhất`
+                : "100% · chưa đủ dữ liệu"}
+            </p>
+            <span className="text-xs text-steel">
+              = định lượng × số bán ÷ lượng thực dùng (tồn đầu + nhập − tồn cuối đếm được), 14 lần kiểm kê gần nhất. Bật
+              &quot;Cần kiểm kê cuối ngày&quot; để hệ thống tự tính.
+            </span>
+          </div>
         </>
       ) : (
         <label className="flex flex-col gap-xxs text-sm text-slate sm:col-span-2">

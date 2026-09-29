@@ -31,8 +31,11 @@ export type Ingredient = {
   purchase_unit: string | null;
   /** 1 đơn vị nhập = bao nhiêu đơn vị gốc. */
   purchase_factor: number;
-  /** % dùng được sau sơ chế. Chỉ có nghĩa với `purchased`. */
+  /** % dùng được. TỰ TÍNH từ kiểm kê (lib/inventory/yield.ts, 0081) — không gõ tay. Chỉ có nghĩa với `purchased`. */
   yield_pct: number;
+  /** Số lần kiểm kê đã dùng để tính `yield_pct` (0 = chưa đủ dữ liệu → 100%). */
+  yield_days: number;
+  yield_updated_at: string | null;
   must_count: boolean;
   /** Sản lượng 1 mẻ theo công thức (đơn vị gốc). Chỉ `prepared`. */
   batch_output_qty: number | null;
@@ -59,6 +62,8 @@ export function toIngredient(row: Record<string, unknown>): Ingredient {
     purchase_unit: (row.purchase_unit as string | null) ?? null,
     purchase_factor: Number(row.purchase_factor ?? 1),
     yield_pct: Number(row.yield_pct ?? 100),
+    yield_days: Number(row.yield_days ?? 0),
+    yield_updated_at: (row.yield_updated_at as string | null) ?? null,
     must_count: Boolean(row.must_count),
     batch_output_qty: num(row.batch_output_qty),
     last_unit_cost: num(row.last_unit_cost),

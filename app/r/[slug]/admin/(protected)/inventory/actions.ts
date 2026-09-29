@@ -37,7 +37,6 @@ type IngredientFields = {
   base_unit: BaseUnit;
   purchase_unit: string | null;
   purchase_factor: number;
-  yield_pct: number;
   must_count: boolean;
   batch_output_qty: number | null;
 };
@@ -55,9 +54,7 @@ function readIngredient(fd: FormData): IngredientFields | string {
   const purchase_factor = purchase_unit ? parseQty(factorRaw) : 1;
   if (purchase_factor === null) return `1 ${purchase_unit} bằng bao nhiêu ${base_unit}? Hệ số phải lớn hơn 0.`;
 
-  const yieldRaw = String(fd.get("yield_pct") ?? "").trim();
-  const yield_pct = kind === "prepared" || !yieldRaw ? 100 : Math.round(Number(yieldRaw));
-  if (!(yield_pct >= 1 && yield_pct <= 100)) return "Tỷ lệ dùng được phải từ 1 đến 100%.";
+  // "% dùng được" không còn nhận từ form: tự tính từ kiểm kê (lib/inventory/yield.ts, 0081).
 
   const batchRaw = String(fd.get("batch_output_qty") ?? "").trim();
   const batch_output_qty = kind === "prepared" ? parseQty(batchRaw) : null;
@@ -71,7 +68,6 @@ function readIngredient(fd: FormData): IngredientFields | string {
     base_unit,
     purchase_unit,
     purchase_factor,
-    yield_pct,
     must_count: fd.get("must_count") === "on",
     batch_output_qty,
   };

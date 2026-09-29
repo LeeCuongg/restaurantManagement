@@ -208,7 +208,9 @@
    "last_cost_at timestamp with time zone null",
    "active boolean not null true",
    "created_at timestamp with time zone not null now()",
-   "updated_at timestamp with time zone not null now()"
+   "updated_at timestamp with time zone not null now()",
+   "yield_days integer not null 0",
+   "yield_updated_at timestamp with time zone null"
   ],
   "insight_feedback": [
    "insight_id bigint not null",
@@ -1003,6 +1005,7 @@
   "ingredients.ingredients_name_check": "CHECK ((length(btrim(name)) > 0))",
   "ingredients.ingredients_purchase_factor_check": "CHECK ((purchase_factor > (0)::numeric))",
   "ingredients.ingredients_tenant_id_fkey": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE",
+  "ingredients.ingredients_yield_days_check": "CHECK ((yield_days >= 0))",
   "ingredients.ingredients_yield_pct_check": "CHECK (((yield_pct >= 1) AND (yield_pct <= 100)))",
   "insight_feedback.insight_feedback_insight_id_fkey": "FOREIGN KEY (insight_id) REFERENCES insights(id) ON DELETE CASCADE",
   "insight_feedback.insight_feedback_tenant_id_fkey": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE",
