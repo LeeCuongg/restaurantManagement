@@ -26,17 +26,19 @@ const SECTIONS: ManageSection[] = [
   "settings",
   "printers",
   "inventory",
+  "purchasing",
 ];
 
 /** true = được quản lý mục đó. Vai trò không có trong bảng ⇒ false ở MỌI mục. */
 const MANAGE: Partial<Record<Role, ManageSection[]>> = {
-  owner: ["menu", "tables", "staff", "onboarding", "reports", "settings", "printers", "inventory"],
+  owner: ["menu", "tables", "staff", "onboarding", "reports", "settings", "printers", "inventory", "purchasing"],
   // KHÔNG có settings. CÓ printers (PRINT-09): quản lý ca phải biết máy in bếp chết giữa ca.
   // CÓ inventory (QD-017 C4): manager nhập nguyên liệu buổi sáng.
-  manager: ["menu", "tables", "staff", "onboarding", "reports", "printers", "inventory"],
+  // CÓ purchasing (QD-027 C5): quản lý nhập hàng, trả nợ nhà cung cấp.
+  manager: ["menu", "tables", "staff", "onboarding", "reports", "printers", "inventory", "purchasing"],
 };
 
-describe("canManage — ma trận 6 vai trò × 8 mục (QD-010 §2)", () => {
+describe("canManage — ma trận 6 vai trò × 9 mục (QD-010 §2)", () => {
   for (const role of ROLES) {
     for (const section of SECTIONS) {
       const expected = (MANAGE[role] ?? []).includes(section);

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 /** Các tab trong khu Nguyên liệu (P10). Thêm tab mới ở đây, một chỗ. */
 const TABS = [
   { href: "/today", label: "Nhập hôm nay" },
+  { href: "/phieu-nhap", label: "Phiếu nhập" },
   { href: "/count", label: "Kiểm kê & hủy" },
   { href: "", label: "Nguyên liệu" },
   { href: "/recipes", label: "Định lượng món" },
@@ -19,7 +20,8 @@ export function InventoryTabs({ base }: { base: string }) {
     <nav aria-label="Khu nguyên liệu" className="-mx-xs mt-md flex gap-xs overflow-x-auto px-xs">
       {TABS.map((t) => {
         const href = base + t.href;
-        const active = pathname === href;
+        // Tab có trang con (Phiếu nhập → chi tiết phiếu) vẫn sáng khi đang ở trang con.
+        const active = pathname === href || (t.href !== "" && pathname.startsWith(href + "/"));
         return (
           <Link
             key={t.href}
