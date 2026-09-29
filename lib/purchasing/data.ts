@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { BASE_UNIT_LABEL, type BaseUnit } from "@/lib/inventory/types";
 
 export type Supplier = {
   id: string;
@@ -69,6 +70,8 @@ export type ReceiptListRow = {
   paid: number;
   supplier: { id: string; name: string } | null;
   lineCount: number;
+  /** "Thịt bò 2 kg · Hành 0,5 kg" — tên + số lượng theo đơn vị nhập, đúng thứ tự trên phiếu. */
+  items: string[];
 };
 
 /**
@@ -83,7 +86,8 @@ export async function listReceipts(
   let q = supabase
     .from("purchase_receipts")
     .select(
-      "id, code, status, doc_date, stock_date, total, supplier:suppliers(id, name), purchase_receipt_lines(count), " +
+      "id, code, status, doc_date, stock_date, total, supplier:suppliers(id, name), " +
+        "purchase_receipt_lines(qty, purchase_unit, sort, ingredients(name, base_unit)), " +
         "cash_vouchers(amount, status), cash_voucher_allocations(amount)"
     )
     .eq("tenant_id", tenantId)
@@ -99,7 +103,10 @@ export async function listReceipts(
   type Raw = {
     id: string; code: string; status: ReceiptStatus; doc_date: string; stock_date: string | null; total: number;
     supplier: { id: string; name: string } | { id: string; name: string }[] | null;
-    purchase_receipt_lines: { count: number }[];
+    purchase_receipt_lines: {
+      qty: number; purchase_unit: string | null; sort: number;
+      ingredients: { name: string; base_unit: BaseUnit } | { name: string; base_unit: BaseUnit }[] | null;
+    }[];
     cash_vouchers: { amount: number; status: string }[];
     cash_voucher_allocations: { amount: number }[];
   };
@@ -114,7 +121,14 @@ export async function listReceipts(
       ? r.cash_voucher_allocations.reduce((s, a) => s + a.amount, 0)
       : r.cash_vouchers.filter((v) => v.status === "active").reduce((s, v) => s + v.amount, 0),
     supplier: Array.isArray(r.supplier) ? r.supplier[0] ?? null : r.supplier,
-    lineCount: r.purchase_receipt_lines[0]?.count ?? 0,
+    lineCount: r.purchase_receipt_lines.length,
+    items: [...r.purchase_receipt_lines]
+      .sort((a, b) => a.sort - b.sort)
+      .map((l) => {
+        const ing = Array.isArray(l.ingredients) ? l.ingredients[0] : l.ingredients;
+        const unit = l.purchase_unit ?? (ing ? BASE_UNIT_LABEL[ing.base_unit] : "");
+        return `${ing?.name ?? "?"} ${Number(l.qty).toLocaleString("vi-VN", { maximumFractionDigits: 3 })} ${unit}`.trim();
+      }),
   }));
 }
 

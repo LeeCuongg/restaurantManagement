@@ -77,8 +77,15 @@ test("nhập hàng có NCC, trả một phần, hủy bỏ trả lại tồn và
     await expect(page.getByText("Đã nhập hàng").first()).toBeVisible();
 
     // Tab "Phiếu nhập" có phiếu vừa tạo; NCC nợ 375.000.
-    await page.goto(`/r/${SLUG}/admin/inventory/phieu-nhap`);
-    await expect(page.locator("[data-danh-sach-phieu-nhap]").getByText(/PN\d{6}/).first()).toBeVisible();
+    await page.goto(`/r/${SLUG}/admin/inventory/phieu-nhap`, { waitUntil: "networkidle" });
+    const ds = page.locator("[data-danh-sach-phieu-nhap]");
+    await expect(ds.getByText(/PN\d{6}/).first()).toBeVisible();
+    // Danh sách cho biết nhập gì + còn nợ bao nhiêu; bấm vào dòng (không cần trúng mã phiếu) mở chi tiết.
+    const hang = ds.getByText(`${TAG} Bò 2 kg · ${TAG} Hành 0,5 kg`);
+    await expect(hang).toBeVisible();
+    await expect(ds.getByText("375.000₫")).toBeVisible();
+    await hang.click();
+    await expect(page).toHaveURL(new RegExp(`/inventory/phieu-nhap/${receiptId}$`), { timeout: 60_000 });
     await page.goto(`/r/${SLUG}/admin/nha-cung-cap?q=${encodeURIComponent(TAG)}`);
     await expect(page.locator("[data-danh-sach-ncc]").getByText("375.000₫")).toBeVisible();
 
