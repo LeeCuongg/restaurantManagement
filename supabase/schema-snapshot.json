@@ -996,7 +996,7 @@
   "forecast_runs.forecast_runs_tenant_id_fkey": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE",
   "forecasts.forecasts_metric_check": "CHECK ((metric = ANY (ARRAY['revenue'::text, 'bills'::text, 'item_qty'::text])))",
   "forecasts.forecasts_tenant_id_fkey": "FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE",
-  "ingredients.ingredients_base_unit_check": "CHECK ((base_unit = ANY (ARRAY['g'::text, 'ml'::text, 'cai'::text])))",
+  "ingredients.ingredients_base_unit_check": "CHECK ((base_unit = ANY (ARRAY['g'::text, 'ml'::text, 'cai'::text, 'kg'::text, 'l'::text])))",
   "ingredients.ingredients_batch_output_qty_check": "CHECK (((batch_output_qty IS NULL) OR (batch_output_qty > (0)::numeric)))",
   "ingredients.ingredients_kind_check": "CHECK ((kind = ANY (ARRAY['purchased'::text, 'prepared'::text])))",
   "ingredients.ingredients_last_unit_cost_check": "CHECK (((last_unit_cost IS NULL) OR (last_unit_cost >= (0)::numeric)))",

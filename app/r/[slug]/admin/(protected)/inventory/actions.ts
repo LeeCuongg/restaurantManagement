@@ -29,7 +29,7 @@ function invPath(slug: string) {
   return `/r/${slug}/admin/inventory`;
 }
 
-const BASE_UNITS: BaseUnit[] = ["g", "ml", "cai"];
+const BASE_UNITS: BaseUnit[] = ["g", "ml", "cai", "kg", "l"];
 
 type IngredientFields = {
   name: string;

@@ -3,10 +3,24 @@
  * (migration 0045). Số lượng luôn ở ĐƠN VỊ GỐC; giá luôn là đồng / 1 đơn vị gốc.
  */
 
-export type BaseUnit = "g" | "ml" | "cai";
+export type BaseUnit = "g" | "ml" | "cai" | "kg" | "l";
 export type IngredientKind = "purchased" | "prepared";
 
-export const BASE_UNIT_LABEL: Record<BaseUnit, string> = { g: "g", ml: "ml", cai: "cái" };
+export const BASE_UNIT_LABEL: Record<BaseUnit, string> = { g: "g", ml: "ml", cai: "cái", kg: "kg", l: "lít" };
+
+/** Thứ tự trong ô chọn "Đơn vị trừ kho" (0080 thêm kg, lít — như KiotViet / CUKCUK). */
+export const BASE_UNIT_OPTIONS: { value: BaseUnit; label: string }[] = [
+  { value: "g", label: "gam (g)" },
+  { value: "kg", label: "kilôgam (kg)" },
+  { value: "ml", label: "mililít (ml)" },
+  { value: "l", label: "lít" },
+  { value: "cai", label: "cái / quả / lon" },
+];
+
+/** g, ml: giá một đơn vị rất lẻ (0,15đ / g) → hiện theo 1.000 đơn vị. kg, lít, cái: hiện theo 1 đơn vị. */
+export function pricePerThousand(u: BaseUnit): boolean {
+  return u === "g" || u === "ml";
+}
 
 export type Ingredient = {
   id: string;

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { MoneyField } from "@/components/ui/money-input";
-import type { Ingredient } from "@/lib/inventory/types";
+import { BASE_UNIT_LABEL, BASE_UNIT_OPTIONS, type Ingredient } from "@/lib/inventory/types";
 import { purchasePrice } from "@/lib/inventory/units";
 import { createIngredient, updateIngredient } from "@/app/r/[slug]/admin/(protected)/inventory/actions";
 
@@ -20,7 +20,7 @@ export function IngredientForm({ slug, ingredient }: { slug: string; ingredient?
   const [baseUnit, setBaseUnit] = useState(ingredient?.base_unit ?? "g");
   const [purchaseUnit, setPurchaseUnit] = useState(ingredient?.purchase_unit ?? "");
   const factor = ingredient?.purchase_factor ?? 1;
-  const unitWord = baseUnit === "cai" ? "cái" : baseUnit;
+  const unitWord = BASE_UNIT_LABEL[baseUnit];
   const price = ingredient ? purchasePrice(ingredient.last_unit_cost, factor) : null;
 
   return (
@@ -57,10 +57,15 @@ export function IngredientForm({ slug, ingredient }: { slug: string; ingredient?
           onChange={(e) => setBaseUnit(e.target.value as typeof baseUnit)}
           className={SELECT}
         >
-          <option value="g">gam (g)</option>
-          <option value="ml">mililít (ml)</option>
-          <option value="cai">cái / quả / lon</option>
+          {BASE_UNIT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
         </select>
+        <span className="text-xs text-steel">
+          Đơn vị ghi định lượng và tồn kho. Theo kg / lít thì nhỏ nhất là 0,001 (1 g / 1 ml) — gia vị dùng dưới 1 g nên chọn gam.
+        </span>
       </label>
 
       {kind === "purchased" ? (
