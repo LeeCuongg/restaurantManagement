@@ -67,10 +67,6 @@ export function CustomerTicketDoc({
 
       <div className="ct-ticket">
         <div className="ct-center">
-          {ticket.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={ticket.logoUrl} alt="" className="ct-logo" />
-          )}
           <div className="ct-tenant">{ticket.tenantName}</div>
           <div className="ct-title">PHIẾU KHÁCH</div>
           {ticket.kitchenNo != null && <div className="ct-no">ĐƠN #{ticket.kitchenNo}</div>}
@@ -143,7 +139,6 @@ export function CustomerTicketDoc({
           font-size: ${s.base}px; line-height: ${s.lh}; color: #000;
         }
         .ct-center { text-align: center; }
-        .ct-logo { display: block; width: ${Math.round(s.base * 3)}px; height: ${Math.round(s.base * 3)}px; margin: 0 auto 4px; object-fit: contain; filter: grayscale(1); }
         .ct-tenant { font-weight: 700; font-size: ${s.tenant}px; }
         .ct-title { font-weight: 700; letter-spacing: 1px; margin-top: 2px; }
         .ct-no { font-weight: 800; font-size: ${s.no}px; margin-top: 4px; }

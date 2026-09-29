@@ -48,7 +48,7 @@ const hoaDon: ReceiptView = {
 };
 
 async function giaiMa(p: PhieuAnh, kho: Kho) {
-  const buf = Buffer.from(await (await dungAnhPhieu(p, kho)).arrayBuffer());
+  const buf = Buffer.from(await dungAnhPhieu(p, kho).arrayBuffer());
   return { buf, anh: giaiMaPng(buf) as { rong: number; cao: number; rgba: Uint8Array } };
 }
 

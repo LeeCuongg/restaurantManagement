@@ -93,7 +93,7 @@ describe("thanhAnhDen", () => {
         createdAt: null, ticketNo: "K3", items: [{ name: "Phở bò", qty: 1, modifiers: [], note: null, unitPrice: 50000 }], total: 50000,
       },
     };
-    const png = Buffer.from(await (await dungAnhPhieu(p, "80")).arrayBuffer());
+    const png = Buffer.from(await dungAnhPhieu(p, "80").arrayBuffer());
     const goc = giaiMaPng(png);
     const den = thanhAnhDen(goc);
     expect(den.rongByte).toBe(72);

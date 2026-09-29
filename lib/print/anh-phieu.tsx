@@ -19,6 +19,7 @@ import { CHAM_MOI_PX, CO_HOA_DON, CO_PHIEU_KHACH } from "@/lib/print/co-giay";
  * Ảnh là BẢN SAO Y HỆT bản in trình duyệt (`ReceiptDoc`, `CustomerTicketDoc`): cùng font JetBrains Mono, cùng
  * bảng cỡ chữ (`lib/print/co-giay`), cùng bố cục, cùng chữ — mỗi px CSS thành `CHAM_MOI_PX` chấm. Chủ dự án
  * 30/09/2026: phiếu qua cầu in "không lịch sự bằng phiếu cũ… dùng y hệt đi". Sửa mẫu bên kia thì sửa cả ở đây.
+ * Không in logo (chủ dự án 30/09/2026 — cả hai đường in).
  * Bố cục chỉ dùng flexbox (giới hạn của `next/og`).
  */
 export type PhieuAnh =
@@ -75,23 +76,6 @@ function napFont() {
   return font;
 }
 
-/**
- * Logo quán → data URL (PNG/JPEG — hai định dạng `next/og` vẽ được). Tải lỗi / chậm / định dạng khác thì in
- * không logo: thiếu logo còn hơn không in được phiếu.
- */
-async function taiLogo(url: string | null): Promise<string | null> {
-  if (!url) return null;
-  try {
-    const res = await fetch(url, { headers: { Accept: "image/png,image/jpeg" }, signal: AbortSignal.timeout(3000) });
-    if (!res.ok) return null;
-    const loai = (res.headers.get("content-type") ?? "").split(";")[0].trim();
-    if (loai !== "image/png" && loai !== "image/jpeg") return null;
-    return `data:${loai};base64,${Buffer.from(await res.arrayBuffer()).toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
-
 // ── Ước lượng chiều cao ─────────────────────────────────────────────────────────
 // `next/og` bắt buộc biết trước chiều cao. JetBrains Mono là font đều khổ (mỗi ký tự 0,6 em) nên đếm được số
 // dòng; ước DƯ (xuống hàng theo từ phí chỗ) — cầu in cắt phần trắng thừa ở đáy nên dư không tốn giấy.
@@ -111,7 +95,6 @@ export function uocLuongChieuCao(p: PhieuAnh, kho: Kho): number {
     const [base, name, dong] = [d(s.base), d(s.name), (co: number) => co * s.lh];
     const ke = 2 + 2 * d(Math.round(s.base / 2));
     const t = p.phieu;
-    if (t.logoUrl) h += d(s.base * 3) + d(4);
     h += soDong(t.tenantName, d(s.tenant), W) * dong(d(s.tenant)) + dong(base) + d(2) + dong(d(s.no)) + d(4);
     h += ke + soDong(`${t.place} #${t.ticketNo}`, base, W) * dong(base) + soDong(t.contactName, base, W) * dong(base) + dong(base) + ke;
     h += d(4);
@@ -128,7 +111,6 @@ export function uocLuongChieuCao(p: PhieuAnh, kho: Kho): number {
     const ke = 2 + 2 * d(Math.round(s.base / 2));
     const hd = p.hoaDon;
     const rongTen = W - 2 * name * 0.6 - d(6) * 2 - 12 * name * 0.6; // cột SL 2ch + cột tiền ~12 ký tự
-    if (hd.logoUrl) h += d(s.base * 3) + d(4);
     h += soDong(hd.tenantName, d(s.tenant), W) * dong(d(s.tenant)) + dong(base) + d(2);
     h += ke + soDong(`${hd.tableLabel} #${hd.billNo ?? ""}`, base, W) * dong(base) + dong(base);
     h += soDong(hd.contactLine, base, W) * dong(base) + ke + d(4);
@@ -181,26 +163,13 @@ function Hang({ trai, phai, style }: { trai: React.ReactNode; phai?: React.React
   );
 }
 
-/** `.ct-logo` / `.rc-logo`: vuông base×3 px, canh giữa, cách dưới 4px. */
-function Logo({ src, base }: { src: string | null; base: number }) {
-  if (!src) return null;
-  const c = d(Math.round(base * 3));
-  return (
-    <div style={{ display: "flex", justifyContent: "center", width: "100%", marginBottom: d(4) }}>
-      {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
-      <img src={src} width={c} height={c} style={{ objectFit: "contain" }} />
-    </div>
-  );
-}
-
 /** Y hệt `CustomerTicketDoc`. */
-function PhieuKhach({ t, gio, kho, logo }: { t: CustomerTicketView; gio: string; kho: Kho; logo: string | null }) {
+function PhieuKhach({ t, gio, kho }: { t: CustomerTicketView; gio: string; kho: Kho }) {
   const s = CO_PHIEU_KHACH[kho];
   const soPhan = t.items.reduce((acc, i) => acc + i.qty, 0);
   return (
     <Cot>
       <Cot>
-        <Logo src={logo} base={s.base} />
         <Giua style={{ fontWeight: 700, fontSize: d(s.tenant) }}>{t.tenantName}</Giua>
         <Giua style={{ fontWeight: 700, letterSpacing: d(1), marginTop: d(2) }}>PHIẾU KHÁCH</Giua>
         {t.kitchenNo != null && <Giua style={{ fontWeight: 800, fontSize: d(s.no), marginTop: d(4) }}>{`ĐƠN #${t.kitchenNo}`}</Giua>}
@@ -240,14 +209,13 @@ function PhieuKhach({ t, gio, kho, logo }: { t: CustomerTicketView; gio: string;
 }
 
 /** Y hệt `ReceiptDoc`. */
-function HoaDon({ h, gio, kho, logo }: { h: ReceiptView; gio: string; kho: Kho; logo: string | null }) {
+function HoaDon({ h, gio, kho }: { h: ReceiptView; gio: string; kho: Kho }) {
   const s = CO_HOA_DON[kho];
   const tienThoi = h.payment && h.payment.method === "cash" ? Math.max(0, h.payment.amount - h.total) : 0;
   const cotSl = d(s.name * 0.6 * 2); // `.rc-qty { flex: 0 0 2ch }` — 1ch của JetBrains Mono = 0,6 em
   return (
     <Cot>
       <Cot>
-        <Logo src={logo} base={s.base} />
         <Giua style={{ fontWeight: 700, fontSize: d(s.tenant) }}>{h.tenantName}</Giua>
         <Giua style={{ fontWeight: 700, letterSpacing: d(1), marginTop: d(2) }}>{h.payment ? "HÓA ĐƠN" : "PHIẾU TẠM TÍNH"}</Giua>
       </Cot>
@@ -333,11 +301,10 @@ function QrChuyenKhoan({ qr, kho, base }: { qr: TransferQr; kho: Kho; base: numb
 }
 
 /** PNG của phiếu (nền trắng tuyệt đối, chữ đen — máy nhiệt không in được xám). */
-export async function dungAnhPhieu(p: PhieuAnh, kho: Kho): Promise<ImageResponse> {
+export function dungAnhPhieu(p: PhieuAnh, kho: Kho): ImageResponse {
   const rong = RONG[kho];
   const laHoaDon = p.loai === "receipt";
   const s = laHoaDon ? CO_HOA_DON[kho] : CO_PHIEU_KHACH[kho];
-  const logo = await taiLogo(laHoaDon ? p.hoaDon.logoUrl : p.phieu.logoUrl);
   return new ImageResponse(
     (
       <div
@@ -354,7 +321,7 @@ export async function dungAnhPhieu(p: PhieuAnh, kho: Kho): Promise<ImageResponse
           padding: `${LE_TREN}px ${LE_NGANG[kho]}px`,
         }}
       >
-        {laHoaDon ? <HoaDon h={p.hoaDon} gio={p.gio} kho={kho} logo={logo} /> : <PhieuKhach t={p.phieu} gio={p.gio} kho={kho} logo={logo} />}
+        {laHoaDon ? <HoaDon h={p.hoaDon} gio={p.gio} kho={kho} /> : <PhieuKhach t={p.phieu} gio={p.gio} kho={kho} />}
       </div>
     ),
     { width: rong, height: uocLuongChieuCao(p, kho), fonts: napFont(), headers: { "Cache-Control": "no-store" } }

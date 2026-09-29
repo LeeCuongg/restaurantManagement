@@ -75,10 +75,6 @@ export function ReceiptDoc({
 
       <div className="rc-receipt">
         <div className="rc-center">
-          {receipt.logoUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={receipt.logoUrl} alt="" className="rc-logo" />
-          )}
           <div className="rc-tenant">{receipt.tenantName}</div>
           <div className="rc-title">{receipt.payment ? "HÓA ĐƠN" : "PHIẾU TẠM TÍNH"}</div>
         </div>
@@ -163,7 +159,6 @@ export function ReceiptDoc({
         .rc-btn-primary { background: #fa520f; border-color: #fa520f; color: #fff; }
         .rc-receipt { width: ${s.w}px; margin: 0 auto; padding: 6px 8px 12px; font-family: var(--font-mono), ui-monospace, monospace; font-size: ${s.base}px; line-height: ${s.lh}; color: #000; }
         .rc-center { text-align: center; }
-        .rc-logo { display: block; width: ${Math.round(s.base * 3)}px; height: ${Math.round(s.base * 3)}px; margin: 0 auto 4px; object-fit: contain; filter: grayscale(1); }
         .rc-tenant { font-weight: 700; font-size: ${s.tenant}px; }
         .rc-title { font-weight: 700; letter-spacing: 1px; margin-top: 2px; }
         .rc-line { border-top: 1px dashed #000; margin: ${Math.round(s.base / 2)}px 0; }
