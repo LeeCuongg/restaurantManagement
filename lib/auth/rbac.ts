@@ -76,7 +76,8 @@ export type ManageSection =
   | "branches"
   | "customers"
   | "purchasing"
-  | "cashbook";
+  | "cashbook"
+  | "finance";
 
 /**
  * Vai trò `role` có quyền quản lý `section` cấu hình không — ma trận QD-010 §2.
@@ -96,6 +97,8 @@ export type ManageSection =
 export function canManage(role: Role, section: ManageSection): boolean {
   switch (section) {
     case "settings":
+    // Kết quả kinh doanh (P20 20-04, QD-027 C5): lộ tiền thuê nhà, lương, lợi nhuận — CHỈ chủ quán.
+    case "finance":
       return role === "owner";
     case "menu":
     case "tables":
