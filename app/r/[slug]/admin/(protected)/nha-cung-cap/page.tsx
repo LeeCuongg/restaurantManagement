@@ -4,9 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { listSuppliers } from "@/lib/purchasing/data";
 import { formatVnd } from "@/lib/orders/cart";
 import { Input } from "@/components/ui/input";
-import { SubmitButton } from "@/components/ui/submit-button";
-import { SupplierFields } from "@/components/admin/purchasing/SupplierFields";
-import { createSupplier } from "./actions";
+import { NewSupplierDialog } from "@/components/admin/purchasing/NewSupplierDialog";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -56,22 +54,9 @@ export default async function SupplierListPage({
             {dangNo && <input type="hidden" name="no" value="1" />}
             <Input name="q" defaultValue={q ?? ""} placeholder="Tìm tên, SĐT hoặc mã" className="h-9 w-64" aria-label="Tìm nhà cung cấp" />
           </form>
+          <NewSupplierDialog slug={slug} />
         </div>
       </header>
-
-      <details className="group rounded-lg border border-hairline-soft bg-canvas p-lg shadow-card" open={rows.length === 0 && !q}>
-        <summary className="cursor-pointer list-none text-sm font-medium text-primary marker:hidden">
-          <span className="group-open:hidden">+ Nhà cung cấp</span>
-          <span className="hidden text-ink group-open:inline">Thêm nhà cung cấp</span>
-        </summary>
-        <form action={createSupplier} className="mt-md flex flex-col gap-md">
-          <input type="hidden" name="slug" value={slug} />
-          <SupplierFields />
-          <div>
-            <SubmitButton pendingLabel="Đang lưu…">Lưu nhà cung cấp</SubmitButton>
-          </div>
-        </form>
-      </details>
 
       <section className="rounded-lg border border-hairline-soft bg-canvas shadow-card">
         <div className="overflow-x-auto">
@@ -111,7 +96,7 @@ export default async function SupplierListPage({
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-lg py-lg text-center text-sm text-steel">
-                    {dangNo ? "Không còn nợ nhà cung cấp nào." : q ? "Không tìm thấy nhà cung cấp." : "Chưa có nhà cung cấp nào."}
+                    {dangNo ? "Không còn nợ nhà cung cấp nào." : q ? "Không tìm thấy nhà cung cấp." : "Chưa có nhà cung cấp nào — bấm \"+ Nhà cung cấp\" để thêm."}
                   </td>
                 </tr>
               )}

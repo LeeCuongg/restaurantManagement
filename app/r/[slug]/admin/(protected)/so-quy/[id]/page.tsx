@@ -77,7 +77,7 @@ export default async function VoucherPage({ params }: { params: Promise<{ slug: 
           {v.receipt &&
             row(
               "Phiếu nhập",
-              <Link href={`/r/${slug}/admin/inventory/phieu-nhap/${v.receipt.id}`} className="font-mono text-primary">
+              <Link href={`/r/${slug}/admin/nhap-hang/${v.receipt.id}`} className="font-mono text-primary">
                 {v.receipt.code}
               </Link>
             )}
@@ -123,7 +123,7 @@ export default async function VoucherPage({ params }: { params: Promise<{ slug: 
       {v.status === "active" && v.source === "purchase" && v.receipt && (
         <p className="text-sm text-steel">
           Phiếu này sinh từ phiếu nhập — muốn hủy thì Hủy bỏ phiếu nhập{" "}
-          <Link href={`/r/${slug}/admin/inventory/phieu-nhap/${v.receipt.id}`} className="text-primary">{v.receipt.code}</Link>.
+          <Link href={`/r/${slug}/admin/nhap-hang/${v.receipt.id}`} className="text-primary">{v.receipt.code}</Link>.
         </p>
       )}
     </div>

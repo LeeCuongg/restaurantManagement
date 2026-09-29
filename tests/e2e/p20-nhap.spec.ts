@@ -68,7 +68,7 @@ test("nhập hàng có NCC, trả một phần, hủy bỏ trả lại tồn và
     await page.getByRole("button", { name: "Hoàn thành" }).click();
     // Lần đầu mở trang chi tiết phiếu, server dev phải biên dịch — chờ lâu hơn mặc định.
     await expect(page.getByText(/Đã nhập hàng — phiếu PN\d{6}/)).toBeVisible({ timeout: 90_000 });
-    await expect(page).toHaveURL(/\/inventory\/phieu-nhap\/[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/\/nhap-hang\/[0-9a-f-]{36}$/);
     const receiptId = page.url().split("/").pop()!;
     receiptIds.push(receiptId);
 
@@ -77,7 +77,7 @@ test("nhập hàng có NCC, trả một phần, hủy bỏ trả lại tồn và
     await expect(page.getByText("Đã nhập hàng").first()).toBeVisible();
 
     // Tab "Phiếu nhập" có phiếu vừa tạo; NCC nợ 375.000.
-    await page.goto(`/r/${SLUG}/admin/inventory/phieu-nhap`, { waitUntil: "networkidle" });
+    await page.goto(`/r/${SLUG}/admin/nhap-hang`, { waitUntil: "networkidle" });
     const ds = page.locator("[data-danh-sach-phieu-nhap]");
     await expect(ds.getByText(/PN\d{6}/).first()).toBeVisible();
     // Danh sách cho biết nhập gì + còn nợ bao nhiêu; bấm vào dòng (không cần trúng mã phiếu) mở chi tiết.
@@ -85,12 +85,12 @@ test("nhập hàng có NCC, trả một phần, hủy bỏ trả lại tồn và
     await expect(hang).toBeVisible();
     await expect(ds.getByText("375.000₫")).toBeVisible();
     await hang.click();
-    await expect(page).toHaveURL(new RegExp(`/inventory/phieu-nhap/${receiptId}$`), { timeout: 60_000 });
+    await expect(page).toHaveURL(new RegExp(`/nhap-hang/${receiptId}$`), { timeout: 60_000 });
     await page.goto(`/r/${SLUG}/admin/nha-cung-cap?q=${encodeURIComponent(TAG)}`);
     await expect(page.locator("[data-danh-sach-ncc]").getByText("375.000₫")).toBeVisible();
 
     // Hủy bỏ (ngày kho chưa chốt) → dòng sổ biến mất, phiếu chi hủy theo, nợ về 0.
-    await page.goto(`/r/${SLUG}/admin/inventory/phieu-nhap/${receiptId}`, { waitUntil: "networkidle" });
+    await page.goto(`/r/${SLUG}/admin/nhap-hang/${receiptId}`, { waitUntil: "networkidle" });
     // Hộp xác nhận PHẢI hiện (bấm trước khi trang nạp xong JS thì không có bước xác nhận).
     let hoi = "";
     page.once("dialog", async (d) => {

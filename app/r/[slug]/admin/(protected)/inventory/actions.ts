@@ -404,7 +404,7 @@ export async function recordReceipts(fd: FormData) {
   revalidatePath(invPath(slug), "layout");
   revalidatePath(`/r/${slug}/admin/nha-cung-cap`, "layout");
   await setFlash("ok", complete ? `Đã nhập hàng — phiếu ${saved.code}.` : `Đã lưu tạm phiếu ${saved.code}.`);
-  redirect(`${invPath(slug)}/phieu-nhap/${saved.id}`);
+  redirect(`/r/${slug}/admin/nhap-hang/${saved.id}`);
 }
 
 /** Phiếu chế biến mẻ (INV-05): tính ở server bằng `planBatch`, ghi qua RPC một giao dịch. */

@@ -121,7 +121,7 @@ export default async function SupplierDetailPage({
       {tab === "history" && (
         <ReceiptTable
           rows={await listReceipts(supabase, session.tenant.id, { supplierId: id })}
-          hrefBase={`/r/${slug}/admin/inventory/phieu-nhap`}
+          hrefBase={`/r/${slug}/admin/nhap-hang`}
           showSupplier={false}
           empty="Chưa nhập hàng của nhà cung cấp này."
         />
@@ -175,7 +175,7 @@ async function DebtTab({ slug, id, debt }: { slug: string; id: string; debt: num
               {bal.map((b) => (
                 <tr key={b.receipt_id}>
                   <td className="px-lg py-sm">
-                    <Link href={`/r/${slug}/admin/inventory/phieu-nhap/${b.receipt_id}`} className="font-mono text-ink underline-offset-4 hover:underline">
+                    <Link href={`/r/${slug}/admin/nhap-hang/${b.receipt_id}`} className="font-mono text-ink underline-offset-4 hover:underline">
                       {b.code}
                     </Link>
                   </td>

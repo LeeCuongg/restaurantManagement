@@ -13,7 +13,10 @@ const STATUSES: ReceiptStatus[] = ["draft", "done", "cancelled"];
 const PAY = { chua: "Chưa thanh toán", "mot-phan": "Thanh toán một phần", du: "Đã thanh toán" } as const;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Danh sách phiếu nhập (PURCH-03) — lọc trạng thái, nhà cung cấp, khoảng ngày chứng từ (như KiotViet "Nhập hàng"). */
+/**
+ * "Nhập hàng" (PURCH-03) — mục menu riêng như KiotViet FnB (chủ dự án chốt G1, 30/09/2026): danh sách phiếu nhập, lọc trạng thái,
+ * nhà cung cấp, thanh toán, khoảng ngày chứng từ; "+ Nhập hàng" mở form lập phiếu.
+ */
 export default async function ReceiptListPage({
   params,
   searchParams,
@@ -43,11 +46,17 @@ export default async function ReceiptListPage({
           r.status === "done" &&
           (tra === "chua" ? r.paid === 0 && r.total > 0 : tra === "du" ? r.paid >= r.total : r.paid > 0 && r.paid < r.total)
       );
-  const base = `/r/${slug}/admin/inventory/phieu-nhap`;
+  const base = `/r/${slug}/admin/nhap-hang`;
   const select = "h-9 rounded-md border border-hairline-strong bg-canvas px-sm text-sm text-ink";
 
   return (
     <div className="flex flex-col gap-md">
+      <header>
+        <h1 className="font-display text-2xl text-ink">Nhập hàng</h1>
+        <p className="mt-xxs text-sm text-steel">
+          Phiếu nhập hàng từ nhà cung cấp hoặc mua chợ. Nhập nhanh buổi sáng vẫn ở Nguyên liệu → Nhập hôm nay.
+        </p>
+      </header>
       <div className="flex flex-wrap items-end justify-between gap-md">
         <form action={base} className="flex flex-wrap items-end gap-sm text-sm">
           <label className="flex flex-col gap-xxs text-slate">
@@ -96,7 +105,7 @@ export default async function ReceiptListPage({
           </button>
         </form>
         <Link
-          href={`/r/${slug}/admin/inventory/today`}
+          href={`${base}/moi`}
           className="inline-flex h-9 items-center rounded-md bg-primary px-md text-sm font-medium text-primary-fg hover:bg-primary-deep"
         >
           + Nhập hàng

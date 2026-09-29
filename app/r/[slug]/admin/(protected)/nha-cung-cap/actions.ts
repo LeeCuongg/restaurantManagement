@@ -24,14 +24,14 @@ function dbError(message: string, code?: string): string {
   return `Lưu lỗi: ${message}`;
 }
 
-/** "+ Nhà cung cấp" (PURCH-01). Mã NCC000001 do DB cấp (trigger 0076). */
-export async function createSupplier(fd: FormData) {
+/** "+ Nhà cung cấp" (PURCH-01). Mã NCC000001 do DB cấp (trigger 0076). Trả `ok` để hộp thoại biết đóng hay giữ. */
+export async function createSupplier(fd: FormData): Promise<{ ok: boolean }> {
   const slug = String(fd.get("slug") ?? "");
   const session = await requirePurchasing(slug);
   const parsed = parseSupplierForm(fd);
   if (!parsed.ok) {
     await setFlash("error", parsed.error);
-    return;
+    return { ok: false };
   }
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -41,10 +41,11 @@ export async function createSupplier(fd: FormData) {
     .single();
   if (error) {
     await setFlash("error", dbError(error.message, error.code));
-    return;
+    return { ok: false };
   }
   revalidatePath(base(slug));
   await setFlash("ok", `Đã thêm nhà cung cấp ${data.code}.`);
+  return { ok: true };
 }
 
 export async function updateSupplier(fd: FormData) {

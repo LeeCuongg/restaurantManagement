@@ -16,7 +16,7 @@ async function requirePurchasing(slug: string) {
   return session!;
 }
 
-const detail = (slug: string, id: string) => `/r/${slug}/admin/inventory/phieu-nhap/${id}`;
+const detail = (slug: string, id: string) => `/r/${slug}/admin/nhap-hang/${id}`;
 
 function refresh(slug: string) {
   revalidatePath(`/r/${slug}/admin/inventory`, "layout");

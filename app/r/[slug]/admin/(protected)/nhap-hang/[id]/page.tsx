@@ -31,7 +31,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
     r.supplier_id ? getSupplier(supabase, tenantId, r.supplier_id) : Promise.resolve(null),
     activeSupplierOptions(supabase, tenantId),
   ]);
-  const base = `/r/${slug}/admin/inventory/phieu-nhap`;
+  const base = `/r/${slug}/admin/nhap-hang`;
   const paid = r.paid;
   const hidden = (
     <>
@@ -73,12 +73,12 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
       <header className="flex flex-wrap items-end justify-between gap-md">
         <div>
           <Link href={base} className="text-sm text-primary">
-            ‹ Phiếu nhập
+            ‹ Nhập hàng
           </Link>
-          <h2 className="mt-xxs flex flex-wrap items-center gap-sm font-display text-xl text-ink">
+          <h1 className="mt-xxs flex flex-wrap items-center gap-sm font-display text-2xl text-ink">
             <span className="font-mono">{r.code}</span>
             <ReceiptStatusBadge status={r.status} />
-          </h2>
+          </h1>
           <p className="mt-xxs text-sm text-steel">
             Ngày chứng từ {ngayVn(r.doc_date)}
             {r.stock_date && <> · vào kho {ngayVn(r.stock_date)}</>}
