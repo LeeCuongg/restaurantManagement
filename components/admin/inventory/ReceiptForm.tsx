@@ -77,6 +77,8 @@ export function ReceiptForm({
   const [payTouched, setPayTouched] = useState(!!draft);
   const [payNow, setPayNow] = useState(draft?.pay_now ?? 0);
   const [fund, setFund] = useState<"cash" | "bank">(draft?.pay_fund ?? "cash");
+  // "Chưa trả (ghi nợ)" — như CUKCUK "Ghi nợ nhà cung cấp" / "Thanh toán ngay": nói rõ thay vì bắt xóa số tiền về 0.
+  const [debt, setDebt] = useState(!!draft && draft.pay_now === 0);
   const [note, setNote] = useState(draft?.note ?? "");
 
   const unitOf = (id: string) => {
@@ -103,7 +105,7 @@ export function ReceiptForm({
   );
   const disc = Math.min(discount, subtotal);
   const total = subtotal - disc;
-  const pay = payTouched ? Math.min(payNow, total) : total;
+  const pay = debt ? 0 : payTouched ? Math.min(payNow, total) : total;
   const conNo = total - pay;
 
   return (
@@ -230,20 +232,30 @@ export function ReceiptForm({
           <MoneyInput
             aria-label="Tiền trả NCC"
             value={pay}
+            disabled={debt}
             onChange={(v) => {
               setPayTouched(true);
               setPayNow(v);
             }}
             placeholder="0"
-            className="h-9 w-36 text-right"
+            className="h-9 w-36 text-right disabled:bg-surface disabled:text-steel"
           />
         </label>
-        {pay > 0 && (
-          <div className="flex items-center justify-end gap-md" role="radiogroup" aria-label="Phương thức trả">
-            {(["cash", "bank"] as const).map((f) => (
+        {total > 0 && (
+          <div className="flex flex-wrap items-center justify-end gap-x-md" role="radiogroup" aria-label="Thanh toán">
+            {(["cash", "bank", "debt"] as const).map((f) => (
               <label key={f} className="inline-flex min-h-9 items-center gap-xxs text-slate">
-                <input type="radio" name="fund_ui" checked={fund === f} onChange={() => setFund(f)} />
-                {f === "cash" ? "Tiền mặt" : "Chuyển khoản"}
+                <input
+                  type="radio"
+                  name="fund_ui"
+                  checked={f === "debt" ? debt : !debt && fund === f}
+                  onChange={() => {
+                    if (f === "debt") return setDebt(true);
+                    setDebt(false);
+                    setFund(f);
+                  }}
+                />
+                {f === "cash" ? "Tiền mặt" : f === "bank" ? "Chuyển khoản" : "Chưa trả (ghi nợ)"}
               </label>
             ))}
           </div>
@@ -252,7 +264,9 @@ export function ReceiptForm({
           <p className={supplierId ? "text-right text-slate" : "text-right text-status-late"}>
             {supplierId
               ? `Tính vào công nợ: ${formatVnd(conNo)}`
-              : `Còn thiếu ${formatVnd(conNo)} — chọn nhà cung cấp để ghi nợ, hoặc trả đủ.`}
+              : debt
+                ? "Chọn nhà cung cấp ở trên để ghi nợ."
+                : `Còn thiếu ${formatVnd(conNo)} — chọn nhà cung cấp để ghi nợ, hoặc trả đủ.`}
           </p>
         )}
         <Input

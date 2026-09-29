@@ -115,3 +115,39 @@ test("nhập hàng có NCC, trả một phần, hủy bỏ trả lại tồn và
     await db.from("ingredients").delete().in("id", (ings ?? []).map((i) => i.id));
   }
 });
+
+test("chọn 'Chưa trả (ghi nợ)' → không phiếu chi, nợ = cần trả; chưa chọn NCC thì được nhắc", async ({ page }) => {
+  const { data: t } = await db.from("tenants").select("id").eq("slug", SLUG).single();
+  const tenant = t!.id as string;
+  const { data: ings } = await db
+    .from("ingredients")
+    .insert({ tenant_id: tenant, name: `${TAG} Gạo`, base_unit: "kg" })
+    .select("id")
+    .single();
+  const { data: ncc } = await db.from("suppliers").insert({ tenant_id: tenant, code: `${TAG}-GN`, name: `${TAG} Mối gạo` }).select("id").single();
+  try {
+    await dangNhap(page);
+    await page.goto(`/r/${SLUG}/admin/inventory/today`, { waitUntil: "networkidle" });
+    await page.getByRole("button", { name: "+ Thêm nguyên liệu khác" }).click();
+    await page.getByRole("combobox", { name: "Nguyên liệu" }).last().selectOption({ label: `${TAG} Gạo` });
+    await page.getByRole("textbox", { name: /Số lượng/ }).last().fill("50");
+    await page.getByRole("textbox", { name: "Đơn giá (không bắt buộc)" }).last().fill("20000");
+    await page.getByRole("radio", { name: "Chưa trả (ghi nợ)" }).check();
+    await expect(page.getByRole("textbox", { name: "Tiền trả NCC" })).toBeDisabled();
+    await expect(page.getByText("Chọn nhà cung cấp ở trên để ghi nợ.")).toBeVisible();
+    await page.getByRole("combobox", { name: "Nhà cung cấp" }).selectOption({ label: `${TAG} Mối gạo` });
+    await expect(page.locator("[data-tien-phieu-nhap]").getByText("Tính vào công nợ: 1.000.000₫")).toBeVisible();
+    await page.getByRole("button", { name: "Hoàn thành" }).click();
+    await expect(page.getByText(/Đã nhập hàng — phiếu PN\d{6}/)).toBeVisible({ timeout: 90_000 });
+    const { data: pr } = await db.from("purchase_receipts").select("id, total").eq("supplier_id", ncc!.id).single();
+    expect(pr!.total).toBe(1_000_000);
+    expect((await db.from("cash_vouchers").select("id").eq("purchase_receipt_id", pr!.id)).data).toHaveLength(0);
+  } finally {
+    const { data: rs } = await db.from("purchase_receipts").select("id").eq("supplier_id", ncc!.id);
+    const ids = (rs ?? []).map((r) => r.id as string);
+    await db.from("stock_entries").delete().in("purchase_receipt_id", ids);
+    await db.from("purchase_receipts").delete().in("id", ids);
+    await db.from("suppliers").delete().eq("id", ncc!.id);
+    await db.from("ingredients").delete().eq("id", ings!.id);
+  }
+});
