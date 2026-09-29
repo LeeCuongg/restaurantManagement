@@ -1,7 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import zlib from "node:zlib";
 import fs from "node:fs";
 import path from "node:path";
-import { dungAnhPhieu, uocLuongChieuCao, RONG, CO_PHIEU_KHACH, type PhieuAnh } from "@/lib/print/anh-phieu";
+import { dungAnhPhieu, uocLuongChieuCao, RONG, type PhieuAnh } from "@/lib/print/anh-phieu";
 import { giaiMaPng, thanhAnhDen } from "../../scripts/print-bridge.mjs";
 
 /**
@@ -55,7 +56,7 @@ const phieuKhach: PhieuAnh = {
 };
 
 async function png(p: PhieuAnh, kho: "80" | "58") {
-  const buf = Buffer.from(await dungAnhPhieu(p, kho).arrayBuffer());
+  const buf = Buffer.from(await (await dungAnhPhieu(p, kho)).arrayBuffer());
   return { buf, rong: buf.readUInt32BE(16), cao: buf.readUInt32BE(20) };
 }
 
@@ -81,14 +82,6 @@ describe("dungAnhPhieu", () => {
     fs.writeFileSync(path.join("test-results", "mau-phieu-khach-80.png"), buf);
   }, 30_000);
 
-  it("phiếu khách: cỡ chữ như bản in trình duyệt trước đây (CustomerTicketDoc, px CSS × 203/96 chấm)", () => {
-    // qt-food 30/09/2026: in qua cầu in ra chữ nhỏ hơn in trình duyệt. Bản trình duyệt: 80mm base 15 / tên món 17 /
-    // tên quán 19 / số đơn 29 px; 58mm 14 / 15 / 16 / 26 px. 1 px CSS khi in = 1/96 inch; máy nhiệt 203 dpi.
-    const cham = (px: number) => Math.round((px * 203) / 96);
-    expect(CO_PHIEU_KHACH["80"]).toEqual({ chu: cham(15), ten: cham(17), quan: cham(19), so: cham(29) });
-    expect(CO_PHIEU_KHACH["58"]).toEqual({ chu: cham(14), ten: cham(15), quan: cham(16), so: cham(26) });
-  });
-
   it.each(["80", "58"] as const)("phiếu khách dài %s mm: không bị cắt đáy (ước lượng chiều cao đủ với chữ to)", async (kho) => {
     const mon = { name: "Phở bò tái nạm gầu gân sách đặc biệt thêm bánh", qty: 2, modifiers: ["Lớn", "Thêm trứng"], note: "ít hành, không mì chính", unitPrice: 65000 };
     const dai: PhieuAnh = { ...phieuKhach, phieu: { ...(phieuKhach as { phieu: object }).phieu, items: Array(12).fill(mon) } } as PhieuAnh;
@@ -97,5 +90,60 @@ describe("dungAnhPhieu", () => {
     const den = thanhAnhDen(giaiMaPng(buf));
     expect(den.cao).toBeLessThan(cao - 8);
     fs.writeFileSync(path.join("test-results", `mau-phieu-khach-dai-${kho}.png`), buf);
+  }, 30_000);
+
+  it.each(["80", "58"] as const)("hóa đơn dài %s mm: không bị cắt đáy", async (kho) => {
+    const h = (hoaDon as { hoaDon: object }).hoaDon as Extract<PhieuAnh, { loai: "receipt" }>["hoaDon"];
+    const dai: PhieuAnh = { loai: "receipt", gio: "12:34 27/09/2026", hoaDon: { ...h, lines: Array(12).fill(h.lines[0]) } };
+    const { buf, cao } = await png(dai, kho);
+    expect(thanhAnhDen(giaiMaPng(buf)).cao).toBeLessThan(cao - 8);
+  }, 30_000);
+});
+
+/** PNG RGB 8-bit một màu — logo giả để khỏi tải mạng. */
+function pngMot(rong: number, cao: number, rgb: [number, number, number]): Buffer {
+  const hang = Buffer.concat([Buffer.from([0]), Buffer.from(Array(rong).fill(rgb).flat())]);
+  const chunk = (loai: string, data: Buffer) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(zlib.crc32(Buffer.concat([Buffer.from(loai), data])) >>> 0);
+    return Buffer.concat([len, Buffer.from(loai), data, crc]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(rong, 0);
+  ihdr.writeUInt32BE(cao, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr),
+    chunk("IDAT", zlib.deflateSync(Buffer.concat(Array(cao).fill(hang)))),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+describe("logo quán trên phiếu (như bản in trình duyệt)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const coLogo: PhieuAnh = { ...phieuKhach, phieu: { ...(phieuKhach as { phieu: object }).phieu, logoUrl: "https://x.test/logo.png" } } as PhieuAnh;
+  /** Chiều cao phần có mực (cầu in cắt trắng đáy) — logo vuông base×3 px đẩy cả phiếu xuống. */
+  const caoMuc = (buf: Buffer) => thanhAnhDen(giaiMaPng(buf)).cao;
+
+  it("tải được logo → in logo ở trên cùng", async () => {
+    vi.stubGlobal("fetch", async () => new Response(new Uint8Array(pngMot(40, 40, [0, 0, 0])), { headers: { "content-type": "image/png" } }));
+    const coAnh = await png(coLogo, "80");
+    vi.stubGlobal("fetch", async () => new Response("", { status: 404 }));
+    const khongAnh = await png(coLogo, "80");
+    expect(caoMuc(coAnh.buf) - caoMuc(khongAnh.buf)).toBeGreaterThanOrEqual(90); // 15 px × 3 × 2 chấm
+    fs.writeFileSync(path.join("test-results", "mau-phieu-khach-logo-80.png"), coAnh.buf);
+  }, 30_000);
+
+  it("logo lỗi mạng / định dạng lạ → vẫn in phiếu, không logo", async () => {
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("mất mạng");
+    });
+    expect((await png(coLogo, "80")).rong).toBe(576);
+    vi.stubGlobal("fetch", async () => new Response("x", { headers: { "content-type": "image/webp" } }));
+    expect((await png(coLogo, "80")).rong).toBe(576);
   }, 30_000);
 });

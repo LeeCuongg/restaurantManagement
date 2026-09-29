@@ -4,20 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import type { CustomerTicketView, KitchenWidth } from "@/lib/print/adapter";
 import { formatVnd } from "@/lib/orders/cart";
 import { logCustomerTicketPrint } from "@/app/r/[slug]/print/actions";
+import { CO_PHIEU_KHACH } from "@/lib/print/co-giay";
 
 /**
  * Phiếu KHÁCH in (client) — JetBrains Mono, đen trắng. Số đơn (ĐƠN #N) IN TO, KHỚP với phiếu
  * bếp để bếp mang món ra gọi đúng khách. Kèm giá + tổng. 3 khổ: 58/80mm + A5. Nút ẩn khi in.
  * Khi mở: ghi print_jobs 1 lần (POS đếm số lần in) rồi window.print().
  */
-const SIZE: Record<
-  KitchenWidth,
-  { w: number; base: number; name: number; no: number; tenant: number; lh: number; page: string; margin: string; label: string }
-> = {
-  "58": { w: 240, base: 14, name: 15, no: 26, tenant: 16, lh: 1.4, page: "58mm auto", margin: "3mm", label: "58mm" },
-  "80": { w: 320, base: 15, name: 17, no: 29, tenant: 19, lh: 1.4, page: "80mm auto", margin: "3mm", label: "80mm" },
-  "a5": { w: 560, base: 20, name: 24, no: 40, tenant: 26, lh: 1.5, page: "A5", margin: "8mm", label: "A5 (to)" },
-};
+// Cùng bảng với ảnh phiếu cầu in (lib/print/anh-phieu) — hai đường in ra y hệt nhau.
+const SIZE: Record<KitchenWidth, (typeof CO_PHIEU_KHACH)[KitchenWidth]> = CO_PHIEU_KHACH;
 
 export function CustomerTicketDoc({
   slug,
