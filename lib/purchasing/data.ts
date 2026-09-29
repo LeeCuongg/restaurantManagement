@@ -71,7 +71,10 @@ export type ReceiptListRow = {
   lineCount: number;
 };
 
-/** Phiếu nhập mới nhất trước. `paid` = Σ phiếu chi còn hiệu lực gắn phiếu (20-03 thay bằng phân bổ). */
+/**
+ * Phiếu nhập mới nhất trước. `paid`: phiếu có NCC = Σ phân bổ (0078 — gồm cả trả nợ sau này); phiếu không NCC = Σ phiếu
+ * chi còn hiệu lực gắn phiếu (mua lẻ trả đủ, không có công nợ nên không phân bổ).
+ */
 export async function listReceipts(
   supabase: SupabaseClient,
   tenantId: string,
@@ -79,7 +82,10 @@ export async function listReceipts(
 ): Promise<ReceiptListRow[]> {
   let q = supabase
     .from("purchase_receipts")
-    .select("id, code, status, doc_date, stock_date, total, supplier:suppliers(id, name), purchase_receipt_lines(count), cash_vouchers(amount, status)")
+    .select(
+      "id, code, status, doc_date, stock_date, total, supplier:suppliers(id, name), purchase_receipt_lines(count), " +
+        "cash_vouchers(amount, status), cash_voucher_allocations(amount)"
+    )
     .eq("tenant_id", tenantId)
     .order("doc_date", { ascending: false })
     .order("code", { ascending: false })
@@ -95,6 +101,7 @@ export async function listReceipts(
     supplier: { id: string; name: string } | { id: string; name: string }[] | null;
     purchase_receipt_lines: { count: number }[];
     cash_vouchers: { amount: number; status: string }[];
+    cash_voucher_allocations: { amount: number }[];
   };
   return ((data ?? []) as unknown as Raw[]).map((r) => ({
     id: r.id,
@@ -103,7 +110,9 @@ export async function listReceipts(
     doc_date: r.doc_date,
     stock_date: r.stock_date,
     total: r.total,
-    paid: r.cash_vouchers.filter((v) => v.status === "active").reduce((s, v) => s + v.amount, 0),
+    paid: (Array.isArray(r.supplier) ? r.supplier[0] : r.supplier)
+      ? r.cash_voucher_allocations.reduce((s, a) => s + a.amount, 0)
+      : r.cash_vouchers.filter((v) => v.status === "active").reduce((s, v) => s + v.amount, 0),
     supplier: Array.isArray(r.supplier) ? r.supplier[0] ?? null : r.supplier,
     lineCount: r.purchase_receipt_lines[0]?.count ?? 0,
   }));
@@ -131,6 +140,9 @@ export type ReceiptDetail = {
     unit_price: number | null; amount: number | null;
   }[];
   vouchers: { id: string; code: string; amount: number; fund: "cash" | "bank"; status: string; occurred_at: string; source: string }[];
+  /** Lịch sử thanh toán: phiếu có NCC = các phần phân bổ (kể cả trả nợ sau); không NCC = phiếu chi đi kèm. */
+  payments: { voucher_id: string; code: string; amount: number; fund: "cash" | "bank"; status: string; occurred_at: string }[];
+  paid: number;
 };
 
 export async function getReceipt(supabase: SupabaseClient, tenantId: string, id: string): Promise<ReceiptDetail | null> {
@@ -139,7 +151,8 @@ export async function getReceipt(supabase: SupabaseClient, tenantId: string, id:
     .select(
       "id, code, status, doc_date, stock_date, subtotal, discount, total, pay_now, pay_fund, note, supplier_id, copied_from, created_at, completed_at, cancelled_at, " +
         "purchase_receipt_lines(ingredient_id, qty, purchase_unit, unit_price, amount, sort, ingredients(name, base_unit)), " +
-        "cash_vouchers(id, code, amount, fund, status, occurred_at, source)"
+        "cash_vouchers(id, code, amount, fund, status, occurred_at, source), " +
+        "cash_voucher_allocations(amount, voucher:cash_vouchers(id, code, fund, status, occurred_at))"
     )
     .eq("tenant_id", tenantId)
     .eq("id", id)
@@ -149,13 +162,24 @@ export async function getReceipt(supabase: SupabaseClient, tenantId: string, id:
     ingredient_id: string; qty: number; purchase_unit: string | null; unit_price: number | null; amount: number | null; sort: number;
     ingredients: { name: string; base_unit: string } | { name: string; base_unit: string }[] | null;
   };
-  const r = data as unknown as Omit<ReceiptDetail, "lines" | "vouchers"> & {
+  type V = { id: string; code: string; fund: "cash" | "bank"; status: string; occurred_at: string };
+  const r = data as unknown as Omit<ReceiptDetail, "lines" | "vouchers" | "payments" | "paid"> & {
     purchase_receipt_lines: L[];
     cash_vouchers: ReceiptDetail["vouchers"];
+    cash_voucher_allocations: { amount: number; voucher: V | V[] | null }[];
   };
-  const { purchase_receipt_lines, cash_vouchers, ...head } = r;
+  const { purchase_receipt_lines, cash_vouchers, cash_voucher_allocations, ...head } = r;
+  const payments: ReceiptDetail["payments"] = head.supplier_id
+    ? cash_voucher_allocations.flatMap((a) => {
+        const v = Array.isArray(a.voucher) ? a.voucher[0] : a.voucher;
+        return v ? [{ voucher_id: v.id, code: v.code, amount: a.amount, fund: v.fund, status: v.status, occurred_at: v.occurred_at }] : [];
+      })
+    : cash_vouchers.map((v) => ({ voucher_id: v.id, code: v.code, amount: v.amount, fund: v.fund, status: v.status, occurred_at: v.occurred_at }));
+  payments.sort((a, b) => a.occurred_at.localeCompare(b.occurred_at));
   return {
     ...head,
+    payments,
+    paid: payments.filter((p) => p.status === "active").reduce((s, p) => s + p.amount, 0),
     lines: [...purchase_receipt_lines]
       .sort((a, b) => a.sort - b.sort)
       .map((l) => {

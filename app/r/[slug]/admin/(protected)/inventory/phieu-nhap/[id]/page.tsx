@@ -32,7 +32,7 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
     activeSupplierOptions(supabase, tenantId),
   ]);
   const base = `/r/${slug}/admin/inventory/phieu-nhap`;
-  const paid = r.vouchers.filter((v) => v.status === "active").reduce((s, v) => s + v.amount, 0);
+  const paid = r.paid;
   const hidden = (
     <>
       <input type="hidden" name="slug" value={slug} />
@@ -147,13 +147,13 @@ export default async function ReceiptDetailPage({ params }: { params: Promise<{ 
 
           <Card>
             <h3 className="text-base font-medium text-ink">Lịch sử thanh toán</h3>
-            {r.vouchers.length === 0 ? (
+            {r.payments.length === 0 ? (
               <p className="mt-xs text-sm text-steel">Chưa trả tiền nhà cung cấp cho phiếu này.</p>
             ) : (
               <ul className="mt-xs divide-y divide-hairline-soft text-sm">
-                {r.vouchers.map((v) => (
-                  <li key={v.id} className="flex flex-wrap items-center justify-between gap-sm py-xs">
-                    <span className="font-mono text-slate">{v.code}</span>
+                {r.payments.map((v) => (
+                  <li key={v.voucher_id} className="flex flex-wrap items-center justify-between gap-sm py-xs">
+                    <Link href={`/r/${slug}/admin/so-quy/${v.voucher_id}`} className="font-mono text-primary">{v.code}</Link>
                     <span className="text-slate">{gioNgayNamVn(v.occurred_at)} · {FUND_LABEL[v.fund]}</span>
                     <span className={v.status === "active" ? "tabular-nums text-ink" : "tabular-nums text-steel line-through"}>
                       {formatVnd(v.amount)}

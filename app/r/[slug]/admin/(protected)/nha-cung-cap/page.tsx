@@ -20,14 +20,16 @@ export default async function SupplierListPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; no?: string }>;
 }) {
   const { slug } = await params;
-  const { q } = await searchParams;
+  const { q, no } = await searchParams;
   const session = (await getSessionMembership(slug))!;
-  const rows = await listSuppliers(await createClient(), session.tenant.id, { q });
+  const all = await listSuppliers(await createClient(), session.tenant.id, { q });
+  const dangNo = no === "1";
+  const rows = dangNo ? all.filter((s) => s.debt > 0) : all;
   const base = `/r/${slug}/admin/nha-cung-cap`;
-  const tongNo = rows.reduce((s, r) => s + Math.max(0, r.debt), 0);
+  const tongNo = all.reduce((s, r) => s + Math.max(0, r.debt), 0);
 
   return (
     <div className="flex flex-col gap-lg">
@@ -39,9 +41,22 @@ export default async function SupplierListPage({
             {tongNo > 0 && <> Tổng nợ cần trả: <span className="font-medium text-ink">{formatVnd(tongNo)}</span>.</>}
           </p>
         </div>
-        <form action={base} className="flex items-center gap-xs">
-          <Input name="q" defaultValue={q ?? ""} placeholder="Tìm tên, SĐT hoặc mã" className="h-9 w-64" aria-label="Tìm nhà cung cấp" />
-        </form>
+        <div className="flex flex-wrap items-center gap-sm">
+          <Link
+            href={dangNo ? base : `${base}?no=1`}
+            aria-pressed={dangNo}
+            className={cn(
+              "inline-flex h-9 items-center rounded-full border px-md text-sm",
+              dangNo ? "border-ink bg-ink text-canvas" : "border-hairline-strong text-slate hover:bg-surface"
+            )}
+          >
+            Đang nợ
+          </Link>
+          <form action={base} className="flex items-center gap-xs">
+            {dangNo && <input type="hidden" name="no" value="1" />}
+            <Input name="q" defaultValue={q ?? ""} placeholder="Tìm tên, SĐT hoặc mã" className="h-9 w-64" aria-label="Tìm nhà cung cấp" />
+          </form>
+        </div>
       </header>
 
       <details className="group rounded-lg border border-hairline-soft bg-canvas p-lg shadow-card" open={rows.length === 0 && !q}>
@@ -96,7 +111,7 @@ export default async function SupplierListPage({
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-lg py-lg text-center text-sm text-steel">
-                    {q ? "Không tìm thấy nhà cung cấp." : "Chưa có nhà cung cấp nào."}
+                    {dangNo ? "Không còn nợ nhà cung cấp nào." : q ? "Không tìm thấy nhà cung cấp." : "Chưa có nhà cung cấp nào."}
                   </td>
                 </tr>
               )}

@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 export const dynamic = "force-dynamic";
 
 const STATUSES: ReceiptStatus[] = ["draft", "done", "cancelled"];
+/** Lọc theo thanh toán (như Sapo FnB) — chỉ phiếu đã nhập. */
+const PAY = { chua: "Chưa thanh toán", "mot-phan": "Thanh toán một phần", du: "Đã thanh toán" } as const;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Danh sách phiếu nhập (PURCH-03) — lọc trạng thái, nhà cung cấp, khoảng ngày chứng từ (như KiotViet "Nhập hàng"). */
@@ -17,14 +19,15 @@ export default async function ReceiptListPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tt?: string; ncc?: string; tu?: string; den?: string }>;
+  searchParams: Promise<{ tt?: string; ncc?: string; tu?: string; den?: string; tra?: string }>;
 }) {
   const { slug } = await params;
   const sp = await searchParams;
   const session = (await getSessionMembership(slug))!;
   const supabase = await createClient();
   const status = STATUSES.includes(sp.tt as ReceiptStatus) ? (sp.tt as ReceiptStatus) : undefined;
-  const [rows, suppliers] = await Promise.all([
+  const tra = sp.tra && sp.tra in PAY ? (sp.tra as keyof typeof PAY) : undefined;
+  const [all, suppliers] = await Promise.all([
     listReceipts(supabase, session.tenant.id, {
       status,
       supplierId: sp.ncc || undefined,
@@ -33,6 +36,13 @@ export default async function ReceiptListPage({
     }),
     activeSupplierOptions(supabase, session.tenant.id),
   ]);
+  const rows = !tra
+    ? all
+    : all.filter(
+        (r) =>
+          r.status === "done" &&
+          (tra === "chua" ? r.paid === 0 && r.total > 0 : tra === "du" ? r.paid >= r.total : r.paid > 0 && r.paid < r.total)
+      );
   const base = `/r/${slug}/admin/inventory/phieu-nhap`;
   const select = "h-9 rounded-md border border-hairline-strong bg-canvas px-sm text-sm text-ink";
 
@@ -58,6 +68,17 @@ export default async function ReceiptListPage({
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-xxs text-slate">
+            Thanh toán
+            <select name="tra" defaultValue={tra ?? ""} className={select}>
+              <option value="">Tất cả</option>
+              {(Object.keys(PAY) as (keyof typeof PAY)[]).map((k) => (
+                <option key={k} value={k}>
+                  {PAY[k]}
                 </option>
               ))}
             </select>

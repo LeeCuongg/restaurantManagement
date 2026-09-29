@@ -204,6 +204,17 @@ export const CASES: Case[] = [
     insertRow: (t, id) => ({ id, tenant_id: t, direction: "out", name: `${MARK}-${id.slice(0, 8)}` }),
     updatePatch: { cost_group: "none" },
   },
+  // P20 20-03 (0078): phân bổ + điều chỉnh nợ — chỉ đọc; ghi qua hàm / trigger.
+  {
+    table: "cash_voucher_allocations",
+    insertRow: (t, id) => ({ id, tenant_id: t, voucher_id: B(27), receipt_id: B(25), amount: 2 }),
+    updatePatch: { amount: 99 },
+  },
+  {
+    table: "supplier_debt_adjustments",
+    insertRow: (t, id) => ({ id, tenant_id: t, supplier_id: B(24), amount: 1, note: MARK }),
+    updatePatch: { note: MARK },
+  },
 ];
 
 /** Dòng fixture của tenant B ứng với một bảng. */
