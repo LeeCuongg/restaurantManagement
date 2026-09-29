@@ -78,6 +78,7 @@ export const IDX = {
   purchase_receipts: 25,
   purchase_receipt_lines: 26,
   cash_vouchers: 27,
+  cash_categories: 28,
   // Khóa chính là (item_id, group_id) → trỏ theo menu_items.
   menu_item_modifier_groups: 2,
 } as const;
@@ -262,6 +263,7 @@ function stepsFor(key: TenantKey, tenantId: string): SeedStep[] {
       table: "cash_vouchers",
       row: { id: id(27), ...t, code: `${label}-PC`, direction: "out", fund: "cash", amount: 1000, source: "manual", note: label },
     },
+    { table: "cash_categories", row: { id: id(28), ...t, direction: "out", name: label, cost_group: "e" } },
   ];
 }
 
@@ -281,6 +283,7 @@ async function seedTenant(admin: SupabaseClient, key: TenantKey, tenantId: strin
 const TEARDOWN: { table: string; column: string; n: number }[] = [
   // recipe_lines → ingredients là ON DELETE RESTRICT: định lượng chết trước nguyên liệu.
   { table: "cash_vouchers", column: "id", n: 27 },
+  { table: "cash_categories", column: "id", n: 28 },
   { table: "purchase_receipt_lines", column: "id", n: 26 },
   { table: "purchase_receipts", column: "id", n: 25 },
   { table: "suppliers", column: "id", n: 24 },

@@ -75,7 +75,8 @@ export type ManageSection =
   | "inventory"
   | "branches"
   | "customers"
-  | "purchasing";
+  | "purchasing"
+  | "cashbook";
 
 /**
  * Vai trò `role` có quyền quản lý `section` cấu hình không — ma trận QD-010 §2.
@@ -109,6 +110,8 @@ export function canManage(role: Role, section: ManageSection): boolean {
     case "customers":
     // Nhà cung cấp, phiếu nhập (P20, QD-027 C5): quản lý nhập hàng, trả nợ mối như chủ.
     case "purchasing":
+    // Sổ quỹ (P20, QD-027 C5): quản lý ghi phiếu thu/chi, xem tồn quỹ. Lãi lỗ thì chỉ chủ (20-04).
+    case "cashbook":
       return role === "owner" || role === "manager";
   }
 }

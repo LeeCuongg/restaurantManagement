@@ -198,6 +198,12 @@ export const CASES: Case[] = [
     }),
     updatePatch: { note: MARK },
   },
+  {
+    // P20 20-02 (0077): loại thu/chi — chủ/quản lý ghi thẳng được, không xóa (ngừng dùng thay cho xóa).
+    table: "cash_categories",
+    insertRow: (t, id) => ({ id, tenant_id: t, direction: "out", name: `${MARK}-${id.slice(0, 8)}` }),
+    updatePatch: { cost_group: "none" },
+  },
 ];
 
 /** Dòng fixture của tenant B ứng với một bảng. */
