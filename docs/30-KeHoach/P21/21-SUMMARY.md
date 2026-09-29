@@ -53,8 +53,8 @@ Phát hành 1.0.1 và 1.0.2: build → quét bí mật (0) → tạo release nh�
    `agent` có, anon không gọi được / authenticated gọi được; đóng vai tài khoản printer qt-food trong giao dịch ROLLBACK — kiểu gọi cầu
    in cũ (3 tham số) và kiểu app (`p_agent`) đều chạy. `schema-snapshot.json` cập nhật.
 3. ~~Deploy web~~ — **đã deploy** (main `4c366e4`): `/api/desktop/activate` trả đúng câu lỗi chung với tài khoản sai; `/huong-dan-cai-dat` hiện TechMenu.
-4. **Nơi đặt bản phát hành: đã chốt** — Releases của chính repo; bản `thu-ngan-v1.0.0` đã đăng 29/09/2026 (sha512 khớp). **Còn: thêm
-   `DESKTOP_RELEASE_BASE` trên Vercel (Production) + redeploy**, rồi thử 1.0.0 → 1.0.1 (DESK-10).
+4. **Nơi đặt bản phát hành: đã chốt** — Releases của chính repo; bản `thu-ngan-v1.0.0` đã đăng 29/09/2026 (sha512 khớp).
+   `DESKTOP_RELEASE_BASE` đã có trên Vercel Production (kiểm 29/09/2026: `/api/desktop/latest` → 302 tới `Setup-1.0.2.exe`).
 5. **Máy thật**: bấm giờ cài trên Win10 + Win11 sạch kèm ảnh SmartScreen (DESK-09); in LAN + USB ra giấy thật (DESK-06/07); máy có
    cầu in cũ (DESK-08); khởi động lại máy → POS tự mở (DESK-03).
 6. **21-04 qt-food** (DESK-12): làm theo `21-04-PLAN.md` sau khi 1–5 xong.
