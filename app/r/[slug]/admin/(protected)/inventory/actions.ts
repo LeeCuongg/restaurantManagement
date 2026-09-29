@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionMembership } from "@/lib/auth/session";
 import { canManage } from "@/lib/auth/rbac";
 import { setFlash } from "@/lib/flash";
-import { parseQty, toBaseQty, unitCostFromPurchase } from "@/lib/inventory/units";
+import { knownFactor, parseQty, toBaseQty, unitCostFromPurchase } from "@/lib/inventory/units";
 import { purchaseErrorMessage, qty3, receiptTotals, validateReceipt } from "@/lib/purchasing/receipt";
 import { businessDate } from "@/lib/inventory/day";
 import { planBatch } from "@/lib/inventory/batch";
@@ -51,7 +51,9 @@ function readIngredient(fd: FormData): IngredientFields | string {
 
   const purchase_unit = String(fd.get("purchase_unit") ?? "").trim() || null;
   const factorRaw = String(fd.get("purchase_factor") ?? "").trim();
-  const purchase_factor = purchase_unit ? parseQty(factorRaw) : 1;
+  // Đơn vị quen (kg, lạng, lít…) → hệ số TỰ TÍNH, bỏ qua số gửi lên — tránh "1 kg = 100.000 kg" (29/09/2026).
+  const known = purchase_unit ? knownFactor(purchase_unit, base_unit) : null;
+  const purchase_factor = !purchase_unit ? 1 : known ?? parseQty(factorRaw);
   if (purchase_factor === null) return `1 ${purchase_unit} bằng bao nhiêu ${base_unit}? Hệ số phải lớn hơn 0.`;
 
   // "% dùng được" không còn nhận từ form: tự tính từ kiểm kê (lib/inventory/yield.ts, 0081).

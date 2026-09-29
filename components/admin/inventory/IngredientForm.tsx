@@ -5,7 +5,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { MoneyField } from "@/components/ui/money-input";
 import { BASE_UNIT_LABEL, BASE_UNIT_OPTIONS, type Ingredient } from "@/lib/inventory/types";
-import { purchasePrice } from "@/lib/inventory/units";
+import { knownFactor, purchasePrice } from "@/lib/inventory/units";
 import { createIngredient, updateIngredient } from "@/app/r/[slug]/admin/(protected)/inventory/actions";
 
 const SELECT =
@@ -20,6 +20,7 @@ export function IngredientForm({ slug, ingredient }: { slug: string; ingredient?
   const [baseUnit, setBaseUnit] = useState(ingredient?.base_unit ?? "g");
   const [purchaseUnit, setPurchaseUnit] = useState(ingredient?.purchase_unit ?? "");
   const factor = ingredient?.purchase_factor ?? 1;
+  const known = purchaseUnit.trim() ? knownFactor(purchaseUnit, baseUnit) : null;
   const unitWord = BASE_UNIT_LABEL[baseUnit];
   const price = ingredient ? purchasePrice(ingredient.last_unit_cost, factor) : null;
 
@@ -79,7 +80,16 @@ export function IngredientForm({ slug, ingredient }: { slug: string; ingredient?
               placeholder="kg, vỉ, thùng…"
             />
           </label>
-          {purchaseUnit.trim() && (
+          {purchaseUnit.trim() && known !== null && (
+            <div className="flex flex-col gap-xxs text-sm text-slate" data-he-so-tu-tinh>
+              Quy đổi
+              <input type="hidden" name="purchase_factor" value={String(known)} />
+              <p className="flex min-h-11 items-center rounded-md border border-hairline-soft bg-surface px-md text-ink">
+                1 {purchaseUnit.trim()} = {known.toLocaleString("vi-VN", { maximumFractionDigits: 3 })} {unitWord} · tự tính
+              </p>
+            </div>
+          )}
+          {purchaseUnit.trim() && known === null && (
             <label className="flex flex-col gap-xxs text-sm text-slate">
               1 {purchaseUnit.trim()} = bao nhiêu {unitWord}?
               <Input

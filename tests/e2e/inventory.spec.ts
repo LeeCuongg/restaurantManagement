@@ -62,7 +62,14 @@ async function addIngredient(
   if (o.unit) await form.locator('select[name="base_unit"]').selectOption(o.unit);
   if (o.purchaseUnit) {
     await form.locator('input[name="purchase_unit"]').fill(o.purchaseUnit);
-    await form.locator('input[name="purchase_factor"]').fill(o.factor!);
+    // Đơn vị quen (kg, lít…) → hệ số tự tính, không có ô gõ; đơn vị riêng (vỉ, bao…) → gõ tay.
+    const tuTinh = form.locator("[data-he-so-tu-tinh]");
+    if (await tuTinh.count()) {
+      await expect(tuTinh).toContainText(`= ${Number(o.factor).toLocaleString("vi-VN")} `);
+      await expect(tuTinh).toContainText("tự tính");
+    } else {
+      await form.locator('input[name="purchase_factor"]').fill(o.factor!);
+    }
   }
   if (o.price) await form.getByPlaceholder("280.000").fill(o.price);
   if (o.batch) await form.locator('input[name="batch_output_qty"]').fill(o.batch);
