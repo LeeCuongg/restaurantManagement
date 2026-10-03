@@ -36,7 +36,8 @@ describe("tableFlags — dấu trên thẻ bàn (ORDER-24)", () => {
   it("cần xử lý = có ít nhất một việc", () => {
     expect(needsAttention(f.get("A1"))).toBe(true);
     expect(needsAttention(undefined)).toBe(false);
-    expect(needsAttention({ pending: 0, unprinted: 0, calls: 0, ready: 0 })).toBe(false);
+    expect(needsAttention({ pending: 0, unprinted: 0, calls: 0, ready: 0, payment: 0 })).toBe(false);
+    expect(needsAttention({ pending: 0, unprinted: 0, calls: 0, ready: 0, payment: 1 })).toBe(true);
   });
 
   it("lọc Tất cả · Đang phục vụ · Trống · Cần xử lý", () => {
@@ -47,6 +48,8 @@ describe("tableFlags — dấu trên thẻ bàn (ORDER-24)", () => {
     expect([busy, free, resv].filter((t) => matchesTableFilter(t, f.get(t.id), "busy")).map((t) => t.id)).toEqual(["B1"]);
     expect([busy, free, resv].filter((t) => matchesTableFilter(t, f.get(t.id), "free")).map((t) => t.id)).toEqual(["Z9"]);
     expect([busy, free, resv].filter((t) => matchesTableFilter(t, f.get(t.id), "attention")).map((t) => t.id)).toEqual(["B1"]);
+    const g = tableFlags({ pending: [], unprinted: [], calls: [], sessions: [], payTableIds: ["B1"] });
+    expect([busy, free].filter((t) => matchesTableFilter(t, g.get(t.id), "pay")).map((t) => t.id)).toEqual(["B1"]);
   });
 });
 

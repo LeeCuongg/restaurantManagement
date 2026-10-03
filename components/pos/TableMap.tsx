@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BellRing, CalendarClock, Clock, ConciergeBell, Hand, Link2, Printer, ShoppingBag } from "lucide-react";
+import { Banknote, BellRing, CalendarClock, Clock, ConciergeBell, Hand, Link2, Printer, ShoppingBag } from "lucide-react";
 import { formatVnd } from "@/lib/orders/cart";
 import { thoiGianNgoi } from "@/lib/time/vn";
 import { cn } from "@/lib/utils";
+import { ScrollRow } from "@/components/ui/scroll-row";
 import type { PosArea, PosTable, PosSession, PosReservation } from "@/lib/orders/pos";
 import { matchesTableFilter, needsAttention, type TableFilter, type TableFlags } from "@/lib/orders/table-flags";
 
@@ -21,6 +22,7 @@ const FILTERS: { id: TableFilter; name: string }[] = [
   { id: "busy", name: "Đang phục vụ" },
   { id: "free", name: "Trống" },
   { id: "attention", name: "Cần xử lý" },
+  { id: "pay", name: "Chờ thanh toán" },
 ];
 const STATUS_CLASS: Record<PosTable["status"], string> = {
   available: "border-hairline bg-canvas text-ink",
@@ -119,22 +121,22 @@ export function TableMap({
   return (
     <div>
       {/* Một hàng cuộn ngang — 5–6 khu không gấp thành nhiều hàng ăn chỗ của sơ đồ bàn. */}
-      <div role="group" aria-label="Khu vực" className="-mx-md flex gap-xs overflow-x-auto px-md pb-xxs [scrollbar-width:thin]">
+      <ScrollRow role="group" aria-label="Khu vực" className="-mx-md gap-xs px-md">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setActiveTab(t.id)}
             aria-pressed={activeTab === t.id}
-            className={cn(chip, activeTab === t.id ? "bg-ink text-on-dark" : "bg-canvas text-steel hover:bg-cream")}
+            className={cn(chip, activeTab === t.id ? "bg-cream-deeper text-primary-deep ring-1 ring-inset ring-primary/50" : "bg-canvas text-steel hover:bg-cream")}
           >
             {t.name}
           </button>
         ))}
-      </div>
+      </ScrollRow>
 
       {flags && (
-        <div role="group" aria-label="Lọc trạng thái bàn" className="-mx-md mt-xs flex gap-xs overflow-x-auto px-md pb-xxs [scrollbar-width:thin]">
+        <ScrollRow role="group" aria-label="Lọc trạng thái bàn" className="-mx-md mt-xs gap-xs px-md">
           {FILTERS.map((f) => {
             const n = countOf(f.id);
             const on = filter === f.id;
@@ -150,10 +152,12 @@ export function TableMap({
                   on
                     ? f.id === "attention"
                       ? "border-status-late bg-status-late text-status-late-fg"
-                      : "border-ink bg-canvas text-ink"
+                      : "border-primary bg-cream text-primary-deep"
                     : f.id === "attention" && n > 0
                       ? "border-status-late/50 bg-canvas text-status-late"
-                      : "border-hairline bg-canvas text-steel hover:bg-cream"
+                      : f.id === "pay" && n > 0
+                        ? "border-status-ready/60 bg-canvas text-status-ready"
+                        : "border-hairline bg-canvas text-steel hover:bg-cream"
                 )}
               >
                 {f.name}
@@ -161,7 +165,7 @@ export function TableMap({
               </button>
             );
           })}
-        </div>
+        </ScrollRow>
       )}
 
       {onSelectTakeaway && (
@@ -190,7 +194,7 @@ export function TableMap({
         </button>
       )}
 
-      <div className={cn("grid grid-cols-2 gap-sm", onSelectTakeaway ? "mt-sm" : "mt-lg")}>
+      <div className={cn("grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-sm", onSelectTakeaway ? "mt-sm" : "mt-lg")}>
         {visible.map((t) => {
           const phien = sessionByMain.get(t.id);
           const selected = t.id === selectedTableId;
@@ -222,7 +226,7 @@ export function TableMap({
               <div className="flex w-full flex-col items-start gap-xxs">
                 <span className="text-xs opacity-80">{STATUS_LABEL[t.status]}</span>
                 {phien && (
-                  <span className="inline-flex items-center gap-xxs text-[11px] font-medium tabular-nums opacity-80">
+                  <span data-thoi-gian className="inline-flex items-center gap-xxs text-[11px] font-medium tabular-nums opacity-80">
                     <Clock className="h-3 w-3 shrink-0" aria-hidden />
                     <span suppressHydrationWarning>{thoiGianNgoi(phien.openedAt, now)}</span>
                   </span>
@@ -251,6 +255,12 @@ export function TableMap({
                       <Dau cls="bg-cream-deeper text-ink" title="Đang gọi nhân viên">
                         <Hand className="h-3 w-3" aria-hidden />
                         {f.calls}
+                      </Dau>
+                    )}
+                    {f.payment > 0 && (
+                      <Dau cls="bg-status-ready-bg text-status-ready ring-1 ring-status-ready" title="Chờ thanh toán">
+                        <Banknote className="h-3 w-3" aria-hidden />
+                        TT
                       </Dau>
                     )}
                     {f.ready > 0 && (

@@ -118,7 +118,7 @@ describe("groupCandidates — trạng thái từng ô bàn", () => {
       orders: [order(null, ["queued"]), order("b3", ["queued", "served", "cancelled"]), order("b2", ["served"])],
     }),
     session("S5", "b5", { orders: [order(null, ["queued", "queued", "cancelled"])] }),
-    session("S6", "b6", { openBill: { id: "x", bill_no: 3, total: 100000, splitCount: null } }),
+    session("S6", "b6", { openBill: { id: "x", bill_no: 3, total: 100000, splitCount: null, created_at: null, billedItemIds: [] } }),
     session("S8", "b8", { memberTableIds: ["b7"] }),
   ];
   const pending: PosPending[] = [];

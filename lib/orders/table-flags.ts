@@ -11,9 +11,11 @@ export type TableFlags = {
   calls: number;
   /** Món bếp đã xong, phục vụ chưa mang ra (QD-032). */
   ready: number;
+  /** Đang chờ thanh toán (lib/orders/payment-queue — ORDER-26): 1 / 0. */
+  payment: number;
 };
 
-export type TableFilter = "all" | "busy" | "free" | "attention";
+export type TableFilter = "all" | "busy" | "free" | "attention" | "pay";
 
 type SessionLike = {
   tableId: string;
@@ -25,13 +27,16 @@ export function tableFlags(input: {
   unprinted: { tableId: string }[];
   calls: { tableId: string }[];
   sessions: SessionLike[];
+  /** Bàn (chính) đang trong hàng chờ thanh toán. */
+  payTableIds?: string[];
 }): Map<string, TableFlags> {
   const out = new Map<string, TableFlags>();
   const of = (id: string) => {
     let f = out.get(id);
-    if (!f) out.set(id, (f = { pending: 0, unprinted: 0, calls: 0, ready: 0 }));
+    if (!f) out.set(id, (f = { pending: 0, unprinted: 0, calls: 0, ready: 0, payment: 0 }));
     return f;
   };
+  for (const id of input.payTableIds ?? []) of(id).payment = 1;
   for (const p of input.pending) if (p.tableId) of(p.tableId).pending++;
   for (const u of input.unprinted) if (u.tableId) of(u.tableId).unprinted++;
   for (const c of input.calls) if (c.tableId) of(c.tableId).calls++;
@@ -45,7 +50,7 @@ export function tableFlags(input: {
 }
 
 export function needsAttention(f: TableFlags | undefined): boolean {
-  return !!f && f.pending + f.unprinted + f.calls + f.ready > 0;
+  return !!f && f.pending + f.unprinted + f.calls + f.ready + f.payment > 0;
 }
 
 export function matchesTableFilter(
@@ -60,6 +65,8 @@ export function matchesTableFilter(
       return table.status === "available";
     case "attention":
       return needsAttention(flags);
+    case "pay":
+      return (flags?.payment ?? 0) > 0;
     default:
       return true;
   }

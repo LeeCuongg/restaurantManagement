@@ -242,7 +242,10 @@ for (const [i, t] of live.entries()) {
     }
     m -= int(10, 30);
   }
-  if (i % 21 === 3) rows.calls.push([uuid(), T, t.id, t.name, "pending", pick(["Gọi thanh toán", "Thêm bát đũa", "Lấy thêm đá", null]), ago(int(1, 6))]);
+  // Ghi chú đúng như khách gửi từ QR (CallStaffSheet): gọi thanh toán mở đầu "Thanh toán" → vào hàng chờ thanh toán (ORDER-26).
+  if (i % 13 === 3)
+    rows.calls.push([uuid(), T, t.id, t.name, "pending",
+      pick(["Thanh toán · Tiền mặt", "Thanh toán · Chuyển khoản", "Thanh toán", "Thêm bát/đũa", "Khăn giấy", null]), ago(int(1, 9))]);
 }
 // Mang về: 12 đơn không gắn bàn.
 const GUESTS = ["Anh Nam", "Chị Thu", "Grab - 0912", "Anh Hoàng", "Chị Linh", "ShopeeFood - 0988", "Anh Quân", "Chị Vy", "Anh Tú", "Chị Hà", "Anh Long", "Chị Ngọc"];

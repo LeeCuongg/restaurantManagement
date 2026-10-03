@@ -136,7 +136,9 @@ test.describe("máy ngủ dậy / có mạng lại", () => {
     // Theo dõi đúng lượt gọi CỦA TEST (ghi chú riêng): quán demo có thể còn lượt gọi khác (DB dùng chung —
     // vd bàn RLS-MATRIX-A của bộ test RLS), nên "không có băng Bàn đang gọi" là giả định sai.
     const soGoi = async () =>
-      (await admin.from("staff_calls").select("id", { count: "exact", head: true }).eq("tenant_id", t!.id).eq("status", "pending")).count ?? 0;
+      ((await admin.from("staff_calls").select("note").eq("tenant_id", t!.id).eq("status", "pending")).data ?? []).filter(
+        (c) => !/^(gọi\s+)?thanh toán/i.test((c.note ?? "").trim())
+      ).length;
     const truoc = await soGoi();
     const nutGoi = (n: number) => page.getByRole("button", { name: `Bàn gọi ${n}` });
     const cuaToi = page.getByText("e2e-thuc-day");

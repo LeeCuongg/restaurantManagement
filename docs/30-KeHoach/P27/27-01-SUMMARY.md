@@ -68,3 +68,67 @@
 |---|---|
 | ORDER-21, ORDER-22, ORDER-23, ORDER-24 | ☑ (chưa deploy) |
 | ORDER-04 phần "bếp đổi trạng thái làm/xong" | ☑ (chưa deploy) · phần "≤ 3s" ở quy mô 150 bàn: ◐ chưa đạt trên dev |
+
+## 27-02 — Khu bàn rộng, danh sách thả xuống, hàng chờ thanh toán (03/10/2026)
+
+Chủ dự án chốt "Tab Sơ đồ bàn / Thực đơn" + "Hàng chờ thanh toán" (xem `00-TongQuan.md` mục 27-02).
+
+| File | Việc |
+|---|---|
+| `components/pos/PhoneAlertBar.tsx` | Máy tính: danh sách **thả xuống dưới nút** (bấm ra ngoài / Escape đóng); nút + danh sách **"Thanh toán N"** |
+| `components/ui/scroll-row.tsx` (mới), `TableMap.tsx`, `MenuPanel.tsx` | Hàng tab không còn thanh cuộn xám, lăn chuột dọc → cuộn ngang, mép phải mờ khi còn tab khuất |
+| `components/pos/PosBoard.tsx` | Tab **Sơ đồ bàn / Thực đơn** (≥ 1024px): chọn bàn → Thực đơn, đóng bàn → Sơ đồ bàn; hàng chờ thanh toán; bấm dòng → chọn bàn + mở hóa đơn; ô tìm bàn 160px dưới 1024px |
+| `components/pos/TableMap.tsx` | Lưới tự giãn (5 cột ở 1366, 8 ở 1920); lọc + dấu **"Chờ thanh toán"**; mốc `data-thoi-gian` |
+| `lib/orders/payment-queue.ts` (mới), `lib/orders/table-flags.ts`, `lib/orders/pos.ts` | Hàng chờ thanh toán (gọi thanh toán QR hoặc đã Tính tiền), dấu `payment`, `openBill.created_at` |
+| `lib/billing/bill.ts` | Thu đủ → phiên đóng → lượt "Gọi thanh toán" của bàn chính + bàn phụ tự `resolved` |
+| `components/pos/OrderPanel.tsx` | Escape đã được danh sách xử lý (`defaultPrevented`) thì không bỏ chọn bàn |
+| `scripts/seed-quan-lon.mjs` | Ghi chú gọi thanh toán đúng định dạng QR ("Thanh toán · Chuyển khoản") |
+| `tests/orders/payment-queue.test.ts` (mới), `quan-lon.test.ts` | 4 + 2 ca |
+| `tests/e2e/p27-quan-lon.spec.ts` | Thêm "ORDER-25", "ORDER-26" (thu chuyển khoản thật) |
+| `tests/e2e/ghep-ban`, `pos-kho-man`, `print-mode`, `pos-kho-lon` | Theo bố cục tab và hàng chờ mới; `pos-kho-lon` che đồng hồ "thời gian ngồi" khi so ảnh (ảnh mẫu đã chụp lại, nằm trong `.gitignore`) |
+
+Ảnh: `anh/07-so-do-ban-1920.png`, `anh/08-hang-cho-thanh-toan.png`, `anh/09-mo-hoa-don-tu-hang-cho.png`.
+
+| Lệnh | Kết quả |
+|---|---|
+| `npx tsc --noEmit` | 0 lỗi |
+| `npm test` | 98 file, **1.033/1.033** |
+| `playwright test p27-quan-lon.spec.ts` | **5/5** |
+| `ghep-ban`, `pos-kho-man`, `p3`, `pos-dien-thoai`, `order15-mobile`, `in-tu-dien-thoai`, `cau-in`, `inventory`, `print-mode`, `pos-kho-lon` | Xanh, trừ `pos-dien-thoai` ca 7: spec tạo lịch đặt bàn lúc "bây giờ + 2 giờ"; chạy lúc 22:46 giờ VN thì lịch rơi sang ngày mai, không hiện trong danh sách hôm nay. Lỗi của spec theo giờ chạy, không do thay đổi này |
+
+**Lỗi tìm ra trong lúc làm (đã sửa):**
+- Nút "Thanh toán" làm thanh trên cùng tràn lại ở 768–820px.
+- Escape đóng danh sách thả xuống vẫn bỏ chọn bàn: React gỡ danh sách khỏi DOM giữa hai lượt nghe phím. Nay danh sách tự chặn Escape.
+
+| Mã | Trạng thái |
+|---|---|
+| ORDER-25, ORDER-26 | ☑ (chưa deploy) |
+
+### 27-02b — Bỏ nút đen, "Mang ra" thẳng cột, khách gọi thêm sau "Tính tiền" (03/10/2026)
+
+| File | Việc |
+|---|---|
+| `PosBoard.tsx`, `TableMap.tsx`, `MenuPanel.tsx` | Nút đang chọn: không còn nền đen. Tab vùng làm việc nền cam; tab khu / nhóm món / bộ lọc nền kem, chữ cam |
+| `OrderPanel.tsx` | "Mang ra" nằm cạnh nhãn trạng thái dưới tên món; cột phải chỉ còn "Hủy" (`w-12`) nên SL / thành tiền thẳng cột |
+| `lib/orders/pos.ts` | `openBill.billedItemIds`: món đã lên hóa đơn open \| paid của phiên, cùng quy tắc với `openBillForSession` |
+| `lib/orders/payment-queue.ts`, `PhoneAlertBar.tsx` | `newItems`: món đã duyệt, chưa hủy, chưa lên hóa đơn → dấu **"+N món gọi thêm"** trên dòng hàng chờ |
+| `BillPanel.tsx` | Dòng hóa đơn theo bố cục mới **Tên món · SL · Thành tiền** (SL ≥ 2 thì đơn giá nhỏ dưới thành tiền), thay "2× Tên … /phần" |
+| `OrderPanel.tsx`, `pos/actions.ts` (`cancelOrderItem`) | Món bếp đã làm xong (`ready`) không còn nút "Hủy"; server cũng từ chối. E2E ORDER-04 kiểm dòng món "Xong – chờ mang ra" không có nút "Hủy" |
+| `tests/orders/payment-queue.test.ts` | +1 ca: đếm đúng, bỏ món hủy và đơn chờ duyệt; lên hết hóa đơn → 0 |
+| `tests/e2e/p27-quan-lon.spec.ts` | +1 ca "ORDER-26 … khách gọi thêm" |
+
+Ca E2E "ORDER-26 … khách gọi thêm":
+
+1. Bấm "Tính tiền" thật trên POS.
+2. Ghi một đơn QR thêm 2 phần vào DB.
+3. Dòng hàng chờ hiện "+2 món gọi thêm".
+4. Bấm dòng → `bill_items` có món mới → tải lại → dấu mất.
+
+Ảnh: `anh/10-goi-them-sau-tinh-tien.png`, `anh/11-hoa-don-da-gom-mon-goi-them.png`. Trong lần chạy này hóa đơn bàn B16 tăng từ
+475.000₫ lên 595.000₫ (+2 × Cơm sườn nướng 60.000₫).
+
+| Lệnh | Kết quả |
+|---|---|
+| `npx tsc --noEmit` | 0 lỗi |
+| `npm test` | 98 file, **1.034/1.034** |
+| `playwright test p27-quan-lon.spec.ts ghep-ban.spec.ts` (sau `seed-quan-lon.mjs`) | **9/9** |

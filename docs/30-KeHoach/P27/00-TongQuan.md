@@ -74,6 +74,52 @@ Nguồn: [KiotViet màn hình bếp](https://www.kiotviet.vn/huong-dan-su-dung-k
   - món "Xong – chờ mang ra" có nút **"Mang ra"**; đơn có từ 2 món xong trở lên thì có thêm **"Mang ra tất cả"**.
 - **Quán không dùng màn bếp:** không có món nào "Xong", nên POS không hiện nút. Luồng y hệt hôm nay.
 
+## 27-02 — Khu bàn rộng, danh sách thả xuống, hàng chờ thanh toán (chủ dự án chốt 03/10/2026)
+
+Sau 27-01, chủ dự án nhận xét (03/10/2026):
+
+- Bấm "Cần in phiếu" / "Bàn gọi" thì danh sách bật lên **từ đáy màn**, người dùng phải nhìn xuống và kéo chuột xuống.
+- Với vài trăm bàn, cột sơ đồ bàn **quá hẹp**; các hàng tab còn lộ thanh cuộn xám.
+- Câu hỏi: **nhiều bàn cùng đến thanh toán thì xử lý thế nào?**
+
+Chủ dự án chốt **"Tab Sơ đồ bàn / Thực đơn"** và **"Hàng chờ thanh toán"**.
+
+| Màn | Giao diện đã chốt | Đối thủ |
+|---|---|---|
+| Thanh trên cùng (máy ≥ 640px) | Bấm "Cần in phiếu N" / "Bàn gọi N" / **"Thanh toán N"** → danh sách **thả xuống ngay dưới nút**, rộng 26rem. Bấm ra ngoài hoặc Escape thì đóng (Escape không bỏ chọn bàn). Điện thoại vẫn mở từ đáy | KiotViet: chuông góc màn |
+| Hàng tab (khu, lọc, nhóm món) | Không còn thanh cuộn xám; lăn chuột dọc thì cuộn ngang; mép phải mờ dần khi còn tab khuất | — |
+| Vùng làm việc (≥ 1024px, chế độ bàn) — ORDER-25 | Hai tab **Sơ đồ bàn · Thực đơn** (thực đơn ghi kèm "· Bàn B12" khi đang chọn bàn), góc phải "211 bàn · 145 đang phục vụ". **Sơ đồ bàn** chiếm cả vùng trái + giữa, lưới tự giãn (khoảng 5 cột ở 1366, 8 cột ở 1920). Mở POS mặc định là Sơ đồ bàn. Chọn bàn → tự sang Thực đơn; đóng bàn → về Sơ đồ bàn. Khung đơn bên phải giữ nguyên. Dưới 1024px không đổi (ngăn chọn bàn / thanh tab dưới) | KiotViet thu ngân: tab **Phòng bàn / Thực đơn** |
+| Hàng chờ thanh toán — ORDER-26 | Bàn vào hàng khi khách bấm **"Gọi thanh toán"** ở QR (ghi chú "Thanh toán · Chuyển khoản"…) **hoặc** nhân viên đã bấm **"Tính tiền"**. Nút **"Thanh toán N"** (xanh) → danh sách, chờ lâu nhất trước: "Bàn B05 · 475.000₫ · Chuyển khoản · chờ 7'". **Bấm dòng là mở thẳng hóa đơn** bàn đó để thu. Thu đủ → phiên đóng → lượt gọi thanh toán **tự đánh dấu đã xử lý** (ở server, máy nào thu cũng vậy). Thẻ bàn có dấu **"TT"**; bộ lọc thêm **"Chờ thanh toán N"**. Lượt gọi thanh toán không lặp ở "Bàn gọi" | KiotViet: màu "yêu cầu thanh toán" trên ô bàn. Sapo: thẻ **"Chờ thanh toán"** |
+
+**Nhiều người thu cùng lúc:** mọi máy POS (thu ngân, và điện thoại phục vụ có vai trò POS) đều thu được; thu song song các bàn
+khác nhau không xung đột; `pay_bill` (0035) có khóa và khóa idempotent nên hai người bấm thu cùng một hóa đơn không ra hai lần
+tiền. Khóa "đang thu bởi…" (phương án 2) chủ dự án không chọn.
+
+**Đã "Tính tiền" (bàn vào hàng chờ) rồi khách gọi thêm** (chủ dự án hỏi 03/10/2026):
+
+- Món mới vẫn xuống bếp bình thường; bàn **vẫn ở hàng chờ**.
+- Dòng hàng chờ hiện thêm dấu đỏ **"+N món gọi thêm"**: N là số phần món đã duyệt, chưa hủy, chưa nằm trên hóa đơn. Tiền trên
+  dòng vẫn là tiền hóa đơn cũ, vì hóa đơn còn VAT / phí phục vụ nên không cộng tay.
+- Thu ngân bấm dòng đó (hoặc "Xem hóa đơn") → hóa đơn **tự thêm món mới và tính lại tổng** (`openBillForSession`, có từ P4) → dấu
+  mất → thu đúng.
+- Lỡ thu hóa đơn cũ thì món mới chưa trả tiền: phiên **không đóng**, lượt gọi thanh toán không tự xong, bàn vẫn ở hàng chờ cho
+  đến khi thu nốt.
+
+**Nút đang chọn không dùng nền đen** (chủ dự án 03/10/2026):
+
+- Tab vùng làm việc: nền cam đặc.
+- Tab khu, nhóm món, bộ lọc: nền kem, chữ và viền cam.
+- "Mang ra" nằm cạnh nhãn "Xong – chờ mang ra" dưới tên món. Cột phải chỉ còn "Hủy", rộng cố định, nên số lượng và thành tiền
+  thẳng cột.
+
+**Bếp đã làm xong thì không cho hủy món** (chủ dự án 03/10/2026). Món ở trạng thái "Xong – chờ mang ra" hoặc "Đã mang ra"
+không còn nút "Hủy"; server (`cancelOrderItem`) cũng từ chối: "Bếp đã làm xong món này, không thể hủy." Cần hủy thật thì bếp
+bấm "Trả lại" trên KDS, món về chờ làm, lúc đó hủy được.
+
+**Quán không dùng màn bếp** (chủ dự án chốt 03/10/2026): món không bao giờ "Xong" nên luật trên không áp dụng; món hủy được
+đến khi thu tiền, vẫn cần lý do và PIN. Hủy món thì nhân viên **báo bếp bằng miệng**. Không làm cài đặt "có dùng màn bếp", không
+in phiếu báo hủy.
+
 ## Kế hoạch (27-01, làm trong phiên bằng TDD)
 
 | Bước | File | Kiểm bằng |

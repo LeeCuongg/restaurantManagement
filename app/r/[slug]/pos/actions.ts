@@ -922,6 +922,8 @@ export async function cancelOrderItem(
   if (!item) return { ok: false, error: "Không tìm thấy món." };
   if (item.status === "served" || item.status === "cancelled")
     return { ok: false, error: "Món đã phục vụ hoặc đã hủy, không thể hủy." };
+  // Bếp đã làm xong (KDS "Xong") → không hủy được (chủ dự án 03/10/2026). Bếp bấm "Trả lại" thì món về chờ làm, hủy lại được.
+  if (item.status === "ready") return { ok: false, error: "Bếp đã làm xong món này, không thể hủy." };
 
   // Chốt chặn chia đều — ngay trước lệnh ghi đầu tiên (xem SPLIT_EVENLY_CANCEL_ERROR).
   // Chỉ đơn CÓ phiên bàn mới dính: mang về/giao không chia đều. Đọc phiên bằng một truy vấn riêng

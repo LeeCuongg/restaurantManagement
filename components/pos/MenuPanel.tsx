@@ -9,6 +9,7 @@ import { normalizeVi as norm } from "@/lib/menu/search";
 import { ModifierSheet, type PendingLine } from "@/components/customer/ModifierSheet";
 import { AvailabilityToggle } from "@/components/menu/AvailabilityToggle";
 import { cn } from "@/lib/utils";
+import { ScrollRow } from "@/components/ui/scroll-row";
 import { PortionBadge } from "./PortionBadge";
 
 /**
@@ -109,13 +110,10 @@ export function MenuPanel({
         </div>
         {cats.length > 1 && (
           // Một hàng cuộn ngang (vuốt trên điện thoại). Đang tìm: tab mờ — kết quả lấy từ mọi nhóm.
-          <div
+          <ScrollRow
             role="group"
             aria-label="Nhóm món"
-            className={cn(
-              "-mx-md mt-sm flex gap-xs overflow-x-auto px-md pb-xxs [scrollbar-width:thin]",
-              searching && "opacity-50"
-            )}
+            className={cn("-mx-md mt-sm gap-xs px-md", searching && "opacity-50")}
           >
             {[{ id: "all", name: "Tất cả" }, ...cats].map((c) => (
               <button
@@ -125,13 +123,13 @@ export function MenuPanel({
                 aria-pressed={!searching && cat === c.id}
                 className={cn(
                   "inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-full px-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                  !searching && cat === c.id ? "bg-ink text-on-dark" : "bg-surface text-steel hover:bg-cream"
+                  !searching && cat === c.id ? "bg-cream-deeper text-primary-deep ring-1 ring-inset ring-primary/50" : "bg-surface text-steel hover:bg-cream"
                 )}
               >
                 {c.name}
               </button>
             ))}
-          </div>
+          </ScrollRow>
         )}
       </header>
 

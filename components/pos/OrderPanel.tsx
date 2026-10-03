@@ -112,10 +112,10 @@ export function OrderPanel({
   // Escape đóng panel (trừ khi dialog hủy đang mở — vaul tự xử lý Escape của nó).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape" || e.defaultPrevented) return;
       // Đang mở ngăn kéo (vaul) — vd "Cần in phiếu" / "Bàn gọi" trên thanh trên cùng (P27): Escape chỉ đóng ngăn đó, không
       // bỏ chọn bàn đang làm. vaul cũng dò ngăn đang mở bằng đúng thuộc tính này.
-      if (document.querySelector("[data-vaul-drawer]")) return;
+      if (document.querySelector("[data-vaul-drawer],[data-pos-popover]")) return;
       if (groupOpen) setGroupOpen(false);
       else if (!cancelItem) onClose();
     };
@@ -383,8 +383,25 @@ export function OrderPanel({
                           <p className="text-xs text-status-late">Đã hủy · {it.cancel_reason}</p>
                         )}
                         {(it.status === "ready" || it.status === "served" || it.delivered) && it.status !== "cancelled" && (
-                          <p className="mt-xxs">
+                          <p className="mt-xxs flex flex-wrap items-center gap-xs">
                             <ItemStatusBadge status={it.status} delivered={it.delivered} />
+                            {/* Món bếp đã xong (KDS bấm "Xong") → "Mang ra" (P27). Món chờ làm để trống như cũ. */}
+                            {it.status === "ready" && !it.delivered && (
+                              <button
+                                type="button"
+                                disabled={delivering.length > 0}
+                                onClick={() => mangRa([it.id])}
+                                aria-label={`Mang ra ${it.name}`}
+                                className="inline-flex h-7 items-center gap-xxs rounded-md border border-status-ready px-sm text-xs font-semibold text-status-ready hover:bg-status-ready-bg disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                              >
+                                {delivering.includes(it.id) ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                                ) : (
+                                  <ConciergeBell className="h-3 w-3" aria-hidden />
+                                )}
+                                Mang ra
+                              </button>
+                            )}
                           </p>
                         )}
                       </div>
@@ -397,21 +414,9 @@ export function OrderPanel({
                         {it.qty}
                       </span>
                       <ThanhTien qty={it.qty} unit={it.unit_price} cancelled={it.status === "cancelled"} />
-                      <div className="flex min-w-12 shrink-0 flex-col items-end gap-xs">
-                        {/* Món bếp đã xong (KDS bấm "Xong") → nút "Mang ra" (P27). Món chờ làm để trống như cũ. */}
-                        {it.status === "ready" && !it.delivered && (
-                          <button
-                            type="button"
-                            disabled={delivering.length > 0}
-                            onClick={() => mangRa([it.id])}
-                            aria-label={`Mang ra ${it.name}`}
-                            className="inline-flex h-8 items-center gap-xxs rounded-md border border-status-ready px-sm text-xs font-semibold text-status-ready hover:bg-status-ready-bg disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                          >
-                            {delivering.includes(it.id) ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <ConciergeBell className="h-3 w-3" aria-hidden />}
-                            Mang ra
-                          </button>
-                        )}
-                        {it.status !== "served" && it.status !== "cancelled" && !splitEvenly && (
+                      <div className="flex w-12 shrink-0 flex-col items-end gap-xs">
+                        {/* Bếp đã làm xong ("ready") thì không cho hủy (chủ dự án 03/10/2026); cần hủy thì bếp "Trả lại" trước. */}
+                        {(it.status === "queued" || it.status === "preparing") && !splitEvenly && (
                           <button
                             type="button"
                             onClick={() => {

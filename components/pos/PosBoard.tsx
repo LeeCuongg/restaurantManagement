@@ -4,10 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useResumeRefresh } from "@/components/pos/use-resume-refresh";
-import { Bell, BellRing, CalendarClock, ChevronUp, ShoppingBag, ShoppingCart } from "lucide-react";
+import { Bell, BellRing, CalendarClock, ChevronUp, LayoutGrid, ShoppingBag, ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { tableFlags } from "@/lib/orders/table-flags";
+import { paymentQueue } from "@/lib/orders/payment-queue";
 import type { CustomerMenu, CustomerMenuItem } from "@/lib/orders/customer-menu";
 import type { PosSnapshot } from "@/lib/orders/pos";
 import type { ServiceMode } from "@/lib/tenant/settings";
@@ -104,6 +105,11 @@ export function PosBoard({
   const [mobileTab, setMobileTab] = useState<MobileTab>(counter ? "mon" : "ban");
   const [pendingOpen, setPendingOpen] = useState(false);
   const [takeawayMode, setTakeawayMode] = useState(counter);
+  // Máy quầy ≥ 1024px (P27 ORDER-25, như KiotViet "Phòng bàn / Thực đơn"): vùng lớn bên trái là SƠ ĐỒ BÀN rộng toàn vùng
+  // hoặc THỰC ĐƠN. Chọn bàn → Thực đơn; đóng bàn → về Sơ đồ bàn. Điện thoại vẫn dùng thanh tab dưới.
+  const [deskView, setDeskView] = useState<"ban" | "mon">("ban");
+  // Bấm một bàn ở hàng chờ thanh toán (ORDER-26) → chọn bàn rồi mở hóa đơn khi phiên của bàn đã nạp.
+  const [moBillCho, setMoBillCho] = useState<string | null>(null);
   /** Điện thoại: ngăn "Giỏ hàng" của đơn không bàn (mở từ thanh giỏ ở tab Thực đơn). */
   const [gioMo, setGioMo] = useState(false);
   /**
@@ -181,6 +187,7 @@ export function PosBoard({
     setTakeawayMode(false);
     setSelectedTableId(id);
     setMobileTab("mon"); // điện thoại: chọn bàn xong là gọi món
+    setDeskView("mon");
   };
   const enterTakeaway = () => {
     setSelectedTableId(null);
@@ -188,6 +195,7 @@ export function PosBoard({
     setCart([]);
     setAddError(null);
     setMobileTab("mon");
+    setDeskView("mon");
   };
   const exitTakeaway = () => {
     if (counter) return; // Chế độ quầy: không có bàn để quay về, giữ nguyên màn bán quầy.
@@ -402,6 +410,13 @@ export function PosBoard({
     }
   };
 
+  useEffect(() => {
+    if (!moBillCho || moBillCho !== selectedTableId || !selectedSession) return;
+    setMoBillCho(null);
+    void openBill();
+    // openBill đọc selectedSession hiện tại — chỉ cần chạy khi bàn được chọn từ hàng chờ đã nạp phiên.
+  }, [moBillCho, selectedTableId, selectedSession]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Bàn khác đang mở, có món (ứng viên gộp bàn) + tổng tạm tính.
   const sessionActiveTotal = (s: PosSnapshot["sessions"][number]) =>
     s.orders
@@ -599,7 +614,7 @@ export function PosBoard({
         onChange={setQuery}
         placeholder={searchPlaceholder}
         ariaLabel={historyTab ? "Tìm trong lịch sử đơn" : counter ? "Tìm số đơn" : "Tìm bàn hoặc số đơn"}
-        className={cn("shrink-0 max-sm:w-0 max-sm:min-w-0 max-sm:flex-1", counter ? "w-56 lg:w-64" : "w-40 md:w-56 lg:w-[22rem]")}
+        className={cn("shrink-0 max-sm:w-0 max-sm:min-w-0 max-sm:flex-1", counter ? "w-56 lg:w-64" : "w-40 lg:w-[22rem]")}
       >
         {results && (
           <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 max-h-80 overflow-y-auto rounded-lg border border-hairline-soft bg-canvas p-xs shadow-modal">
@@ -654,16 +669,38 @@ export function PosBoard({
     </>
   );
 
+  // Hàng chờ thanh toán (ORDER-26): khách gọi thanh toán ở QR hoặc đã bấm Tính tiền. Lượt "Gọi thanh toán" của bàn đang mở
+  // phiên nằm ở đây, không lặp ở "Bàn gọi".
+  const payQueue = useMemo(
+    () =>
+      paymentQueue({
+        sessions: initial.sessions,
+        calls: initial.calls,
+        tableName: (id) => initial.tables.find((t) => t.id === id)?.name ?? "?",
+      }),
+    [initial.sessions, initial.calls, initial.tables]
+  );
+  const otherCalls = useMemo(() => {
+    const daVao = new Set(payQueue.flatMap((r) => r.callIds));
+    return initial.calls.filter((c) => !daVao.has(c.id));
+  }, [initial.calls, payQueue]);
+  const onOpenPay = (tableId: string) => {
+    setQuery("");
+    selectTable(tableId);
+    setMoBillCho(tableId);
+  };
+
   // Dấu "cần xử lý" trên thẻ bàn (P27 ORDER-24) — tính từ snapshot, không truy vấn thêm.
   const flags = useMemo(
     () =>
       tableFlags({
         pending: initial.pending,
         unprinted: initial.unprinted,
-        calls: initial.calls,
+        calls: otherCalls,
         sessions: initial.sessions,
+        payTableIds: payQueue.map((r) => r.tableId),
       }),
-    [initial.pending, initial.unprinted, initial.calls, initial.sessions]
+    [initial.pending, initial.unprinted, otherCalls, initial.sessions, payQueue]
   );
 
   const soMonGio = cart.reduce((n, l) => n + l.qty, 0);
@@ -689,7 +726,7 @@ export function PosBoard({
           ẩn, các nút đó dời vào hàng PhoneAlertBar ngay dưới. */}
       <div
         className={cn(
-          "flex items-center gap-md border-b border-hairline-soft bg-canvas py-sm pl-md pr-lg",
+          "flex items-center gap-sm border-b border-hairline-soft bg-canvas py-sm pl-md pr-lg lg:gap-md",
           counter && "max-sm:hidden"
         )}
       >
@@ -710,12 +747,6 @@ export function PosBoard({
           />
         )}
         {!counter && searchBox}
-        {!counter && (
-          <span className="hidden shrink-0 text-sm text-steel xl:inline">
-            {initial.tables.length} bàn ·{" "}
-            {initial.tables.filter((t) => t.status === "occupied").length} đang phục vụ
-          </span>
-        )}
         <div className="ml-auto flex shrink-0 items-center gap-sm">
           {/* Thiết bị in thường trực — nhân viên đứng quầy phải thấy máy in bếp có chạy không. */}
           <ThietBiInChip st={cauIn.st} />
@@ -738,7 +769,9 @@ export function PosBoard({
             unprinted={initial.unprinted}
             printingId={printingOrderId}
             onPrint={handlePrintUnprinted}
-            calls={initial.calls}
+            calls={otherCalls}
+            payQueue={payQueue}
+            onOpenPay={onOpenPay}
             resolvingId={resolvingCall}
             onResolve={handleResolveCall}
             callError={callError}
@@ -783,7 +816,9 @@ export function PosBoard({
         unprinted={initial.unprinted}
         printingId={printingOrderId}
         onPrint={handlePrintUnprinted}
-        calls={initial.calls}
+        calls={otherCalls}
+        payQueue={payQueue}
+        onOpenPay={onOpenPay}
         resolvingId={resolvingCall}
         onResolve={handleResolveCall}
         callError={callError}
@@ -802,13 +837,45 @@ export function PosBoard({
           cùng (máy quầy, tablet) và hàng PhoneAlertBar (điện thoại) — băng chip ăn 300–430px ở 1366, gần hết màn ở 1024. Dấu
           trên thẻ bàn (ORDER-24) cho biết bàn nào cần xử lý. */}
 
-      {/* 3 cột: bàn (trái) · thực đơn (giữa) · đơn bàn (phải) */}
+      {/* Vùng lớn (sơ đồ bàn HOẶC thực đơn, ≥ 1024px có tab) · đơn bàn (phải) */}
       <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {!counter && (
+          <div role="tablist" aria-label="Vùng làm việc" className="hidden shrink-0 items-center gap-xs border-b border-hairline-soft bg-canvas px-md py-xs lg:flex">
+            {([
+              ["ban", "Sơ đồ bàn", LayoutGrid],
+              ["mon", "Thực đơn", UtensilsCrossed],
+            ] as const).map(([id, ten, Icon]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={deskView === id}
+                onClick={() => setDeskView(id)}
+                className={cn(
+                  "inline-flex min-h-10 items-center gap-xs rounded-md px-md text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                  deskView === id ? "bg-primary text-primary-fg" : "text-steel hover:bg-surface"
+                )}
+              >
+                <Icon className="h-4 w-4" aria-hidden />
+                {ten}
+                {id === "mon" && (selectedTable || takeawayMode) && (
+                  <span className="font-normal opacity-80">· {takeawayMode ? "Mang về" : `Bàn ${selectedTable!.name}`}</span>
+                )}
+              </button>
+            ))}
+            <span className="ml-auto text-xs text-steel">
+              {initial.tables.length} bàn · {initial.tables.filter((t) => t.status === "occupied").length} đang phục vụ
+            </span>
+          </div>
+        )}
+        <div className="flex min-h-0 flex-1">
         {!counter && (
           <aside
             className={cn(
-              "hidden w-80 shrink-0 overflow-y-auto border-r border-hairline-soft p-md lg:block xl:w-96",
-              mobileTab === "ban" && "max-sm:block max-sm:w-full max-sm:border-r-0"
+              "hidden min-w-0 overflow-y-auto p-md",
+              mobileTab === "ban" && "max-sm:block max-sm:w-full",
+              deskView === "ban" && "lg:block lg:flex-1"
             )}
           >
             <TableMap
@@ -826,7 +893,13 @@ export function PosBoard({
           </aside>
         )}
 
-        <section className={cn("flex min-h-0 min-w-0 flex-1 flex-col", mobileTab !== "mon" && "max-sm:hidden")}>
+        <section
+          className={cn(
+            "flex min-h-0 min-w-0 flex-1 flex-col",
+            mobileTab !== "mon" && "max-sm:hidden",
+            !counter && deskView === "ban" && "lg:hidden"
+          )}
+        >
           <div className="min-h-0 flex-1">
             <MenuPanel
               slug={slug}
@@ -874,6 +947,8 @@ export function PosBoard({
             </button>
           )}
         </section>
+        </div>
+        </div>
 
         {/* Panel đơn không bàn cần chỗ cho HAI cột (gõ đơn + hàng đợi) nên rộng hơn panel bàn;
             chỉ nới từ xl trở lên để màn hẹp không bóp mất thực đơn. */}
@@ -931,7 +1006,10 @@ export function PosBoard({
               canCancelWithoutPin={canCancelWithoutPin}
               onOpenBill={openBill}
               openingBill={openingBill}
-              onClose={() => setSelectedTableId(null)}
+              onClose={() => {
+                setSelectedTableId(null);
+                setDeskView("ban");
+              }}
               phoneCartOpen={gioMo}
               onPhoneCartOpenChange={setGioMo}
               areas={initial.areas}
