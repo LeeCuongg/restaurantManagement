@@ -28,6 +28,7 @@ import { resolveGroupRoot, groupOrderIds, groupIsPaid } from "@/lib/orders/order
 import { isHistoryStatusFilter, type HistoryStatusFilter } from "@/lib/orders/history-filter";
 import { verifyPinForRoles } from "@/lib/auth/pin-gate";
 import { resolveStaffCall } from "@/lib/orders/staff-calls";
+import { setItemsDelivered } from "@/lib/orders/kitchen-progress";
 import {
   openBillForSession,
   openBillForOrder,
@@ -163,6 +164,17 @@ export async function resolveCallAction(slug: string, callId: string): Promise<A
   const res = await resolveStaffCall(auth.tenantId, callId, auth.staffId);
   if ("error" in res) return { ok: false, error: res.error };
   revalidatePath(`/r/${slug}/pos`);
+  return { ok: true };
+}
+
+/** "Mang ra" (P27, QD-032): món bếp đã xong → đã mang ra; món rời màn bếp. Không đụng 'served' (= đã thu tiền). */
+export async function markItemsDeliveredAction(slug: string, itemIds: string[]): Promise<ActionResult> {
+  const auth = await authorizePos(slug);
+  if ("error" in auth) return { ok: false, error: auth.error };
+  const res = await setItemsDelivered(await createClient(), auth.tenantId, itemIds.slice(0, 200), auth.staffId);
+  if (!res.ok) return { ok: false, error: res.error };
+  revalidatePath(`/r/${slug}/pos`);
+  revalidatePath(`/r/${slug}/kds`);
   return { ok: true };
 }
 

@@ -129,7 +129,9 @@ test.describe("máy tính 1280×800", () => {
     // #2 Gọi chung trên V1 → chip "Đơn cần in phiếu" ghi nhóm.
     await goiMon(page, panel);
     await expect(panel.getByText(/Đơn #\d+ · V1/)).toBeVisible();
-    await expect(page.getByRole("button", { name: /Bàn V1 \(nhóm V1\)/ }).first()).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("button", { name: /^Cần in \d+$/ }).click({ timeout: 15_000 });
+    await expect(page.getByRole("dialog").getByRole("button", { name: /Bàn V1 \(nhóm V1\)/ }).first()).toBeVisible({ timeout: 15_000 });
+    await page.keyboard.press("Escape");
 
     // Chạm bàn phụ V2 → cùng đơn, cùng tạm tính cả nhóm.
     const tamTinh = await panel.getByText("Tạm tính (cả nhóm)").locator("..").innerText();

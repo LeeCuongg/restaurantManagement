@@ -88,6 +88,7 @@ const order = (table_id: string | null, statuses: PosOrder["items"][number]["sta
     unit_price: 50000,
     modifiers: [],
     cancel_reason: null,
+    delivered: false,
   })),
 });
 const session = (id: string, tableId: string, extra: Partial<PosSession> = {}): PosSession => ({

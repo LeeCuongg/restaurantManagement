@@ -32,6 +32,8 @@ export type PosItem = {
   unit_price: number;
   modifiers: string[];
   cancel_reason: string | null;
+  /** Phục vụ đã bấm "Mang ra" (P27, QD-032) — khác 'served' (= đã thu tiền). */
+  delivered: boolean;
 };
 
 export type CustomerContact = { name?: string; phone?: string | null } | null;
@@ -123,10 +125,11 @@ function mapItems(rows: unknown[]): PosItem[] {
         (m) => m.name_snapshot
       ),
       cancel_reason: (r.cancel_reason as string) ?? null,
+      delivered: !!r.delivered_at,
       created_at: r.created_at as string,
     }))
     .sort((a, b) => String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")))
-    .map(({ id, name, qty, note, status, unit_price, modifiers, cancel_reason }) => ({
+    .map(({ id, name, qty, note, status, unit_price, modifiers, cancel_reason, delivered }) => ({
       id,
       name,
       qty,
@@ -135,6 +138,7 @@ function mapItems(rows: unknown[]): PosItem[] {
       unit_price,
       modifiers,
       cancel_reason,
+      delivered,
     }));
 }
 
@@ -173,7 +177,7 @@ async function readPosSnapshot(tenantId: string): Promise<PosSnapshot> {
       supabase
         .from("orders")
         .select(
-          "id, kitchen_no, status, source, note, customer_contact, created_at, table_session_id, table_id, order_items(id, name_snapshot, unit_price_snapshot, qty, note, status, cancel_reason, created_at, order_item_modifiers(name_snapshot))"
+          "id, kitchen_no, status, source, note, customer_contact, created_at, table_session_id, table_id, order_items(id, name_snapshot, unit_price_snapshot, qty, note, status, cancel_reason, created_at, delivered_at, order_item_modifiers(name_snapshot))"
         )
         .eq("tenant_id", tenantId)
         .in("status", ACTIVE_STATUSES)

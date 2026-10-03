@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useResumeRefresh } from "@/components/pos/use-resume-refresh";
-import { Bell, BellRing, Check, CalendarClock, ChevronUp, Loader2, Printer, ShoppingBag, ShoppingCart } from "lucide-react";
+import { Bell, BellRing, CalendarClock, ChevronUp, ShoppingBag, ShoppingCart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { tableFlags } from "@/lib/orders/table-flags";
 import type { CustomerMenu, CustomerMenuItem } from "@/lib/orders/customer-menu";
 import type { PosSnapshot } from "@/lib/orders/pos";
 import type { ServiceMode } from "@/lib/tenant/settings";
@@ -42,7 +43,6 @@ import { useActionKey } from "@/components/use-action-key";
 import { actionSignature } from "@/lib/idempotency";
 import type { MergeCandidate } from "./MergeTablesDialog";
 import type { CancelStaff } from "./CancelItemDialog";
-import { gioVn } from "@/lib/time/vn";
 import { CauInBanner, ThietBiInChip, useCauIn } from "@/components/pos/CauInBanner";
 import { PhoneAlertBar } from "@/components/pos/PhoneAlertBar";
 import { TablePickerDrawer } from "@/components/pos/TablePickerDrawer";
@@ -654,6 +654,18 @@ export function PosBoard({
     </>
   );
 
+  // Dấu "cần xử lý" trên thẻ bàn (P27 ORDER-24) — tính từ snapshot, không truy vấn thêm.
+  const flags = useMemo(
+    () =>
+      tableFlags({
+        pending: initial.pending,
+        unprinted: initial.unprinted,
+        calls: initial.calls,
+        sessions: initial.sessions,
+      }),
+    [initial.pending, initial.unprinted, initial.calls, initial.sessions]
+  );
+
   const soMonGio = cart.reduce((n, l) => n + l.qty, 0);
   const tongGio = cart.reduce((t, l) => {
     const it = itemMap.get(l.itemId);
@@ -694,6 +706,7 @@ export function PosBoard({
             takeawayActive={takeawayMode}
             takeawayCount={initial.takeawayOrders.length}
             onSelectTakeaway={enterTakeaway}
+            flags={flags}
           />
         )}
         {!counter && searchBox}
@@ -717,6 +730,19 @@ export function PosBoard({
             </Link>
           )}
           {onlineLink}
+          {/* Máy quầy / tablet: "Cần in N" + "Bàn gọi N" (P27 ORDER-23) — bấm mở danh sách như bản điện thoại. */}
+          <PhoneAlertBar
+            inline
+            pendingCount={initial.pending.length}
+            onOpenPending={() => setPendingOpen(true)}
+            unprinted={initial.unprinted}
+            printingId={printingOrderId}
+            onPrint={handlePrintUnprinted}
+            calls={initial.calls}
+            resolvingId={resolvingCall}
+            onResolve={handleResolveCall}
+            callError={callError}
+          />
           {/* Điện thoại: nút này ẩn — nút "Chờ duyệt N" của PhoneAlertBar làm đúng việc đó.
               Có đơn chờ duyệt = việc GẤP NHẤT ở POS → nút đổi sang nền primary + chuông rung,
               không để cùng một sắc độ với các nút phụ (dễ miss đơn khách). */}
@@ -736,7 +762,7 @@ export function PosBoard({
             ) : (
               <Bell className="h-4 w-4" />
             )}
-            <span className="hidden md:inline">Chờ duyệt</span>
+            <span className="hidden lg:inline">Chờ duyệt</span>
             {initial.pending.length > 0 && (
               <span className="grid h-6 min-w-[24px] place-items-center rounded-full bg-canvas px-1 text-xs font-bold text-primary">
                 {initial.pending.length}
@@ -772,123 +798,16 @@ export function PosBoard({
         }
       />
 
-      {/* Banner ĐƠN KHÁCH CHỜ DUYỆT — ưu tiên cao nhất nên đặt trên banner gọi nhân viên.
-          Bấm chip mở drawer để XEM món rồi mới duyệt (D8: duyệt để chặn order giỡn/nhầm bàn),
-          không duyệt tắt từ banner. */}
-      {initial.pending.length > 0 && (
-        // Nền kem + chữ mực (như banner "Bàn đang gọi"): chữ trắng trên nền cam đặc chỉ đạt
-        // tương phản 3.3:1, dưới AA cho chữ 14px. Nổi bật bằng viền primary dày + chuông rung.
-        // Điện thoại: ba băng ẩn, thay bằng PhoneAlertBar (một hàng nút) — xem ngay dưới CauInBanner.
-        <div className="flex flex-wrap items-center gap-sm border-b-2 border-primary bg-cream-deeper px-lg py-sm max-sm:hidden">
-          <span className="inline-flex items-center gap-xs text-sm font-bold text-ink">
-            <BellRing className="h-4 w-4 animate-pulse text-primary" />
-            Đơn khách chờ duyệt ({initial.pending.length})
-          </span>
-          {initial.pending.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setPendingOpen(true)}
-              title={`${p.tableName} · ${p.items.map((i) => `${i.qty}× ${i.name}`).join(", ")}`}
-              className="inline-flex min-h-[44px] items-center gap-xs rounded-2xl border border-primary/30 bg-canvas px-md py-xs text-left text-sm font-semibold text-ink shadow-card transition-transform hover:bg-primary/5 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            >
-              <span className="shrink-0">{p.tableName}</span>
-              <span className="font-normal tabular-nums text-steel">
-                {gioVn(p.created_at)}
-              </span>
-              <span className="font-normal text-slate">
-                {p.items.reduce((n, i) => n + i.qty, 0)} món
-              </span>
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setPendingOpen(true)}
-            className="ml-auto inline-flex min-h-[44px] items-center gap-xs rounded-md bg-primary px-lg text-sm font-semibold text-primary-fg shadow-card hover:bg-primary-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-          >
-            Xem &amp; duyệt
-          </button>
-        </div>
-      )}
-
-      {/* Banner ĐƠN CẦN IN PHIẾU (ORDER-16) — đơn nhân viên gõ (từ điện thoại tại bàn hoặc từ
-          chính POS) vào thẳng confirmed, KHÔNG qua hàng chờ duyệt. Quán không có màn KDS thì quên
-          in = món không bao giờ xuống bếp, nên viền đỏ: hậu quả nặng hơn cả đơn chờ duyệt.
-          Bấm chip là in luôn — không có bước xem trước, vì món do chính nhân viên gõ. */}
-      {initial.unprinted.length > 0 && (
-        <div className="flex flex-wrap items-center gap-sm border-b-2 border-status-late bg-cream-soft px-lg py-sm max-sm:hidden">
-          <span className="inline-flex items-center gap-xs text-sm font-bold text-ink">
-            <Printer className="h-4 w-4 text-status-late" />
-            Đơn cần in phiếu ({initial.unprinted.length})
-          </span>
-          {initial.unprinted.map((u) => (
-            <button
-              key={u.id}
-              type="button"
-              onClick={() => handlePrintUnprinted(u.id)}
-              disabled={printingOrderId === u.id}
-              title={`Bàn ${u.tableName} · ${u.itemCount} món · bấm để in phiếu bếp`}
-              className="inline-flex min-h-[44px] items-center gap-xs rounded-2xl border border-status-late/40 bg-canvas px-md py-xs text-left text-sm font-semibold text-ink shadow-card transition-transform hover:bg-status-late/5 active:scale-[0.98] disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            >
-              {printingOrderId === u.id ? (
-                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-status-late" aria-hidden />
-              ) : (
-                <Printer className="h-4 w-4 shrink-0 text-status-late" aria-hidden />
-              )}
-              <span className="shrink-0">Bàn {u.tableName}</span>
-              {u.kitchenNo != null && (
-                <span className="font-normal text-steel">#{u.kitchenNo}</span>
-              )}
-              <span className="font-normal text-slate">{u.itemCount} món</span>
-              <span className="font-normal tabular-nums text-steel">
-                {gioVn(u.created_at)}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Banner "Gọi nhân viên" (CALL-01) — bàn đang gọi, bấm để đánh dấu đã xử lý */}
-      {initial.calls.length > 0 && (
-        <div className="flex flex-wrap items-center gap-sm border-b border-hairline-soft bg-cream px-lg py-sm max-sm:hidden">
-          <span className="inline-flex items-center gap-xs text-sm font-semibold text-ink">
-            <BellRing className="h-4 w-4 animate-pulse text-primary" />
-            Bàn đang gọi ({initial.calls.length})
-          </span>
-          {initial.calls.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => handleResolveCall(c.id)}
-              disabled={resolvingCall === c.id}
-              title={`Bàn ${c.tableName}${c.note ? " — " + c.note : ""} · bấm để đánh dấu đã xử lý`}
-              className="group inline-flex min-h-[44px] items-center gap-xs rounded-2xl border border-primary/30 bg-canvas px-md py-xs text-left text-sm font-semibold text-ink transition-colors hover:bg-primary/5 active:bg-primary/10 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            >
-              <span className="shrink-0">
-                Bàn {c.tableName}
-                {c.note ? ":" : ""}
-              </span>
-              {c.note && <span className="font-normal text-slate">{c.note}</span>}
-              <Check
-                className="h-4 w-4 shrink-0 text-primary transition-transform group-active:scale-90"
-                aria-hidden
-              />
-            </button>
-          ))}
-          {callError && (
-            <p role="alert" className="w-full text-sm text-status-late">
-              {callError}
-            </p>
-          )}
-        </div>
-      )}
+      {/* P27 (ORDER-23): ba băng "Đơn khách chờ duyệt / Đơn cần in phiếu / Bàn đang gọi" đã gom thành nút đếm trên thanh trên
+          cùng (máy quầy, tablet) và hàng PhoneAlertBar (điện thoại) — băng chip ăn 300–430px ở 1366, gần hết màn ở 1024. Dấu
+          trên thẻ bàn (ORDER-24) cho biết bàn nào cần xử lý. */}
 
       {/* 3 cột: bàn (trái) · thực đơn (giữa) · đơn bàn (phải) */}
       <div className="flex min-h-0 flex-1">
         {!counter && (
           <aside
             className={cn(
-              "hidden w-80 shrink-0 overflow-y-auto border-r border-hairline-soft p-md lg:block lg:w-96",
+              "hidden w-80 shrink-0 overflow-y-auto border-r border-hairline-soft p-md lg:block xl:w-96",
               mobileTab === "ban" && "max-sm:block max-sm:w-full max-sm:border-r-0"
             )}
           >
@@ -902,6 +821,7 @@ export function PosBoard({
               takeawayActive={takeawayMode}
               takeawayCount={initial.takeawayOrders.length}
               onSelectTakeaway={enterTakeaway}
+              flags={flags}
             />
           </aside>
         )}
@@ -963,7 +883,7 @@ export function PosBoard({
             mobileTab !== "don" && "max-sm:hidden",
             takeawayMode
               ? "w-80 md:w-[26rem] lg:w-[34rem] xl:w-[52rem] 2xl:w-[60rem]"
-              : "w-80 md:w-[26rem] lg:w-[30rem]"
+              : "w-80 md:w-[26rem] lg:w-[24rem] xl:w-[30rem]"
           )}
         >
           {takeawayMode ? (

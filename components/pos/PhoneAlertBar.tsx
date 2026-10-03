@@ -13,6 +13,9 @@ type BanGoi = { id: string; tableName: string; note: string | null };
  * Điện thoại (< 640px): ba băng "Chờ duyệt / Cần in phiếu / Bàn đang gọi" gộp thành MỘT hàng nút gọn. Ba
  * băng chip cuộn ngang như máy quầy ăn hơn 200px chiều cao, lộ thanh cuộn, nút bị cắt ở mép. Bấm nút mở
  * danh sách từ đáy màn — cùng hành động như chip trên băng (in phiếu bếp / đánh dấu đã xử lý).
+ *
+ * P27 (ORDER-23): `inline` — cùng hai nút "Cần in N" / "Bàn gọi N" đặt trên THANH TRÊN CÙNG của máy quầy / tablet (≥ 640px),
+ * thay ba băng chiếm 300–430px (1366) hay gần hết màn (1024). Nút "Chờ duyệt" đã có sẵn trên thanh đó nên không lặp.
  */
 export function PhoneAlertBar({
   pendingCount,
@@ -26,6 +29,7 @@ export function PhoneAlertBar({
   callError,
   always = false,
   trailing,
+  inline = false,
 }: {
   pendingCount: number;
   onOpenPending: () => void;
@@ -40,20 +44,28 @@ export function PhoneAlertBar({
   always?: boolean;
   /** Nút công cụ dời từ hàng trên xuống (chip máy in, Đơn online) — nằm cuối hàng. */
   trailing?: ReactNode;
+  /** Đặt trong thanh công cụ máy quầy (≥ 640px): chỉ hai nút Cần in / Bàn gọi, không có hàng riêng. */
+  inline?: boolean;
 }) {
   const [mo, setMo] = useState<"in" | "goi" | null>(null);
-  const coViec = pendingCount > 0 || unprinted.length > 0 || calls.length > 0;
+  const coViec = (!inline && pendingCount > 0) || unprinted.length > 0 || calls.length > 0;
   if (!coViec && !always) return null;
 
   // Nhãn ngắn ("Duyệt", "Gọi") + không xuống dòng: ba nút + nút công cụ trên 440px mỗi nút chỉ ~110px, nhãn
   // dài bị bẻ đôi. Dưới 400px chỉ icon + số; tên đầy đủ nằm ở aria-label.
   const nut =
     "inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-xs whitespace-nowrap rounded-md border px-sm text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary";
-  const chu = "max-[400px]:hidden";
+  // Thanh trên cùng máy quầy: chữ chỉ hiện từ 1280px — tablet 1024 chỉ icon + số, không đẩy nút "Chờ duyệt" ra ngoài mép.
+  const chu = inline ? "hidden xl:inline" : "max-[400px]:hidden";
 
   return (
-    <div className="flex items-center gap-xs border-b border-hairline-soft bg-canvas px-md py-xs sm:hidden">
-      {pendingCount > 0 && (
+    <div
+      className={cn(
+        "flex items-center gap-xs",
+        inline ? "shrink-0 max-sm:hidden [&>button]:h-11 [&>button]:flex-none [&>button]:px-sm lg:[&>button]:px-md" : "border-b border-hairline-soft bg-canvas px-md py-xs sm:hidden"
+      )}
+    >
+      {!inline && pendingCount > 0 && (
         <button
           type="button"
           onClick={onOpenPending}
@@ -72,7 +84,7 @@ export function PhoneAlertBar({
           className={cn(nut, "border-status-late bg-cream-soft")}
         >
           <Printer className="h-4 w-4 shrink-0 text-status-late" aria-hidden />
-          <span className={chu}>Cần in</span> {unprinted.length}
+          <span className={chu}>{inline ? "Cần in phiếu" : "Cần in"}</span> {unprinted.length}
         </button>
       )}
       {calls.length > 0 && (
@@ -82,8 +94,8 @@ export function PhoneAlertBar({
           aria-label={`Bàn gọi ${calls.length}`}
           className={cn(nut, "border-primary/40 bg-cream")}
         >
-          <Hand className="h-4 w-4 shrink-0 text-primary" aria-hidden />
-          <span className={chu}>Gọi</span> {calls.length}
+          <Hand className="h-4 w-4 shrink-0 animate-pulse text-primary" aria-hidden />
+          <span className={chu}>{inline ? "Bàn gọi" : "Gọi"}</span> {calls.length}
         </button>
       )}
       {trailing && <div className="ml-auto flex shrink-0 items-center gap-xs">{trailing}</div>}
