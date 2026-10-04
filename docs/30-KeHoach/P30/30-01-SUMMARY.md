@@ -1,6 +1,6 @@
 # 30-01 — Báo cáo: ☰ → "Quản trị" trong app Thu ngân (Windows + Android)
 
-> 04/10/2026. Yêu cầu DESK-13, ANDR-09. **Code xong, đã kiểm; CHƯA phát hành bản app mới, CHƯA deploy web.**
+> 04/10/2026. Yêu cầu DESK-13, ANDR-09. **Web đã deploy production 04/10/2026 (main 7a3b3c1)** — e2e `p30-quan-ly.spec.ts` 13/13 chạy thẳng trên production. App Windows / APK chưa phát hành.
 
 ## Đã làm
 

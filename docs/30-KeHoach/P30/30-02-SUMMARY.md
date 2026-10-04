@@ -1,6 +1,6 @@
 # 30-02 — Báo cáo: màn "Quản lý" cho điện thoại (`/quan-ly`)
 
-> 04/10/2026. Yêu cầu MGR-01..06. **Code xong, đã kiểm trên dev server với DB production (quán demo pho-viet); CHƯA deploy.**
+> 04/10/2026. Yêu cầu MGR-01..06. **Web đã deploy production 04/10/2026 (main 7a3b3c1)** — e2e `p30-quan-ly.spec.ts` 13/13 chạy thẳng trên production. App Windows / APK chưa phát hành.
 
 ## Đã làm
 
